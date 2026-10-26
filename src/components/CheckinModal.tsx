@@ -27,8 +27,10 @@ export const CheckinModal: React.FC<{
   data: AppData;
   update: (fn: (prev: AppData) => AppData) => void;
   dark: boolean;
+  // Abre direto num mês já registrado (editar pelo Histórico)
+  month?: string;
   onClose: () => void;
-}> = ({ model, data, update, onClose }) => {
+}> = ({ model, data, update, month, onClose }) => {
   const reduce = Boolean(useReducedMotion());
   // Último mês vencido e a próxima parcela: dá para registrar a próxima com antecedência
   // (paga adiantada ou já agendada no débito automático), mas não meses além dela
@@ -36,6 +38,7 @@ export const CheckinModal: React.FC<{
   const nextYm = model.summary.next?.yearMonth ?? null;
   const maxYm = [currentYearMonth(), nextYm].filter((v): v is string => Boolean(v)).sort().at(-1)!;
   const defaultYm =
+    month ??
     pendingCheckinMonth(model, data) ??
     // O mês vencido já tem check-in: abre direto na próxima parcela
     (lastDueYm && nextYm && data.checkins.some((c) => c.yearMonth === lastDueYm) ? nextYm : null) ??
@@ -85,12 +88,20 @@ export const CheckinModal: React.FC<{
     setSource(e?.source ?? 'proprio');
   };
 
+  // Data deste check-in: a amortização dele entra depois de saldos informados antes,
+  // e o saldo informado aqui (com a mesma data) já inclui a amortização
+  const [stamp] = useState(() => new Date().toISOString());
+  const extraAt = existing?.createdAt ?? stamp;
+
   // Estimativa do saldo do mês já com a amortização extra que a pessoa disse ter feito
   const estimate = useMemo(() => {
     if (!(hasExtra && extra > 0)) return row?.closingBalance ?? model.summary.currentBalance;
-    const rows = buildSchedule(model.contract, { ...model.options, extras: [...otherExtras, { id: 'x', yearMonth: ym, amount: extra, mode, source }] });
+    const rows = buildSchedule(model.contract, {
+      ...model.options,
+      extras: [...otherExtras, { id: 'x', yearMonth: ym, amount: extra, mode, source, createdAt: extraAt }],
+    });
     return rows.find((r) => r.yearMonth === ym)?.closingBalance ?? model.summary.currentBalance;
-  }, [hasExtra, extra, row, model, otherExtras, ym, mode, source]);
+  }, [hasExtra, extra, row, model, otherExtras, ym, mode, source, extraAt]);
   const diff = balance > 0 ? balance - estimate : 0;
 
   const go = (d: number) => {
@@ -101,11 +112,11 @@ export const CheckinModal: React.FC<{
 
   // Progresso depois de salvar, para mostrar a casa subindo
   const afterProgress = useMemo(() => {
-    const checkpoints = [...data.checkpoints, ...(balance > 0 ? [{ id: 'x', yearMonth: ym, balance, source: 'banco' as const }] : [])];
-    const extras = hasExtra && extra > 0 ? [...otherExtras, { id: 'x', yearMonth: ym, amount: extra, mode, source }] : otherExtras;
+    const checkpoints = [...data.checkpoints, ...(balance > 0 ? [{ id: 'x', yearMonth: ym, balance, source: 'banco' as const, createdAt: extraAt }] : [])];
+    const extras = hasExtra && extra > 0 ? [...otherExtras, { id: 'x', yearMonth: ym, amount: extra, mode, source, createdAt: extraAt }] : otherExtras;
     const rows = buildSchedule(model.contract, { extras, checkpoints, trFor: model.trFor });
     return summarize(model.contract, rows).progress;
-  }, [data.checkpoints, otherExtras, balance, ym, hasExtra, extra, mode, source, model.contract, model.trFor]);
+  }, [data.checkpoints, otherExtras, balance, ym, hasExtra, extra, mode, source, extraAt, model.contract, model.trFor]);
 
   const save = () => {
     const before = model.summary.progress;
@@ -121,13 +132,13 @@ export const CheckinModal: React.FC<{
           paidAmount: paid,
           balanceAfter: balance > 0 ? balance : undefined,
           ...(extraId ? { extraId } : {}),
-          createdAt: existing?.createdAt ?? new Date().toISOString(),
+          createdAt: extraAt,
         },
       ],
       // Troca (ou remove) a amortização deste check-in; as outras ficam como estão
       extras: [
         ...prev.extras.filter((e) => e.id !== linkedExtra?.id),
-        ...(keepExtra && extraId ? [{ id: extraId, yearMonth: ym, amount: extra, mode, source }] : []),
+        ...(keepExtra && extraId ? [{ id: extraId, yearMonth: ym, amount: extra, mode, source, createdAt: extraAt }] : []),
       ],
     }));
     setDone({ before, after: afterProgress });

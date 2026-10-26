@@ -24,8 +24,14 @@ const doc = {
   version: 1,
   contract,
   checkins: [{ id: 'a', yearMonth: '2026-10', paidAmount: 3971.78, balanceAfter: 329800, extraId: 'b', createdAt: '2026-10-26T00:00:00.000Z' }],
-  extras: [{ id: 'b', yearMonth: '2026-10', amount: 10000, mode: 'prazo', source: 'fgts' }],
-  checkpoints: [{ id: 'c', yearMonth: '2025-12', balance: 340000, source: 'ir' }],
+  extras: [
+    { id: 'b', yearMonth: '2026-10', amount: 10000, mode: 'prazo', source: 'fgts', createdAt: '2026-10-26T00:00:00.000Z' },
+    { id: 'd', yearMonth: '2025-03', amount: 2000, mode: 'parcela', source: 'proprio' },
+  ],
+  checkpoints: [
+    { id: 'c', yearMonth: '2025-12', balance: 340000, source: 'ir' },
+    { id: 'e', yearMonth: '2026-10', balance: 330000, source: 'banco', createdAt: '2026-10-20T00:00:00.000Z' },
+  ],
   rates: {
     fetchedAt: '2026-10-26T00:20:00.000Z',
     latest: { selic: { date: '2026-10-26', value: 13.75 } },

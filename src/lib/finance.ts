@@ -21,6 +21,17 @@ function monthsToPayOff(system: Contract['system'], balance: number, i: number, 
   return Math.ceil(-Math.log(x) / Math.log(1 + i) - 1e-9);
 }
 
+// Amortização simulada: sempre depois de qualquer saldo já informado
+const PLANNED_AT = '9999-12-31T00:00:00.000Z';
+
+// A amortização foi lançada depois do saldo real do mesmo mês? Sem data (registros antigos),
+// o saldo vale como informado. O saldo do IR é o de 31/12 e já inclui tudo o que foi pago no ano
+function extraAfterCheckpoint(e: ExtraPayment, cp: BalanceCheckpoint): boolean {
+  if (!e.createdAt) return false;
+  if (cp.source === 'ir') return e.createdAt === PLANNED_AT;
+  return e.createdAt > (cp.createdAt ?? '');
+}
+
 export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): ScheduleRow[] {
   const i = annualToMonthly(contract.annualRate) / 100;
   const fees = (contract.monthlyInsurance || 0) + (contract.monthlyAdminFee || 0);
@@ -57,19 +68,24 @@ export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): S
     balance -= amortization;
     remaining -= 1;
 
-    // Amortizações extras do mês, depois da parcela
+    // Amortizações extras do mês, depois da parcela. Com saldo real informado no mesmo mês,
+    // o saldo já inclui o que foi pago antes dele; o que veio depois abate em cima do saldo
+    const cp = checkpointByMonth.get(ym);
     let extra = 0;
     let mode: ExtraMode | null = null;
-    for (const e of extrasByMonth.get(ym) ?? []) {
+    const apply = (e: ExtraPayment) => {
       const applied = Math.min(e.amount, balance);
       extra += applied;
       balance -= applied;
       if (applied > 0 && (mode === null || e.mode === 'prazo')) mode = e.mode;
-    }
+    };
+    const monthExtras = extrasByMonth.get(ym) ?? [];
+    const afterCheckpoint = (e: ExtraPayment) => Boolean(cp && extraAfterCheckpoint(e, cp));
+    monthExtras.filter((e) => !afterCheckpoint(e)).forEach(apply);
 
     // Saldo real informado: passa a valer daqui em diante
-    const cp = checkpointByMonth.get(ym);
     if (cp) balance = Math.max(0, cp.balance);
+    monthExtras.filter(afterCheckpoint).forEach(apply);
 
     if (balance <= EPS) {
       balance = 0;
@@ -171,12 +187,12 @@ export interface ExtraPlan {
 function planToExtras(plan: ExtraPlan, untilYm: string): ExtraPayment[] {
   if (!(plan.amount > 0)) return [];
   if (plan.frequency === 'once') {
-    return [{ id: 'sim-0', yearMonth: plan.startYm, amount: plan.amount, mode: plan.mode, source: 'proprio' }];
+    return [{ id: 'sim-0', yearMonth: plan.startYm, amount: plan.amount, mode: plan.mode, source: 'proprio', createdAt: PLANNED_AT }];
   }
   const step = plan.frequency === 'monthly' ? 1 : 12;
   const out: ExtraPayment[] = [];
   for (let k = 0, ym = plan.startYm; ym <= untilYm; k++, ym = addMonths(plan.startYm, k * step)) {
-    out.push({ id: `sim-${k}`, yearMonth: ym, amount: plan.amount, mode: plan.mode, source: 'proprio' });
+    out.push({ id: `sim-${k}`, yearMonth: ym, amount: plan.amount, mode: plan.mode, source: 'proprio', createdAt: PLANNED_AT });
   }
   return out;
 }

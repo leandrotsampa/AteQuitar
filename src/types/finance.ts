@@ -37,6 +37,8 @@ export interface ExtraPayment {
   mode: ExtraMode;
   source: ExtraSource;
   note?: string;
+  // Quando foi lançada: decide se entra antes ou depois de um saldo real informado no mesmo mês
+  createdAt?: string;
 }
 
 // Saldo devedor real informado (app do banco ou extrato anual do IR)
@@ -45,6 +47,8 @@ export interface BalanceCheckpoint {
   yearMonth: string;
   balance: number;
   source: 'banco' | 'ir';
+  // Quando o saldo foi informado (o do IR é sempre o de 31 de dezembro)
+  createdAt?: string;
 }
 
 // Registro do mês: parcela paga (e, se quiser, o saldo depois dela)

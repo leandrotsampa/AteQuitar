@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { BadgeCheck, CalendarCheck2, FileText, Landmark, Plus, Trash2, Wallet } from 'lucide-react';
+import { BadgeCheck, CalendarCheck2, FileText, Landmark, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
 import type { ScreenProps } from './types';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
@@ -11,7 +11,7 @@ import { HELP } from '../components/help';
 import { currentYearMonth, formatBRL, monthLong, monthShort, uid } from '../lib/format';
 import { EASE_OUT } from '../lib/motion';
 import { playSound } from '../hooks/useSound';
-import type { ExtraMode } from '../types/finance';
+import type { ExtraMode, ExtraSource } from '../types/finance';
 
 type Tab = 'table' | 'records';
 type AddKind = 'banco' | 'ir' | 'extra' | null;
@@ -31,32 +31,50 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
     { paid: 0, interest: 0, amort: 0 }
   );
 
-  // Formulário rápido de registro
+  // Formulário rápido de registro (novo ou editando um já salvo)
   const [adding, setAdding] = useState<AddKind>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [formYm, setFormYm] = useState(currentYearMonth());
   const [formValue, setFormValue] = useState(0);
   const [formMode, setFormMode] = useState<ExtraMode>('prazo');
+  const [formSource, setFormSource] = useState<ExtraSource>('proprio');
+  const closeForm = () => {
+    setAdding(null);
+    setEditingId(null);
+  };
   const openAdd = (k: AddKind) => {
     playSound('tick');
     setAdding(k);
+    setEditingId(null);
     setFormValue(0);
+    setFormMode('prazo');
+    setFormSource('proprio');
     setFormYm(k === 'ir' ? `${Number(currentYearMonth().slice(0, 4)) - 1}-12` : currentYearMonth());
   };
   const saveAdd = () => {
     if (!(formValue > 0) || !adding) return;
     if (adding === 'extra') {
-      update((prev) => ({ ...prev, extras: [...prev.extras, { id: uid(), yearMonth: formYm, amount: formValue, mode: formMode, source: 'proprio' }] }));
+      const id = editingId ?? uid();
+      update((prev) => {
+        // Editar não muda quando o pagamento foi lançado
+        const createdAt = prev.extras.find((e) => e.id === id)?.createdAt ?? new Date().toISOString();
+        return {
+          ...prev,
+          extras: [...prev.extras.filter((e) => e.id !== id), { id, yearMonth: formYm, amount: formValue, mode: formMode, source: formSource, createdAt }],
+        };
+      });
     } else {
       update((prev) => ({
         ...prev,
         checkpoints: [
-          ...prev.checkpoints.filter((c) => !(c.yearMonth === formYm && c.source === adding)),
-          { id: uid(), yearMonth: formYm, balance: formValue, source: adding },
+          // Um saldo por mês e origem: o editado sai, e outro do mesmo mês e origem é substituído
+          ...prev.checkpoints.filter((c) => c.id !== editingId && !(c.yearMonth === formYm && c.source === adding)),
+          { id: editingId ?? uid(), yearMonth: formYm, balance: formValue, source: adding, createdAt: new Date().toISOString() },
         ],
       }));
     }
     playSound('success');
-    setAdding(null);
+    closeForm();
   };
 
   type Rec = { id: string; ym: string; kind: 'checkin' | 'extra' | 'banco' | 'ir'; title: string; value: number; detail?: string };
@@ -87,10 +105,32 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
     })),
   ].sort((a, b) => b.ym.localeCompare(a.ym));
 
+  const editRecord = (r: Rec) => {
+    if (r.kind === 'checkin') {
+      openCheckin(r.ym);
+      return;
+    }
+    playSound('tick');
+    const extra = r.kind === 'extra' ? data.extras.find((e) => e.id === r.id) : undefined;
+    setAdding(r.kind);
+    setEditingId(r.id);
+    setFormYm(r.ym);
+    setFormValue(r.value);
+    setFormMode(extra?.mode ?? 'prazo');
+    setFormSource(extra?.source ?? 'proprio');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const removeRecord = (r: Rec) => {
+    if (r.id === editingId) closeForm();
     update((prev) => ({
       ...prev,
-      checkins: r.kind === 'checkin' ? prev.checkins.filter((c) => c.id !== r.id) : prev.checkins,
+      checkins:
+        r.kind === 'checkin'
+          ? prev.checkins.filter((c) => c.id !== r.id)
+          : r.kind === 'extra'
+            ? prev.checkins.map((c) => (c.extraId === r.id ? { ...c, extraId: undefined } : c))
+            : prev.checkins,
       extras: r.kind === 'extra' ? prev.extras.filter((e) => e.id !== r.id) : prev.extras,
       checkpoints: r.kind === 'banco' || r.kind === 'ir' ? prev.checkpoints.filter((c) => c.id !== r.id) : prev.checkpoints,
     }));
@@ -219,7 +259,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
       ) : (
         <>
           <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={openCheckin} className={btnPrimary}>
+            <button type="button" onClick={() => openCheckin()} className={btnPrimary}>
               <CalendarCheck2 className="w-4 h-4" /> Fazer check-in
             </button>
             <button type="button" onClick={() => openAdd('banco')} className={btnGhost}>
@@ -244,9 +284,19 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
               >
                 <div className={`${card} p-5 lg:p-6`}>
                   <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
-                    {adding === 'extra' ? 'Registrar amortização extra' : adding === 'ir' ? 'Saldo do extrato do Imposto de Renda' : 'Saldo devedor do banco'}
+                    {editingId
+                      ? adding === 'extra'
+                        ? 'Editar amortização extra'
+                        : adding === 'ir'
+                          ? 'Editar saldo do extrato do Imposto de Renda'
+                          : 'Editar saldo devedor do banco'
+                      : adding === 'extra'
+                        ? 'Registrar amortização extra'
+                        : adding === 'ir'
+                          ? 'Saldo do extrato do Imposto de Renda'
+                          : 'Saldo devedor do banco'}
                   </h3>
-                  <div className="grid sm:grid-cols-[240px_minmax(0,280px)_auto] gap-4 items-end mt-4">
+                  <div className="grid sm:grid-cols-[220px_minmax(0,240px)] xl:grid-cols-[220px_minmax(0,240px)_auto_auto] gap-4 items-start mt-4">
                     <Field label={adding === 'ir' ? 'Mês de referência' : 'Mês'}>
                       <MonthField
                         value={formYm}
@@ -265,13 +315,29 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                       <MoneyField value={formValue} onChange={setFormValue} />
                     </Field>
                     {adding === 'extra' && (
+                      <Field label="De onde veio">
+                        <SegmentedControl
+                          ariaLabel="De onde veio"
+                          layoutId="add-source"
+                          value={formSource}
+                          onChange={setFormSource}
+                          className="w-60"
+                          options={[
+                            { value: 'proprio', label: 'Próprio' },
+                            { value: 'fgts', label: 'FGTS' },
+                            { value: 'decimo', label: '13º' },
+                          ]}
+                        />
+                      </Field>
+                    )}
+                    {adding === 'extra' && (
                       <Field label="Reduziu">
                         <SegmentedControl
                           ariaLabel="Reduziu"
                           layoutId="add-mode"
                           value={formMode}
                           onChange={setFormMode}
-                          className="w-56"
+                          className="w-48"
                           options={[
                             { value: 'prazo', label: 'Prazo' },
                             { value: 'parcela', label: 'Parcela' },
@@ -287,9 +353,9 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                   )}
                   <div className="flex gap-2 mt-5">
                     <button type="button" onClick={saveAdd} disabled={!(formValue > 0)} className={btnPrimary}>
-                      Salvar
+                      {editingId ? 'Salvar alteração' : 'Salvar'}
                     </button>
-                    <button type="button" onClick={() => setAdding(null)} className={btnGhost}>
+                    <button type="button" onClick={closeForm} className={btnGhost}>
                       Cancelar
                     </button>
                   </div>
@@ -305,7 +371,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
               <p className="text-slate-500 dark:text-slate-400 mt-1 max-w-md mx-auto">
                 Faça o check-in da parcela deste mês. Leva menos de um minuto e já deixa os números mais próximos dos do banco.
               </p>
-              <button type="button" onClick={openCheckin} className={`${btnPrimary} mt-5`}>
+              <button type="button" onClick={() => openCheckin()} className={`${btnPrimary} mt-5`}>
                 Fazer o primeiro check-in
               </button>
             </div>
@@ -336,8 +402,18 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                       <div className="font-num font-bold text-slate-900 dark:text-white">{formatBRL(r.value)}</div>
                       <button
                         type="button"
+                        onClick={() => editRecord(r)}
+                        aria-label={`Editar ${r.title} de ${monthLong(r.ym)}`}
+                        title="Editar"
+                        className="w-9 h-9 -mr-2 rounded-full flex items-center justify-center text-slate-400 hover:text-anil-600 hover:bg-anil-50 dark:hover:bg-anil-500/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity cursor-pointer"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
                         onClick={() => removeRecord(r)}
                         aria-label={`Excluir ${r.title} de ${monthLong(r.ym)}`}
+                        title="Excluir"
                         className="w-9 h-9 rounded-full flex items-center justify-center text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />

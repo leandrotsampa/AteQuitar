@@ -53,10 +53,14 @@ const THEME_KEY = 'atequitar_theme';
 // Aplica o resultado do assistente: contrato e, se veio, o saldo de hoje como ponto real
 function applyWizard(prev: AppData, r: WizardResult): AppData {
   const ym = currentYearMonth();
-  const others = prev.checkpoints.filter((c) => !(c.yearMonth === ym && c.source === 'banco'));
+  const current = prev.checkpoints.find((c) => c.yearMonth === ym && c.source === 'banco');
+  const others = prev.checkpoints.filter((c) => c !== current);
+  // Mesmo saldo de antes: continua o mesmo registro (e a mesma data em que foi informado)
   const checkpoints =
     r.currentBalance > 0
-      ? [...others, { id: uid(), yearMonth: ym, balance: r.currentBalance, source: 'banco' as const }]
+      ? current && Math.abs(current.balance - r.currentBalance) < 0.005
+        ? prev.checkpoints
+        : [...others, { id: uid(), yearMonth: ym, balance: r.currentBalance, source: 'banco' as const, createdAt: new Date().toISOString() }]
       : r.balanceCleared
         ? others
         : prev.checkpoints;
@@ -176,6 +180,7 @@ export default function App() {
   }, [toast]);
 
   const [checkinOpen, setCheckinOpen] = useState(false);
+  const [checkinMonth, setCheckinMonth] = useState<string | undefined>();
   const [dataOpen, setDataOpen] = useState(false);
   const [contractOpen, setContractOpen] = useState(false);
   // Saldos do banco informados: o deste mês (editável no cadastro) e o mais recente (referência)
@@ -262,7 +267,10 @@ export default function App() {
     update,
     dark,
     go: setScreen,
-    openCheckin: () => setCheckinOpen(true),
+    openCheckin: (month?: string) => {
+      setCheckinMonth(month);
+      setCheckinOpen(true);
+    },
     openContract: () => setContractOpen(true),
     refreshRates: () => void refreshRates(true),
     ratesLoading,
@@ -343,7 +351,10 @@ export default function App() {
             <TopBar
               title={`${model.contract.nickname}${model.contract.bank ? ` ${withBank(model.contract.bank, model.contract.bankPreposition)}` : ''}`}
               calibrated={model.calibrated}
-              onCalibrate={() => setCheckinOpen(true)}
+              onCalibrate={() => {
+                setCheckinMonth(undefined);
+                setCheckinOpen(true);
+              }}
               ratesUpdatedAt={data.rates.fetchedAt}
               ratesLoading={ratesLoading}
               onRefreshRates={() => void refreshRates(true)}
@@ -420,7 +431,7 @@ export default function App() {
       <AnimatePresence>
         {checkinOpen && model && (
           <Suspense key="checkin" fallback={null}>
-            <CheckinModal model={model} data={data} update={update} dark={dark} onClose={() => setCheckinOpen(false)} />
+            <CheckinModal model={model} data={data} update={update} dark={dark} month={checkinMonth} onClose={() => setCheckinOpen(false)} />
           </Suspense>
         )}
       </AnimatePresence>

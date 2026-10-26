@@ -86,6 +86,7 @@ function docToRows(doc) {
       mode: MODES.includes(e.mode) ? e.mode : 'prazo',
       source: EXTRA_SOURCES.includes(e.source) ? e.source : 'proprio',
       note: typeof e.note === 'string' && e.note ? e.note : null,
+      created_at: typeof e.createdAt === 'string' && e.createdAt ? e.createdAt : null,
     }));
 
   const checkpoints = [];
@@ -95,7 +96,13 @@ function docToRows(doc) {
     const source = c && BALANCE_SOURCES.includes(c.source) ? c.source : 'banco';
     if (!month || !(num(c.balance, -1) >= 0) || seenCheckpoint.has(`${month}|${source}`)) continue;
     seenCheckpoint.add(`${month}|${source}`);
-    checkpoints.push({ id: str(c.id) || `cp-${month}-${source}`, year_month: month, balance: num(c.balance), source });
+    checkpoints.push({
+      id: str(c.id) || `cp-${month}-${source}`,
+      year_month: month,
+      balance: num(c.balance),
+      source,
+      created_at: typeof c.createdAt === 'string' && c.createdAt ? c.createdAt : null,
+    });
   }
 
   const milestones = [...new Set(list(d.celebrated).filter((m) => Number.isInteger(m) && m >= 0 && m <= 100))];
@@ -152,8 +159,15 @@ function rowsToDoc(rows) {
       mode: e.mode,
       source: e.source,
       ...(e.note ? { note: e.note } : {}),
+      ...(e.created_at ? { createdAt: e.created_at } : {}),
     })),
-    checkpoints: rows.checkpoints.map((c) => ({ id: c.id, yearMonth: c.year_month, balance: c.balance, source: c.source })),
+    checkpoints: rows.checkpoints.map((c) => ({
+      id: c.id,
+      yearMonth: c.year_month,
+      balance: c.balance,
+      source: c.source,
+      ...(c.created_at ? { createdAt: c.created_at } : {}),
+    })),
     // Sem taxas guardadas, a interface usa os valores de referência
     rates: rows.rateLatest.length > 0 ? { fetchedAt: meta.rates_fetched_at || null, latest, history, trByMonth } : undefined,
     celebrated: rows.milestones.map((m) => m.percent).sort((a, b) => a - b),

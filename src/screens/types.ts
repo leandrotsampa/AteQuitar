@@ -9,7 +9,8 @@ export interface ScreenProps {
   update: (fn: (prev: AppData) => AppData) => void;
   dark: boolean;
   go: (screen: ScreenId) => void;
-  openCheckin: () => void;
+  // Sem mês: o modal escolhe o mês pendente
+  openCheckin: (month?: string) => void;
   openContract: (step?: number) => void;
   refreshRates: () => void;
   ratesLoading: boolean;

@@ -28,7 +28,7 @@ import { celebrate } from '../components/ui/Confetti';
 
 const PRESETS = [1000, 5000, 10000, 30000];
 
-export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
+export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) => {
   const reduce = Boolean(useReducedMotion());
   const { contract, summary } = model;
   const now = currentYearMonth();
@@ -36,18 +36,26 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
   const [frequency, setFrequency] = useState<ExtraFrequency>('once');
   const [mode, setMode] = useState<ExtraMode>('prazo');
   const [startYm, setStartYm] = useState(summary.next?.yearMonth ?? addMonths(now, 1));
-  const [saved, setSaved] = useState(false);
   const extraMonths = useMemo(() => new Set((model.options.extras ?? []).map((e) => e.yearMonth)), [model.options.extras]);
 
   const maxSlider = Math.max(10000, Math.min(summary.currentBalance, frequency === 'monthly' ? 10000 : frequency === 'yearly' ? 60000 : 200000));
 
+  const canRegister = frequency === 'once' && startYm <= now && amount > 0;
+  // A mesma amortização (mês, valor e tipo) já registrada: não deixa lançar de novo, só desfazer
+  const registered = frequency === 'once' ? data.extras.find((e) => e.yearMonth === startYm && Math.abs(e.amount - amount) < 0.005 && e.mode === mode) : undefined;
+  // Depois de registrar, a simulação continua mostrando quanto essa amortização economiza
+  // (sem descontar, ela já estaria nos dados e a economia apareceria zerada)
+  const simOptions = useMemo(
+    () => (registered ? { ...model.options, extras: (model.options.extras ?? []).filter((e) => e.id !== registered.id) } : model.options),
+    [model.options, registered]
+  );
   const sim = useMemo(
-    () => simulateExtra(contract, model.options, { amount, startYm, frequency, mode }),
-    [contract, model.options, amount, startYm, frequency, mode]
+    () => simulateExtra(contract, simOptions, { amount, startYm, frequency, mode }),
+    [contract, simOptions, amount, startYm, frequency, mode]
   );
   const other = useMemo(
-    () => simulateExtra(contract, model.options, { amount, startYm, frequency, mode: mode === 'prazo' ? 'parcela' : 'prazo' }),
-    [contract, model.options, amount, startYm, frequency, mode]
+    () => simulateExtra(contract, simOptions, { amount, startYm, frequency, mode: mode === 'prazo' ? 'parcela' : 'prazo' }),
+    [contract, simOptions, amount, startYm, frequency, mode]
   );
   const byMode = mode === 'prazo' ? { prazo: sim, parcela: other } : { prazo: other, parcela: sim };
   const best = byMode.prazo.interestSaved >= byMode.parcela.interestSaved ? 'prazo' : 'parcela';
@@ -69,13 +77,20 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
     };
   }, [sim, summary.paidCount]);
 
-  const canRegister = frequency === 'once' && startYm <= now && amount > 0;
   const register = () => {
-    update((prev) => ({ ...prev, extras: [...prev.extras, { id: uid(), yearMonth: startYm, amount, mode, source: 'proprio' }] }));
-    setSaved(true);
+    if (registered) return;
+    update((prev) => ({ ...prev, extras: [...prev.extras, { id: uid(), yearMonth: startYm, amount, mode, source: 'proprio', createdAt: new Date().toISOString() }] }));
     playSound('celebrate');
     celebrate();
-    window.setTimeout(() => setSaved(false), 2500);
+  };
+  const undoRegister = () => {
+    if (!registered) return;
+    update((prev) => ({
+      ...prev,
+      extras: prev.extras.filter((e) => e.id !== registered.id),
+      checkins: prev.checkins.map((c) => (c.extraId === registered.id ? { ...c, extraId: undefined } : c)),
+    }));
+    playSound('delete');
   };
 
   return (
@@ -299,17 +314,24 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
             Registre para os números da sua casa refletirem o pagamento. Funciona para uma amortização única num mês que já chegou.
           </p>
-          <button type="button" onClick={register} disabled={!canRegister || saved} className={`${btnPrimary} mt-5 self-start whitespace-nowrap`}>
-            {saved ? (
-              <motion.span className="inline-flex items-center gap-2" initial={reduce ? false : { scale: 0.8 }} animate={{ scale: 1 }} transition={{ ease: EASE_OUT }}>
-                <Check className="w-4 h-4" /> Registrada
-              </motion.span>
-            ) : (
-              <>
-                <Plus className="w-4 h-4" /> Registrar {formatBRL0(amount)}
-              </>
+          <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
+            <button type="button" onClick={register} disabled={!canRegister || Boolean(registered)} className={`${btnPrimary} whitespace-nowrap`}>
+              {registered ? (
+                <motion.span className="inline-flex items-center gap-2" initial={reduce ? false : { scale: 0.8 }} animate={{ scale: 1 }} transition={{ ease: EASE_OUT }}>
+                  <Check className="w-4 h-4" /> Registrada em {monthShort(startYm)}
+                </motion.span>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4" /> Registrar {formatBRL0(amount)}
+                </>
+              )}
+            </button>
+            {registered && (
+              <button type="button" onClick={undoRegister} className="text-sm font-semibold text-slate-500 hover:text-rose-600 dark:text-slate-400 dark:hover:text-rose-400 cursor-pointer">
+                Desfazer
+              </button>
             )}
-          </button>
+          </div>
         </div>
       </section>
     </div>

@@ -77,6 +77,25 @@ describe('buildSchedule', () => {
     expect(june.checkpoint).toBe(true);
     expect(rows[6].amortization).toBeCloseTo(100000 / 114, 2);
   });
+
+  it('amortização lançada depois do saldo do mesmo mês abate em cima dele', () => {
+    const cp = { id: 'c', yearMonth: '2020-06', balance: 100000, source: 'banco' as const, createdAt: '2020-06-10T00:00:00.000Z' };
+    const extra = { id: 'x', yearMonth: '2020-06', amount: 10000, mode: 'prazo' as const, source: 'proprio' as const };
+    const june = (createdAt?: string) =>
+      buildSchedule(base, { checkpoints: [cp], extras: [{ ...extra, createdAt }] }).find((r) => r.yearMonth === '2020-06')!;
+    expect(june('2020-06-20T00:00:00.000Z').closingBalance).toBe(90000);
+    // Lançada antes do saldo, ou sem data (registro antigo): o saldo informado já inclui
+    expect(june('2020-06-01T00:00:00.000Z').closingBalance).toBe(100000);
+    expect(june(undefined).closingBalance).toBe(100000);
+  });
+
+  it('saldo do IR (31/12) já inclui as amortizações de dezembro', () => {
+    const rows = buildSchedule(base, {
+      checkpoints: [{ id: 'c', yearMonth: '2020-12', balance: 95000, source: 'ir' }],
+      extras: [{ id: 'x', yearMonth: '2020-12', amount: 5000, mode: 'prazo', source: 'proprio', createdAt: '2021-03-01T00:00:00.000Z' }],
+    });
+    expect(rows.find((r) => r.yearMonth === '2020-12')!.closingBalance).toBe(95000);
+  });
 });
 
 describe('summarize', () => {
@@ -101,6 +120,13 @@ describe('simulateExtra', () => {
   it('extra único reduzindo prazo economiza juros e meses', () => {
     const r = simulateExtra(base, {}, { amount: 30000, startYm: '2020-01', frequency: 'once', mode: 'prazo' });
     expect(r.monthsSaved).toBe(30);
+    expect(r.interestSaved).toBeGreaterThan(0);
+  });
+
+  it('simular no mês de um saldo informado ainda mostra a economia', () => {
+    const opts = { checkpoints: [{ id: 'c', yearMonth: '2020-06', balance: 100000, source: 'banco' as const }] };
+    const r = simulateExtra(base, opts, { amount: 10000, startYm: '2020-06', frequency: 'once', mode: 'prazo' });
+    expect(r.totalExtra).toBe(10000);
     expect(r.interestSaved).toBeGreaterThan(0);
   });
 });

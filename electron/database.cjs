@@ -50,7 +50,8 @@ const SCHEMA = `
     amount REAL NOT NULL CHECK (amount > 0),
     mode TEXT NOT NULL CHECK (mode IN ('prazo', 'parcela')),
     source TEXT NOT NULL CHECK (source IN ('proprio', 'fgts', 'decimo')),
-    note TEXT
+    note TEXT,
+    created_at TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_extra_payments_month ON extra_payments (year_month);
 
@@ -60,6 +61,7 @@ const SCHEMA = `
     year_month TEXT NOT NULL,
     balance REAL NOT NULL CHECK (balance >= 0),
     source TEXT NOT NULL CHECK (source IN ('banco', 'ir')),
+    created_at TEXT,
     UNIQUE (year_month, source)
   );
 
@@ -91,6 +93,8 @@ const ADDED_COLUMNS = [
   { table: 'contract', name: 'bank_preposition', ddl: "TEXT CHECK (bank_preposition IS NULL OR bank_preposition IN ('no', 'na'))" },
   { table: 'checkins', name: 'extra_id', ddl: 'TEXT' },
   { table: 'contract', name: 'rate_input', ddl: "TEXT CHECK (rate_input IS NULL OR rate_input IN ('efetiva', 'nominal', 'mes'))" },
+  { table: 'extra_payments', name: 'created_at', ddl: 'TEXT' },
+  { table: 'balance_checkpoints', name: 'created_at', ddl: 'TEXT' },
 ];
 
 function ensureColumns(db) {
@@ -158,8 +162,8 @@ function writeDoc(db, doc) {
       for (const r of list) stmt.run(r);
     };
     ins('INSERT INTO checkins (id, year_month, paid_amount, balance_after, extra_id, created_at) VALUES (@id, @year_month, @paid_amount, @balance_after, @extra_id, @created_at)', rows.checkins);
-    ins('INSERT OR REPLACE INTO extra_payments (id, year_month, amount, mode, source, note) VALUES (@id, @year_month, @amount, @mode, @source, @note)', rows.extras);
-    ins('INSERT INTO balance_checkpoints (id, year_month, balance, source) VALUES (@id, @year_month, @balance, @source)', rows.checkpoints);
+    ins('INSERT OR REPLACE INTO extra_payments (id, year_month, amount, mode, source, note, created_at) VALUES (@id, @year_month, @amount, @mode, @source, @note, @created_at)', rows.extras);
+    ins('INSERT INTO balance_checkpoints (id, year_month, balance, source, created_at) VALUES (@id, @year_month, @balance, @source, @created_at)', rows.checkpoints);
     ins('INSERT INTO milestones (percent) VALUES (@percent)', rows.milestones.map((percent) => ({ percent })));
     ins('INSERT INTO rate_latest (series, date, value) VALUES (@series, @date, @value)', rows.rateLatest);
     ins('INSERT OR REPLACE INTO rate_points (series, date, value) VALUES (@series, @date, @value)', rows.ratePoints);

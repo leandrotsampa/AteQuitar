@@ -46,7 +46,7 @@ export function useFinanceModel(data: AppData): FinanceModel | null {
       ...data.checkins
         .filter((ci) => ci.balanceAfter && ci.balanceAfter > 0)
         .filter((ci) => !data.checkpoints.some((cp) => cp.yearMonth === ci.yearMonth))
-        .map((ci) => ({ id: `ci-${ci.id}`, yearMonth: ci.yearMonth, balance: ci.balanceAfter!, source: 'banco' as const })),
+        .map((ci) => ({ id: `ci-${ci.id}`, yearMonth: ci.yearMonth, balance: ci.balanceAfter!, source: 'banco' as const, createdAt: ci.createdAt })),
     ];
     const options: ScheduleOptions = { extras: data.extras, checkpoints, trFor };
     const rows = buildSchedule(contract, options);
