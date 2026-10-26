@@ -7,6 +7,7 @@ import { MoneyField, MonthField } from './ui/Inputs';
 import { btnGhost, btnPrimary, tile } from './ui/card';
 import { celebrate } from './ui/Confetti';
 import { HELP } from './help';
+import { InvoiceFeesFields, draftFromFees, draftFromRow, draftTotal, feesFromDraft, type FeesDraft } from './InvoiceFeesFields';
 import type { FinanceModel } from '../lib/model';
 import type { AppData } from '../lib/store';
 import type { ExtraMode, ExtraSource } from '../types/finance';
@@ -51,6 +52,18 @@ export const CheckinModal: React.FC<{
   const existing = data.checkins.find((c) => c.yearMonth === ym);
   const [paid, setPaid] = useState(existing?.paidAmount ?? row?.payment ?? 0);
   const [balance, setBalance] = useState(existing?.balanceAfter ?? 0);
+  // Faturas já informadas (cadastro e check-ins): a mais recente decide se vêm separados
+  const refs = useMemo(
+    () => [...(model.contract.feesRef ? [model.contract.feesRef] : []), ...(model.options.invoices ?? [])].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)),
+    [model.contract.feesRef, model.options.invoices]
+  );
+  const lastSplit = refs.length > 0 ? refs[refs.length - 1].mip !== undefined : true;
+  // Seguros do mês: os da fatura já informada, ou os previstos a partir da anterior
+  const feesFor = (month: string): FeesDraft => {
+    const ci = data.checkins.find((c) => c.yearMonth === month);
+    return ci?.fees ? draftFromFees(ci.fees) : draftFromRow(model.rows.find((r) => r.yearMonth === month), lastSplit);
+  };
+  const [fees, setFees] = useState<FeesDraft>(() => feesFor(ym));
   // Amortização extra que este check-in já registrou: reabre preenchida e é alterada, não duplicada
   const extraOf = (month: string) => {
     const ci = data.checkins.find((c) => c.yearMonth === month);
@@ -70,9 +83,11 @@ export const CheckinModal: React.FC<{
 
   // Parcela que ainda não venceu (registro adiantado)
   const ahead = Boolean(lastDueYm ? ym > lastDueYm : nextYm && ym >= nextYm);
-  // Diferença entre o pago e a parcela sem seguros, quando o cadastro não tem seguros nem taxa
-  const noFees = !(model.contract.monthlyInsurance > 0) && !(model.contract.monthlyAdminFee > 0);
-  const feesGap = noFees && row ? paid - (row.amortization + row.interest) : 0;
+  // Fatura de onde vêm os valores previstos deste mês (a última antes dele, ou a primeira)
+  const refFor = (month: string) => [...refs].reverse().find((f) => f.yearMonth <= month) ?? refs.find((f) => f.yearMonth > month);
+  const feesSource = existing?.fees ? null : refFor(ym);
+  // Nenhuma fatura informada ainda: a diferença entre o pago e a parcela sem seguros quase sempre são eles
+  const feesGap = refs.length === 0 && draftTotal(fees) === 0 && row ? paid - (row.amortization + row.interest) : 0;
   const showFeesGap = feesGap > 1 && row ? feesGap < row.payment * 0.2 : false;
 
   const changeMonth = (v: string) => {
@@ -81,6 +96,7 @@ export const CheckinModal: React.FC<{
     const ex = data.checkins.find((c) => c.yearMonth === v);
     setPaid(ex?.paidAmount ?? r?.payment ?? 0);
     setBalance(ex?.balanceAfter ?? 0);
+    setFees(feesFor(v));
     const e = extraOf(v);
     setHasExtra(Boolean(e));
     setExtra(e?.amount ?? 0);
@@ -114,7 +130,7 @@ export const CheckinModal: React.FC<{
   const afterProgress = useMemo(() => {
     const checkpoints = [...data.checkpoints, ...(balance > 0 ? [{ id: 'x', yearMonth: ym, balance, source: 'banco' as const, createdAt: extraAt }] : [])];
     const extras = hasExtra && extra > 0 ? [...otherExtras, { id: 'x', yearMonth: ym, amount: extra, mode, source, createdAt: extraAt }] : otherExtras;
-    const rows = buildSchedule(model.contract, { extras, checkpoints, trFor: model.trFor });
+    const rows = buildSchedule(model.contract, { extras, checkpoints, trFor: model.trFor, invoices: model.options.invoices });
     return summarize(model.contract, rows).progress;
   }, [data.checkpoints, otherExtras, balance, ym, hasExtra, extra, mode, source, extraAt, model.contract, model.trFor]);
 
@@ -122,6 +138,7 @@ export const CheckinModal: React.FC<{
     const before = model.summary.progress;
     const keepExtra = hasExtra && extra > 0;
     const extraId = keepExtra ? linkedExtra?.id ?? uid() : undefined;
+    const invoice = feesFromDraft(fees);
     update((prev) => ({
       ...prev,
       checkins: [
@@ -132,6 +149,7 @@ export const CheckinModal: React.FC<{
           paidAmount: paid,
           balanceAfter: balance > 0 ? balance : undefined,
           ...(extraId ? { extraId } : {}),
+          ...(invoice ? { fees: invoice } : {}),
           createdAt: extraAt,
         },
       ],
@@ -152,7 +170,7 @@ export const CheckinModal: React.FC<{
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const steps = ['Parcela', 'Extra', 'Saldo'];
+  const steps = ['Parcela', 'Seguros', 'Extra', 'Saldo'];
 
   return (
     <ModalShell
@@ -251,36 +269,6 @@ export const CheckinModal: React.FC<{
                       >
                         <MoneyField value={paid} onChange={setPaid} />
                       </Field>
-                      {/* Sem seguros no cadastro, a diferença para o boleto quase sempre são eles: oferece usar o valor */}
-                      <AnimatePresence initial={false}>
-                        {showFeesGap && (
-                          <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="overflow-hidden"
-                          >
-                            <div className="p-3 rounded-2xl bg-sol-50 dark:bg-sol-400/10 text-sm text-sol-900 dark:text-sol-100 leading-relaxed">
-                              Faltam <b>{formatBRL(feesGap)}</b> para chegar ao valor pago. Quase sempre são os seguros (MIP e DFI) e a taxa de
-                              administração, que não estão no seu cadastro.
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  update((prev) =>
-                                    prev.contract
-                                      ? { ...prev, contract: { ...prev.contract, monthlyInsurance: Math.round(feesGap * 100) / 100, monthlyAdminFee: 0 } }
-                                      : prev
-                                  );
-                                  playSound('success');
-                                }}
-                                className="mt-2 flex items-center gap-1.5 h-8 px-3 rounded-full bg-sol-400 hover:bg-sol-300 text-slate-900 text-xs font-bold cursor-pointer"
-                              >
-                                Usar {formatBRL(feesGap)} como seguros e taxas
-                              </button>
-                            </div>
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
                       {row && (
                         <div className={`${tile} p-4 grid grid-cols-3 gap-2 text-sm`}>
                           <div>
@@ -292,15 +280,47 @@ export const CheckinModal: React.FC<{
                             <div className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(row.interest)}</div>
                           </div>
                           <div>
-                            <div className="text-xs text-slate-500">Seguros e taxas</div>
-                            <div className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(row.fees)}</div>
+                            <div className="text-xs text-slate-500">Seguros e taxa</div>
+                            <div className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(draftTotal(fees))}</div>
                           </div>
                         </div>
                       )}
                     </>
                   )}
 
-                  {step === 2 && (
+                  {step === 1 && (
+                    <>
+                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Seguros e taxa da fatura</h2>
+                      <p className="-mt-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                        {existing?.fees
+                          ? 'Os valores que você informou neste check-in.'
+                          : feesSource?.yearMonth === ym
+                            ? 'Os valores da fatura informada no cadastro. Confira e corrija o que vier diferente.'
+                            : feesSource
+                            ? `Já preenchemos com a fatura de ${monthName(feesSource.yearMonth)}, corrigida: o MIP acompanha o saldo e o DFI, a TR. Confira na fatura e corrija o que vier diferente.`
+                            : 'Copie do detalhe da parcela no app do banco. A partir destes valores o app prevê as próximas faturas.'}
+                      </p>
+                      <InvoiceFeesFields value={fees} onChange={setFees} />
+                      {/* Sem nenhuma fatura ainda, a diferença para o valor pago quase sempre são os seguros e a taxa */}
+                      {showFeesGap && (
+                        <div className="p-3 rounded-2xl bg-sol-50 dark:bg-sol-400/10 text-sm text-sol-900 dark:text-sol-100 leading-relaxed">
+                          Faltam <b>{formatBRL(feesGap)}</b> para chegar ao valor pago. Quase sempre são os seguros (MIP e DFI) e a taxa de administração.
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setFees({ ...fees, split: false, insurance: Math.round(feesGap * 100) / 100, adminFee: 0 });
+                              playSound('success');
+                            }}
+                            className="mt-2 flex items-center gap-1.5 h-8 px-3 rounded-full bg-sol-400 hover:bg-sol-300 text-slate-900 text-xs font-bold cursor-pointer"
+                          >
+                            Usar {formatBRL(feesGap)} como total dos seguros
+                          </button>
+                        </div>
+                      )}
+                    </>
+                  )}
+
+                  {step === 3 && (
                     <>
                       <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Quanto o banco diz que falta?</h2>
                       <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
@@ -337,7 +357,7 @@ export const CheckinModal: React.FC<{
                     </>
                   )}
 
-                  {step === 1 && (
+                  {step === 2 && (
                     <>
                       <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Pagou algo a mais este mês?</h2>
                       <div className="flex gap-2">
@@ -427,7 +447,7 @@ export const CheckinModal: React.FC<{
               ) : (
                 <span />
               )}
-              {step < 2 ? (
+              {step < steps.length - 1 ? (
                 <button type="button" onClick={() => go(1)} className={btnPrimary} disabled={step === 0 && !(paid > 0)}>
                   Continuar <ArrowRight className="w-4 h-4" />
                 </button>

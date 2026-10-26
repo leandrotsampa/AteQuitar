@@ -25,9 +25,22 @@ export interface Contract {
   dueDay: number;
   // Saldo corrigido pela TR todo mês (padrão em Caixa, BB e no SFH)
   trIndexed: boolean;
-  // Seguros obrigatórios (MIP + DFI) e taxa de administração por mês
-  monthlyInsurance: number;
-  monthlyAdminFee: number;
+  // Seguros e taxa da última fatura informada no cadastro: base da previsão até o primeiro
+  // check-in com a fatura
+  feesRef?: FeesReference;
+}
+
+// Seguros e taxa de administração de uma fatura. Com MIP e DFI separados a previsão das
+// próximas é exata; só o total ("Seguros") também serve, com alguns centavos de diferença
+export interface InvoiceFees {
+  insurance: number; // MIP + DFI
+  mip?: number;
+  dfi?: number;
+  adminFee: number;
+}
+
+export interface FeesReference extends InvoiceFees {
+  yearMonth: string;
 }
 
 export interface ExtraPayment {
@@ -59,6 +72,8 @@ export interface CheckIn {
   balanceAfter?: number;
   // Amortização extra registrada junto neste check-in (para reabrir e editar sem duplicar)
   extraId?: string;
+  // Seguros e taxa da fatura do mês: passam a ser a base da previsão dos meses seguintes
+  fees?: InvoiceFees;
   createdAt: string;
 }
 
@@ -67,9 +82,17 @@ export interface ScheduleRow {
   yearMonth: string;
   openingBalance: number;
   correction: number; // TR aplicada ao saldo
+  // A TR do mês não é a oficial do vencimento (a do mês, a embutida ou a média): o saldo é estimado
+  trEstimated: boolean;
   interest: number;
   amortization: number;
   fees: number; // seguros + taxa de administração
+  insurance: number; // MIP + DFI
+  mip?: number; // só quando a fatura de referência separa MIP e DFI
+  dfi?: number;
+  adminFee: number;
+  // Seguros e taxa copiados de uma fatura deste mês (não previstos)
+  feesFromInvoice: boolean;
   payment: number; // parcela total
   extra: number;
   closingBalance: number;

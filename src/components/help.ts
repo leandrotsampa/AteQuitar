@@ -55,15 +55,15 @@ export const HELP = {
     body: 'O dia do mês em que a parcela vence. Depois dele, consideramos a parcela do mês como paga.',
     where: 'No app da Caixa: Minhas prestações → "Vencimento" (ex.: 05 NOV = dia 5).\nNo contrato: quadro-resumo, junto da data do primeiro encargo.',
   },
-  monthlyInsurance: {
+  insurance: {
     title: 'Seguros obrigatórios',
-    body: 'Todo financiamento tem dois seguros embutidos na parcela: MIP (morte e invalidez) e DFI (danos ao imóvel). Some os dois.',
-    where: 'No boleto ou no detalhe da parcela no app do banco: linhas "MIP", "DFI" ou "Seguros".',
+    body: 'Todo financiamento tem dois seguros na parcela: MIP (morte e invalidez), que acompanha o saldo devedor, e DFI (danos ao imóvel), corrigido pela TR. Com os dois separados, a previsão das próximas faturas fica exata.',
+    where: 'No detalhe da parcela no app do banco: linhas "Seguro MIP" e "Seguro DFI". Faturas em aberto às vezes mostram só "Seguros": aí use o total.',
   },
-  monthlyAdminFee: {
+  adminFee: {
     title: 'Taxa de administração',
-    body: 'Tarifa mensal cobrada por alguns bancos (na Caixa costuma ser R$ 25). Se não aparecer no boleto, deixe zero.',
-    where: 'No boleto: "Taxa de administração" ou "TA".',
+    body: 'Tarifa mensal cobrada por alguns bancos (na Caixa costuma ser R$ 25). Se não aparecer na fatura, deixe zero.',
+    where: 'No detalhe da parcela: "Taxas", "Taxa de administração" ou "TA".',
   },
   currentBalance: {
     title: 'Saldo devedor de hoje',

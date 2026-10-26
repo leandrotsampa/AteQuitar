@@ -1,4 +1,4 @@
-import React, { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { PartyPopper } from 'lucide-react';
@@ -9,7 +9,7 @@ import { useAppDialog } from './components/ui/AppDialog';
 import type { WizardResult } from './components/ContractWizard';
 import { useAppData, type AppData } from './lib/store';
 import { useFinanceModel } from './lib/model';
-import { fetchMarketRates, shouldRefresh } from './lib/rates';
+import { fetchMarketRates, missingTrMonths, shouldRefresh } from './lib/rates';
 import { runThemeWipe } from './lib/themeTransition';
 import { EASE_OUT, instantIf } from './lib/motion';
 import { currentYearMonth, uid, withBank } from './lib/format';
@@ -113,11 +113,16 @@ export default function App() {
   const [ratesLoading, setRatesLoading] = useState(false);
   const dataRef = useRef(data);
   dataRef.current = data;
+  // Uma busca por vez (a da abertura e a da TR que falta podem pedir juntas)
+  const ratesInFlight = useRef(false);
   const refreshRates = useCallback(
     async (manual = false) => {
+      if (ratesInFlight.current) return;
+      ratesInFlight.current = true;
       setRatesLoading(true);
       const current = dataRef.current;
-      const { rates, failed } = await fetchMarketRates(current.rates, current.contract?.firstDueMonth ?? null);
+      const { rates, failed } = await fetchMarketRates(current.rates, current.contract ?? null);
+      ratesInFlight.current = false;
       setRatesLoading(false);
       update((prev) => ({ ...prev, rates }));
       if (manual) {
@@ -140,15 +145,21 @@ export default function App() {
     idle(preloadAll);
   }, [loaded, data.rates, refreshRates]);
 
-  // Contrato novo (ou com outra data de início): busca a TR oficial desde a 1ª parcela
-  const firstDue = data.contract?.firstDueMonth;
-  const trFetchedFor = useRef<string | null>(null);
+  // Falta a TR oficial de alguma parcela (contrato novo, outro dia de vencimento, mês novo ou
+  // busca que falhou): busca já e, se continuar faltando, de novo a cada 30 minutos
+  const missingTr = useMemo(() => (data.contract ? missingTrMonths(data.rates, data.contract).length : 0), [data.contract, data.rates]);
+  // Outra data de início ou outro dia de vencimento: busca na hora, sem esperar a última tentativa
+  const trKey = `${data.contract?.firstDueMonth}|${data.contract?.dueDay}`;
+  const trTried = useRef({ key: '', at: 0 });
   useEffect(() => {
-    if (!loaded || ratesLoading || !firstDue || trFetchedFor.current === firstDue) return;
-    if (firstDue > currentYearMonth() || data.rates.trByMonth[firstDue] !== undefined) return;
-    trFetchedFor.current = firstDue;
-    void refreshRates();
-  }, [loaded, ratesLoading, firstDue, data.rates.trByMonth, refreshRates]);
+    if (!loaded || ratesLoading || missingTr === 0) return;
+    const wait = trTried.current.key === trKey ? Math.max(0, trTried.current.at + 30 * 60 * 1000 - Date.now()) : 0;
+    const t = window.setTimeout(() => {
+      trTried.current = { key: trKey, at: Date.now() };
+      void refreshRates();
+    }, wait);
+    return () => window.clearTimeout(t);
+  }, [loaded, ratesLoading, missingTr, trKey, refreshRates]);
 
   // Marcos de 10 em 10%: comemora quando um novo é alcançado (os que já existiam ao cadastrar ficam quietos)
   const [toast, setToast] = useState<string | null>(null);
@@ -412,6 +423,7 @@ export default function App() {
               <Suspense fallback={<div className="skeleton h-96 rounded-3xl" />}>
               <ContractWizard
                 initial={model.contract}
+                invoiceInCheckin={data.checkins.some((c) => c.fees)}
                 initialBalance={bankBalanceNow?.balance ?? 0}
                 lastBalance={lastBankBalance && lastBankBalance.yearMonth !== currentYearMonth() ? lastBankBalance : undefined}
                 dark={dark}

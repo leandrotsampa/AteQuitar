@@ -14,8 +14,6 @@ const base: Contract = {
   firstDueMonth: '2020-01',
   dueDay: 10,
   trIndexed: false,
-  monthlyInsurance: 0,
-  monthlyAdminFee: 0,
 };
 
 describe('buildSchedule', () => {
@@ -38,10 +36,57 @@ describe('buildSchedule', () => {
   });
 
   it('soma seguros e taxa na parcela sem mexer no saldo', () => {
-    const rows = buildSchedule({ ...base, monthlyInsurance: 50, monthlyAdminFee: 25 });
+    const rows = buildSchedule({ ...base, feesRef: { yearMonth: '2020-01', insurance: 50, adminFee: 25 } });
     expect(rows[0].fees).toBe(75);
     expect(rows[0].payment).toBeCloseTo(2275, 1);
     expect(rows[0].closingBalance).toBeCloseTo(119000, 2);
+    expect(rows[0].feesFromInvoice).toBe(true);
+    expect(rows[1].feesFromInvoice).toBe(false);
+  });
+
+  it('sem fatura informada, a parcela não tem seguros', () => {
+    const rows = buildSchedule(base);
+    expect(rows[5].fees).toBe(0);
+  });
+
+  it('MIP acompanha o saldo e DFI segue a TR, para frente e para trás', () => {
+    const c = { ...base, trIndexed: true, feesRef: { yearMonth: '2020-03', insurance: 160, mip: 60, dfi: 100, adminFee: 25 } };
+    const rows = buildSchedule(c, { trFor: () => 0.5 });
+    const at = (ym: string) => rows.find((r) => r.yearMonth === ym)!;
+    const corrected = (ym: string) => at(ym).openingBalance + at(ym).correction;
+    expect(at('2020-03')).toMatchObject({ mip: 60, dfi: 100, insurance: 160, fees: 185 });
+    expect(at('2020-04').dfi).toBeCloseTo(100.5, 2);
+    expect(at('2020-04').mip).toBeCloseTo((60 * corrected('2020-04')) / corrected('2020-03'), 2);
+    expect(at('2020-02').dfi).toBeCloseTo(100 / 1.005, 2);
+    expect(at('2020-02').mip!).toBeGreaterThan(60);
+    expect(at('2020-04').adminFee).toBe(25);
+  });
+
+  it('só com o total, ele inteiro segue a TR', () => {
+    const rows = buildSchedule({ ...base, trIndexed: true, feesRef: { yearMonth: '2020-01', insurance: 171.37, adminFee: 25 } }, { trFor: () => 0.2 });
+    expect(rows[1].insurance).toBeCloseTo(171.71, 2);
+    expect(rows[1].mip).toBeUndefined();
+  });
+
+  it('a fatura do check-in vale a partir do seu mês e ganha da do cadastro', () => {
+    const c = { ...base, feesRef: { yearMonth: '2020-01', insurance: 100, adminFee: 25 } };
+    const rows = buildSchedule(c, {
+      invoices: [
+        { yearMonth: '2020-06', insurance: 130, mip: 50, dfi: 80, adminFee: 25 },
+        { yearMonth: '2020-01', insurance: 110, adminFee: 0 },
+      ],
+    });
+    expect(rows[0].fees).toBe(110);
+    expect(rows[4].insurance).toBe(110);
+    expect(rows[5]).toMatchObject({ insurance: 130, feesFromInvoice: true });
+    expect(rows[6].dfi).toBe(80);
+    expect(rows[6].mip!).toBeLessThan(50);
+  });
+
+  it('marca os meses sem a TR oficial', () => {
+    const rows = buildSchedule({ ...base, trIndexed: true }, { trFor: () => 0.1, trOfficial: (ym) => ym !== '2020-02' });
+    expect(rows.map((r) => r.trEstimated).slice(0, 3)).toEqual([false, true, false]);
+    expect(buildSchedule(base, { trOfficial: () => false })[0].trEstimated).toBe(false);
   });
 
   it('TR corrige o saldo antes dos juros', () => {

@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 import type { Contract, ScheduleRow } from '../types/finance';
 import { buildSchedule, summarize, type ScheduleOptions, type Summary } from './finance';
-import { trFunction } from './rates';
+import { trFunction, trIsOfficial } from './rates';
 import type { AppData } from './store';
 
 export interface FinanceModel {
@@ -25,7 +25,7 @@ function completenessOf(data: AppData): { score: number; missing: string[] } {
   if (!c) return { score: 0, missing: ['contrato'] };
   const checks: [boolean, string][] = [
     [c.financedAmount > 0 && c.annualRate > 0 && c.termMonths > 0, 'dados do contrato'],
-    [c.monthlyInsurance > 0 || c.monthlyAdminFee > 0, 'seguros e taxas da parcela'],
+    [Boolean(c.feesRef) || data.checkins.some((ci) => ci.fees), 'seguros e taxa da fatura'],
     [c.cet > 0, 'CET do contrato'],
     [data.checkpoints.length > 0, 'saldo devedor atual (app do banco)'],
     [data.checkpoints.some((cp) => cp.source === 'ir'), 'saldo do extrato do IR'],
@@ -39,7 +39,7 @@ export function useFinanceModel(data: AppData): FinanceModel | null {
   return useMemo(() => {
     const contract = data.contract;
     if (!contract) return null;
-    const trFor = trFunction(data.rates);
+    const trFor = trFunction(data.rates, contract.dueDay);
     // Saldos informados no check-in também calibram a projeção
     const checkpoints = [
       ...data.checkpoints,
@@ -48,9 +48,12 @@ export function useFinanceModel(data: AppData): FinanceModel | null {
         .filter((ci) => !data.checkpoints.some((cp) => cp.yearMonth === ci.yearMonth))
         .map((ci) => ({ id: `ci-${ci.id}`, yearMonth: ci.yearMonth, balance: ci.balanceAfter!, source: 'banco' as const, createdAt: ci.createdAt })),
     ];
-    const options: ScheduleOptions = { extras: data.extras, checkpoints, trFor };
+    // Seguros e taxa das faturas informadas no check-in: base da previsão dos meses seguintes
+    const invoices = data.checkins.filter((ci) => ci.fees).map((ci) => ({ ...ci.fees!, yearMonth: ci.yearMonth }));
+    const trOfficial = trIsOfficial(data.rates, contract.dueDay);
+    const options: ScheduleOptions = { extras: data.extras, checkpoints, trFor, invoices, trOfficial };
     const rows = buildSchedule(contract, options);
-    const originalRows = buildSchedule(contract, { trFor });
+    const originalRows = buildSchedule(contract, { trFor, invoices });
     const summary = summarize(contract, rows);
     return {
       contract,

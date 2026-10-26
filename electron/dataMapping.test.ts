@@ -16,14 +16,13 @@ const contract = {
   firstDueMonth: '2022-07',
   dueDay: 10,
   trIndexed: true,
-  monthlyInsurance: 98.4,
-  monthlyAdminFee: 25,
+  feesRef: { yearMonth: '2026-09', insurance: 171.18, mip: 54.68, dfi: 116.5, adminFee: 25 },
 };
 
 const doc = {
   version: 1,
   contract,
-  checkins: [{ id: 'a', yearMonth: '2026-10', paidAmount: 3971.78, balanceAfter: 329800, extraId: 'b', createdAt: '2026-10-26T00:00:00.000Z' }],
+  checkins: [{ id: 'a', yearMonth: '2026-10', paidAmount: 3971.78, balanceAfter: 329800, extraId: 'b', fees: { insurance: 171.37, adminFee: 25 }, createdAt: '2026-10-26T00:00:00.000Z' }],
   extras: [
     { id: 'b', yearMonth: '2026-10', amount: 10000, mode: 'prazo', source: 'fgts', createdAt: '2026-10-26T00:00:00.000Z' },
     { id: 'd', yearMonth: '2025-03', amount: 2000, mode: 'parcela', source: 'proprio' },
@@ -37,6 +36,7 @@ const doc = {
     latest: { selic: { date: '2026-10-26', value: 13.75 } },
     history: { selic: [{ date: '2026-10-01', value: 13.75 }] },
     trByMonth: { '2026-10': 0.1616 },
+    trDue: { day: 5, byMonth: { '2026-09': 0.1725, '2026-10': 0.115 } },
   },
   celebrated: [0, 10],
   isDemo: false,
@@ -52,6 +52,14 @@ const roundTrip = (d: unknown) => {
 describe('docToRows / rowsToDoc', () => {
   it('ida e volta preserva o documento', () => {
     expect(roundTrip(doc)).toEqual(doc);
+  });
+
+  it('lê o valor fixo de seguros das versões antigas para a interface migrar', () => {
+    const rows = docToRows({ ...doc, contract: { ...contract, feesRef: undefined, monthlyInsurance: 98.4, monthlyAdminFee: 25 } });
+    expect(rows.contract.fees_ref_month).toBeNull();
+    const back = rowsToDoc({ ...rows, milestones: [] }).contract;
+    expect(back.feesRef).toBeUndefined();
+    expect(back).toMatchObject({ monthlyInsurance: 98.4, monthlyAdminFee: 25 });
   });
 
   it('descarta registros fora do formato', () => {

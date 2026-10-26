@@ -26,6 +26,8 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
   const extraMonths = new Set(data.extras.map((e) => e.yearMonth));
   const balanceMonths = new Set(data.checkpoints.map((c) => c.yearMonth));
   const yearRows = rows.filter((r) => r.yearMonth.startsWith(year));
+  // Parcelas já pagas (e a próxima) ainda sem a TR oficial do Banco Central
+  const trEstimatedCount = rows.filter((r) => r.trEstimated && r.index <= summary.paidCount + 1).length;
   const yearTotals = yearRows.reduce(
     (a, r) => ({ paid: a.paid + r.payment + r.extra, interest: a.interest + r.interest, amort: a.amort + r.amortization + r.extra }),
     { paid: 0, interest: 0, amort: 0 }
@@ -202,6 +204,13 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
             ))}
           </div>
 
+          {trEstimatedCount > 0 && (
+            <div className="p-3.5 rounded-2xl bg-sol-50 dark:bg-sol-400/10 text-sm text-sol-900 dark:text-sol-100 leading-relaxed">
+              A TR de <b>{trEstimatedCount} {trEstimatedCount === 1 ? 'parcela' : 'parcelas'}</b> ainda é estimada: falta buscar no Banco Central a TR
+              oficial até o dia do vencimento. Até lá vale a TR do mês, que fica bem perto. O app tenta de novo sozinho e troca assim que conseguir.
+            </div>
+          )}
+
           <div data-tour="hist-tabela" className={`${card} overflow-hidden`}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -242,8 +251,18 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                           {r.extra > 0 && <div className="text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">+ {formatBRL(r.extra)} extra</div>}
                         </td>
                         <td className="px-3 py-2.5 text-right font-num">{formatBRL(r.interest)}</td>
-                        <td className="px-3 py-2.5 text-right font-num">{r.correction > 0 ? formatBRL(r.correction) : '—'}</td>
-                        <td className="px-3 py-2.5 text-right font-num">{formatBRL(r.fees)}</td>
+                        <td className="px-3 py-2.5 text-right font-num">
+                          {r.correction > 0 ? formatBRL(r.correction) : '—'}
+                          {r.trEstimated && r.index <= summary.paidCount + 1 && (
+                            <div className="text-[11px] text-sol-700 dark:text-sol-300 font-semibold" title="Ainda sem a TR oficial do Banco Central">
+                              estimada
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-3 py-2.5 text-right font-num">
+                          {formatBRL(r.fees)}
+                          {r.feesFromInvoice && <div className="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">da fatura</div>}
+                        </td>
                         <td className="px-5 py-2.5 text-right font-num font-semibold text-slate-900 dark:text-white">
                           {formatBRL(r.closingBalance)}
                           {r.checkpoint && <div className="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">valor do banco</div>}

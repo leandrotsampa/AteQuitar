@@ -31,6 +31,12 @@ const SCHEMA = `
     tr_indexed INTEGER NOT NULL CHECK (tr_indexed IN (0, 1)),
     monthly_insurance REAL NOT NULL DEFAULT 0,
     monthly_admin_fee REAL NOT NULL DEFAULT 0,
+    -- Seguros e taxa da última fatura informada no cadastro
+    fees_ref_month TEXT,
+    fees_ref_insurance REAL,
+    fees_ref_mip REAL,
+    fees_ref_dfi REAL,
+    fees_ref_admin_fee REAL,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
   );
 
@@ -41,6 +47,11 @@ const SCHEMA = `
     paid_amount REAL NOT NULL CHECK (paid_amount >= 0),
     balance_after REAL CHECK (balance_after IS NULL OR balance_after > 0),
     extra_id TEXT,
+    -- Seguros e taxa da fatura do mês (MIP e DFI só quando a fatura separa)
+    insurance REAL,
+    mip REAL,
+    dfi REAL,
+    admin_fee REAL,
     created_at TEXT NOT NULL
   );
 
@@ -86,6 +97,11 @@ const SCHEMA = `
     year_month TEXT PRIMARY KEY,
     value REAL NOT NULL
   );
+  -- TR aplicada em cada parcela: período que termina no dia do vencimento (dia em app_meta)
+  CREATE TABLE IF NOT EXISTS tr_due (
+    year_month TEXT PRIMARY KEY,
+    value REAL NOT NULL
+  );
 `;
 
 // Colunas acrescentadas depois da primeira versão: entram nos bancos já existentes sem recriar a tabela
@@ -95,6 +111,15 @@ const ADDED_COLUMNS = [
   { table: 'contract', name: 'rate_input', ddl: "TEXT CHECK (rate_input IS NULL OR rate_input IN ('efetiva', 'nominal', 'mes'))" },
   { table: 'extra_payments', name: 'created_at', ddl: 'TEXT' },
   { table: 'balance_checkpoints', name: 'created_at', ddl: 'TEXT' },
+  { table: 'contract', name: 'fees_ref_month', ddl: 'TEXT' },
+  { table: 'contract', name: 'fees_ref_insurance', ddl: 'REAL' },
+  { table: 'contract', name: 'fees_ref_mip', ddl: 'REAL' },
+  { table: 'contract', name: 'fees_ref_dfi', ddl: 'REAL' },
+  { table: 'contract', name: 'fees_ref_admin_fee', ddl: 'REAL' },
+  { table: 'checkins', name: 'insurance', ddl: 'REAL' },
+  { table: 'checkins', name: 'mip', ddl: 'REAL' },
+  { table: 'checkins', name: 'dfi', ddl: 'REAL' },
+  { table: 'checkins', name: 'admin_fee', ddl: 'REAL' },
 ];
 
 function ensureColumns(db) {
@@ -127,6 +152,7 @@ function readRows(db) {
     rateLatest: db.prepare('SELECT * FROM rate_latest').all(),
     ratePoints: db.prepare('SELECT * FROM rate_points').all(),
     trMonthly: db.prepare('SELECT * FROM tr_monthly').all(),
+    trDue: db.prepare('SELECT * FROM tr_due').all(),
     meta,
   };
 }
@@ -145,15 +171,17 @@ function readDoc(db) {
 function writeDoc(db, doc) {
   const rows = docToRows(doc);
   const tx = db.transaction(() => {
-    db.exec('DELETE FROM contract; DELETE FROM checkins; DELETE FROM extra_payments; DELETE FROM balance_checkpoints; DELETE FROM milestones; DELETE FROM rate_latest; DELETE FROM rate_points; DELETE FROM tr_monthly;');
+    db.exec('DELETE FROM contract; DELETE FROM checkins; DELETE FROM extra_payments; DELETE FROM balance_checkpoints; DELETE FROM milestones; DELETE FROM rate_latest; DELETE FROM rate_points; DELETE FROM tr_monthly; DELETE FROM tr_due;');
     if (rows.contract) {
       db.prepare(`
         INSERT INTO contract (
           id, nickname, bank, bank_preposition, property_value, financed_amount, annual_rate, rate_input, cet, term_months, system,
-          first_due_month, due_day, tr_indexed, monthly_insurance, monthly_admin_fee, updated_at
+          first_due_month, due_day, tr_indexed, monthly_insurance, monthly_admin_fee,
+          fees_ref_month, fees_ref_insurance, fees_ref_mip, fees_ref_dfi, fees_ref_admin_fee, updated_at
         ) VALUES (
           1, @nickname, @bank, @bank_preposition, @property_value, @financed_amount, @annual_rate, @rate_input, @cet, @term_months, @system,
-          @first_due_month, @due_day, @tr_indexed, @monthly_insurance, @monthly_admin_fee, CURRENT_TIMESTAMP
+          @first_due_month, @due_day, @tr_indexed, @monthly_insurance, @monthly_admin_fee,
+          @fees_ref_month, @fees_ref_insurance, @fees_ref_mip, @fees_ref_dfi, @fees_ref_admin_fee, CURRENT_TIMESTAMP
         )
       `).run(rows.contract);
     }
@@ -161,13 +189,14 @@ function writeDoc(db, doc) {
       const stmt = db.prepare(sql);
       for (const r of list) stmt.run(r);
     };
-    ins('INSERT INTO checkins (id, year_month, paid_amount, balance_after, extra_id, created_at) VALUES (@id, @year_month, @paid_amount, @balance_after, @extra_id, @created_at)', rows.checkins);
+    ins('INSERT INTO checkins (id, year_month, paid_amount, balance_after, extra_id, insurance, mip, dfi, admin_fee, created_at) VALUES (@id, @year_month, @paid_amount, @balance_after, @extra_id, @insurance, @mip, @dfi, @admin_fee, @created_at)', rows.checkins);
     ins('INSERT OR REPLACE INTO extra_payments (id, year_month, amount, mode, source, note, created_at) VALUES (@id, @year_month, @amount, @mode, @source, @note, @created_at)', rows.extras);
     ins('INSERT INTO balance_checkpoints (id, year_month, balance, source, created_at) VALUES (@id, @year_month, @balance, @source, @created_at)', rows.checkpoints);
     ins('INSERT INTO milestones (percent) VALUES (@percent)', rows.milestones.map((percent) => ({ percent })));
     ins('INSERT INTO rate_latest (series, date, value) VALUES (@series, @date, @value)', rows.rateLatest);
     ins('INSERT OR REPLACE INTO rate_points (series, date, value) VALUES (@series, @date, @value)', rows.ratePoints);
     ins('INSERT INTO tr_monthly (year_month, value) VALUES (@year_month, @value)', rows.trMonthly);
+    ins('INSERT INTO tr_due (year_month, value) VALUES (@year_month, @value)', rows.trDue);
     const meta = db.prepare('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)');
     for (const [k, v] of Object.entries(rows.meta)) meta.run(k, v);
   });

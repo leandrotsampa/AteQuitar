@@ -16,8 +16,7 @@ function demoContract(): Contract {
     firstDueMonth: addMonths(currentYearMonth(), -131),
     dueDay: 10,
     trIndexed: true,
-    monthlyInsurance: 98.4,
-    monthlyAdminFee: 25,
+    feesRef: { yearMonth: addMonths(currentYearMonth(), -1), insurance: 98.4, mip: 38.4, dfi: 60, adminFee: 25 },
   };
 }
 

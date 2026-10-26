@@ -2,6 +2,7 @@
 // converte o documento em tabelas); no navegador, localStorage
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BalanceCheckpoint, CheckIn, Contract, ExtraPayment } from '../types/finance';
+import { addMonths, currentYearMonth } from './format';
 import { FALLBACK_RATES, type MarketRates } from './rates';
 
 export interface AppData {
@@ -58,6 +59,19 @@ declare global {
   }
 }
 
+// Até a 1.0.1 seguros e taxa ficavam no cadastro como um valor fixo por mês: viram a fatura de
+// referência do mês atual (dentro do prazo), como se fosse só o total
+export function migrateContract(raw: Contract & { monthlyInsurance?: number; monthlyAdminFee?: number }, today = new Date()): Contract {
+  const { monthlyInsurance, monthlyAdminFee, ...contract } = raw;
+  const insurance = Number(monthlyInsurance) || 0;
+  const adminFee = Number(monthlyAdminFee) || 0;
+  if (contract.feesRef || !(insurance > 0 || adminFee > 0)) return contract;
+  const last = addMonths(contract.firstDueMonth, Math.max(1, contract.termMonths) - 1);
+  const now = currentYearMonth(today);
+  const yearMonth = now < contract.firstDueMonth ? contract.firstDueMonth : now > last ? last : now;
+  return { ...contract, feesRef: { yearMonth, insurance, adminFee } };
+}
+
 // Aceita só o que tem o formato esperado; o resto volta para o padrão
 export function normalizeData(raw: unknown): AppData {
   const base = emptyData();
@@ -66,7 +80,7 @@ export function normalizeData(raw: unknown): AppData {
   const arr = <T,>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
   return {
     ...base,
-    contract: r.contract && typeof r.contract === 'object' ? { ...r.contract } : null,
+    contract: r.contract && typeof r.contract === 'object' ? migrateContract({ ...r.contract }) : null,
     extras: arr<ExtraPayment>(r.extras),
     checkpoints: arr<BalanceCheckpoint>(r.checkpoints),
     checkins: arr<CheckIn>(r.checkins),

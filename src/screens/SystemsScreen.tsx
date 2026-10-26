@@ -15,7 +15,7 @@ export const SystemsScreen: React.FC<ScreenProps> = ({ model }) => {
   const reduce = Boolean(useReducedMotion());
   const { contract } = model;
   const [view, setView] = useState<'payment' | 'balance'>('payment');
-  const cmp = useMemo(() => compareSystems(contract, model.trFor), [contract, model.trFor]);
+  const cmp = useMemo(() => compareSystems(contract, model.trFor, model.options.invoices), [contract, model.trFor, model.options.invoices]);
   const { sac, price } = cmp;
   const diff = price.totalInterest - sac.totalInterest;
 

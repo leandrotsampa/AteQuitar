@@ -1,6 +1,6 @@
 // Motor de cálculo do financiamento: tabela mês a mês (SAC ou Price), com TR, seguros,
 // amortizações extras e saldos reais informados pelo usuário. Funções puras.
-import type { BalanceCheckpoint, Contract, ExtraMode, ExtraPayment, ScheduleRow } from '../types/finance';
+import type { BalanceCheckpoint, Contract, ExtraMode, ExtraPayment, FeesReference, ScheduleRow } from '../types/finance';
 import { addMonths, annualToMonthly, currentYearMonth } from './format';
 
 export interface ScheduleOptions {
@@ -8,6 +8,60 @@ export interface ScheduleOptions {
   checkpoints?: BalanceCheckpoint[];
   // TR do mês (% a.m.); sem a função, a TR é zero
   trFor?: (yearMonth: string) => number;
+  // Seguros e taxa das faturas informadas no check-in (a do cadastro vem do contrato)
+  invoices?: FeesReference[];
+  // A TR do mês é a oficial que o banco aplica? Sem a função, nenhum mês é marcado como estimado
+  trOfficial?: (yearMonth: string) => boolean;
+}
+
+const cents = (v: number) => Math.round(v * 100) / 100;
+
+// Seguros e taxa de cada mês a partir da fatura de referência mais próxima (a última até o mês;
+// antes da primeira, a primeira vale para trás). O MIP é uma taxa sobre o saldo corrigido, o DFI
+// é corrigido pela TR como o saldo; só com o total, ele inteiro segue a TR. A taxa se repete.
+// Os saldos não dependem dos seguros, por isso o cálculo vem depois da tabela pronta
+function applyFees(rows: ScheduleRow[], refs: FeesReference[]): void {
+  if (rows.length === 0 || refs.length === 0) return;
+  const sorted = [...refs].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
+  const indexOf = new Map(rows.map((r, k) => [r.yearMonth, k]));
+  const first = rows[0].yearMonth;
+  const rowOf = (ym: string) => indexOf.get(ym) ?? (ym < first ? 0 : rows.length - 1);
+  // Índice acumulado da TR e saldo corrigido (base do MIP) de cada mês
+  const cum: number[] = [];
+  rows.forEach((r, k) => cum.push((k > 0 ? cum[k - 1] : 1) * (r.openingBalance > 0 ? 1 + r.correction / r.openingBalance : 1)));
+  const base = rows.map((r) => r.openingBalance + r.correction);
+
+  let next = 0;
+  rows.forEach((r, k) => {
+    while (next < sorted.length && sorted[next].yearMonth <= r.yearMonth) next++;
+    const ref = sorted[Math.max(0, next - 1)];
+    const j = rowOf(ref.yearMonth);
+    const exact = ref.yearMonth === r.yearMonth;
+    const tr = cum[k] / cum[j];
+    let mip: number | undefined;
+    let dfi: number | undefined;
+    let insurance: number;
+    if (ref.mip !== undefined && ref.dfi !== undefined) {
+      mip = exact ? ref.mip : cents(base[j] > 0 ? (ref.mip * base[k]) / base[j] : ref.mip);
+      dfi = exact ? ref.dfi : cents(ref.dfi * tr);
+      insurance = cents(mip + dfi);
+    } else {
+      insurance = exact ? ref.insurance : cents(ref.insurance * tr);
+    }
+    r.insurance = insurance;
+    r.mip = mip;
+    r.dfi = dfi;
+    r.adminFee = ref.adminFee;
+    r.fees = cents(insurance + ref.adminFee);
+    r.feesFromInvoice = exact;
+    r.payment = r.amortization + r.interest + r.fees;
+  });
+}
+
+// Referências de seguros: a fatura do cadastro e as dos check-ins (a do check-in vale no mesmo mês)
+function feeReferences(contract: Contract, invoices: FeesReference[] = []): FeesReference[] {
+  const months = new Set(invoices.map((f) => f.yearMonth));
+  return [...(contract.feesRef && !months.has(contract.feesRef.yearMonth) ? [contract.feesRef] : []), ...invoices];
 }
 
 const EPS = 0.005;
@@ -34,7 +88,6 @@ function extraAfterCheckpoint(e: ExtraPayment, cp: BalanceCheckpoint): boolean {
 
 export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): ScheduleRow[] {
   const i = annualToMonthly(contract.annualRate) / 100;
-  const fees = (contract.monthlyInsurance || 0) + (contract.monthlyAdminFee || 0);
   const extrasByMonth = new Map<string, ExtraPayment[]>();
   for (const e of opts.extras ?? []) {
     if (!(e.amount > 0)) continue;
@@ -101,15 +154,20 @@ export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): S
       yearMonth: ym,
       openingBalance: opening,
       correction,
+      trEstimated: contract.trIndexed && Boolean(opts.trOfficial) && !opts.trOfficial!(ym),
       interest,
       amortization,
-      fees,
-      payment: amortization + interest + fees,
+      fees: 0,
+      insurance: 0,
+      adminFee: 0,
+      feesFromInvoice: false,
+      payment: amortization + interest,
       extra,
       closingBalance: balance,
       checkpoint: Boolean(cp),
     });
   }
+  applyFees(rows, feeReferences(contract, opts.invoices));
   return rows;
 }
 
@@ -251,10 +309,14 @@ function totals(rows: ScheduleRow[]): SystemTotals {
 }
 
 // Os dois sistemas com os mesmos dados do contrato (sem extras, TR projetada)
-export function compareSystems(contract: Contract, trFor?: (ym: string) => number): { sac: SystemTotals; price: SystemTotals } {
+export function compareSystems(
+  contract: Contract,
+  trFor?: (ym: string) => number,
+  invoices?: FeesReference[]
+): { sac: SystemTotals; price: SystemTotals } {
   return {
-    sac: totals(buildSchedule({ ...contract, system: 'SAC' }, { trFor })),
-    price: totals(buildSchedule({ ...contract, system: 'PRICE' }, { trFor })),
+    sac: totals(buildSchedule({ ...contract, system: 'SAC' }, { trFor, invoices })),
+    price: totals(buildSchedule({ ...contract, system: 'PRICE' }, { trFor, invoices })),
   };
 }
 
@@ -267,8 +329,7 @@ export function interestWithRate(contract: Contract, balance: number, months: nu
     termMonths: months,
     annualRate,
     trIndexed: false,
-    monthlyInsurance: 0,
-    monthlyAdminFee: 0,
+    feesRef: undefined,
   });
   return rows.reduce((a, r) => a + r.interest, 0);
 }

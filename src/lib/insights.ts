@@ -51,7 +51,7 @@ export function buildTips(model: FinanceModel, data: AppData): Tip[] {
   }
 
   if (summary.remainingCount > 12) {
-    const sim = simulateExtra(contract, { extras: data.extras, trFor: model.trFor }, {
+    const sim = simulateExtra(contract, { extras: data.extras, trFor: model.trFor, invoices: model.options.invoices }, {
       amount: 1000,
       startYm: addMonths(now, 1),
       frequency: 'once',
