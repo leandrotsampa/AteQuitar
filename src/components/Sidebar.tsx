@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   BookOpen,
   Calculator,
@@ -98,8 +99,17 @@ export const Sidebar: React.FC<{
       transition={instantIf(reduce, widthSpring)}
     >
       {/* Recolher/expandir: botão redondo em anil apoiado na borda do menu, na altura do logo.
-          O anel da cor do fundo "encaixa" o botão na borda; a seta gira e a dica aparece ao lado */}
-      <div className={`app-no-drag group absolute -right-4 z-10 ${window.electronAPI?.platform === 'darwin' ? 'top-[66px]' : 'top-[30px]'}`}>
+          O anel da cor do fundo "encaixa" o botão na borda; a seta gira e a dica aparece ao lado.
+          Vai por portal para o fim da página: fica em cima das áreas de arrastar a janela (cabeçalho
+          do menu e barra superior), que vêm depois no DOM e, no Windows, engoliriam o clique */}
+      {createPortal(
+      <motion.div
+        className={`app-no-drag group fixed z-[45] ${window.electronAPI?.platform === 'darwin' ? 'top-[66px]' : 'top-[30px]'}`}
+        initial={false}
+        // Recolhido, sai um pouco mais para fora para não encostar no anel do logo
+        animate={{ left: 12 + (expanded ? WIDTH_EXPANDED - 16 : WIDTH_COLLAPSED - 9) }}
+        transition={instantIf(reduce, widthSpring)}
+      >
         <motion.button
           type="button"
           onClick={() => {
@@ -129,7 +139,9 @@ export const Sidebar: React.FC<{
           {expanded ? 'Recolher menu' : 'Expandir menu'}
           <kbd className="px-1.5 py-0.5 rounded-md bg-white/15 dark:bg-slate-900/10 font-num text-[10px]">Ctrl B</kbd>
         </span>
-      </div>
+      </motion.div>,
+      document.body
+      )}
 
       <motion.aside
         className="absolute top-3 bottom-3 left-3 rounded-[26px] bg-white dark:bg-slate-900 ring-1 ring-slate-900/[0.05] dark:ring-white/[0.07] shadow-[0_1px_2px_rgba(30,34,80,0.05),0_20px_44px_-22px_rgba(45,40,140,0.35)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_24px_48px_-24px_rgba(0,0,0,0.9)] flex flex-col select-none overflow-hidden"
