@@ -369,9 +369,14 @@ export const ContractWizard: React.FC<{
               {step === 3 && (
                 <>
                   <Field label="Mês da primeira parcela" help={HELP.firstDueMonth}>
-                    <div className="max-w-[220px]">
-                      <MonthField value={c.firstDueMonth} onChange={(v) => set('firstDueMonth', v)} ariaLabel="Mês da primeira parcela" />
-                    </div>
+                    <MonthField
+                      value={c.firstDueMonth}
+                      onChange={(v) => set('firstDueMonth', v)}
+                      ariaLabel="Mês da primeira parcela"
+                      min="1990-01"
+                      max={addMonths(currentYearMonth(), 12)}
+                      className="max-w-[260px]"
+                    />
                   </Field>
                   <Field label="Dia do vencimento" help={HELP.dueDay}>
                     <NumberField value={c.dueDay} onChange={(v) => set('dueDay', Math.round(v))} digits={0} ariaLabel="Dia do vencimento" className="max-w-[120px]" />

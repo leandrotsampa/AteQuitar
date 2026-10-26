@@ -85,19 +85,5 @@ export const MoneyField: React.FC<Omit<NumberFieldProps, 'prefix' | 'digits'>> =
   <NumberField {...props} prefix="R$" digits={2} />
 );
 
-// Mês e ano (AAAA-MM) com o seletor nativo
-export const MonthField: React.FC<{ id?: string; value: string; onChange: (v: string) => void; ariaLabel?: string }> = ({
-  id,
-  value,
-  onChange,
-  ariaLabel,
-}) => (
-  <input
-    id={id}
-    type="month"
-    value={value}
-    aria-label={ariaLabel}
-    onChange={(e) => e.target.value && onChange(e.target.value)}
-    className={`${inputBase} font-num`}
-  />
-);
+// Mês e ano (AAAA-MM): o mesmo seletor da competência, com grade flutuante
+export { MonthField } from './MonthPicker';

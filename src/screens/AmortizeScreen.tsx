@@ -37,6 +37,7 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
   const [mode, setMode] = useState<ExtraMode>('prazo');
   const [startYm, setStartYm] = useState(summary.next?.yearMonth ?? addMonths(now, 1));
   const [saved, setSaved] = useState(false);
+  const extraMonths = useMemo(() => new Set((model.options.extras ?? []).map((e) => e.yearMonth)), [model.options.extras]);
 
   const maxSlider = Math.max(10000, Math.min(summary.currentBalance, frequency === 'monthly' ? 10000 : frequency === 'yearly' ? 60000 : 200000));
 
@@ -154,9 +155,16 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
           </Field>
 
           <Field label={frequency === 'once' ? 'Em que mês?' : 'A partir de'}>
-            <div className="max-w-[220px]">
-              <MonthField value={startYm} onChange={setStartYm} ariaLabel="Mês da amortização" />
-            </div>
+            <MonthField
+              value={startYm}
+              onChange={setStartYm}
+              ariaLabel="Mês da amortização"
+              min={contract.firstDueMonth}
+              max={summary.endYearMonth}
+              marked={extraMonths}
+              markedLabel="já amortizou"
+              className="max-w-[260px]"
+            />
           </Field>
         </div>
 

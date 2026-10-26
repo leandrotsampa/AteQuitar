@@ -35,6 +35,7 @@ export const CheckinModal: React.FC<{
     (model.summary.paidCount > 0 ? model.rows[model.summary.paidCount - 1].yearMonth : currentYearMonth());
   const [ym, setYm] = useState(defaultYm);
   const row = model.rows.find((r) => r.yearMonth === ym);
+  const checkedMonths = useMemo(() => new Set(data.checkins.map((c) => c.yearMonth)), [data.checkins]);
   const existing = data.checkins.find((c) => c.yearMonth === ym);
   const [paid, setPaid] = useState(existing?.paidAmount ?? row?.payment ?? 0);
   const [balance, setBalance] = useState(existing?.balanceAfter ?? 0);
@@ -172,9 +173,16 @@ export const CheckinModal: React.FC<{
                     <>
                       <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Quanto você pagou em {monthName(ym)}?</h2>
                       <Field label="Mês da parcela">
-                        <div className="max-w-[220px]">
-                          <MonthField value={ym} onChange={changeMonth} ariaLabel="Mês da parcela" />
-                        </div>
+                        <MonthField
+                          value={ym}
+                          onChange={changeMonth}
+                          ariaLabel="Mês da parcela"
+                          min={model.contract.firstDueMonth}
+                          max={currentYearMonth()}
+                          marked={checkedMonths}
+                          markedLabel="check-in feito"
+                          className="max-w-[260px]"
+                        />
                       </Field>
                       <Field
                         label="Valor pago"

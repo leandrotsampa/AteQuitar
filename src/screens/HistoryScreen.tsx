@@ -23,6 +23,8 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
   const currentYear = (summary.next?.yearMonth ?? rows[rows.length - 1]?.yearMonth ?? currentYearMonth()).slice(0, 4);
   const [year, setYear] = useState(years.includes(currentYear) ? currentYear : years[0]);
   const checkinMonths = new Set(data.checkins.map((c) => c.yearMonth));
+  const extraMonths = new Set(data.extras.map((e) => e.yearMonth));
+  const balanceMonths = new Set(data.checkpoints.map((c) => c.yearMonth));
   const yearRows = rows.filter((r) => r.yearMonth.startsWith(year));
   const yearTotals = yearRows.reduce(
     (a, r) => ({ paid: a.paid + r.payment + r.extra, interest: a.interest + r.interest, amort: a.amort + r.amortization + r.extra }),
@@ -242,9 +244,17 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                   <h3 className="font-display text-lg font-bold text-slate-900 dark:text-white">
                     {adding === 'extra' ? 'Registrar amortização extra' : adding === 'ir' ? 'Saldo do extrato do Imposto de Renda' : 'Saldo devedor do banco'}
                   </h3>
-                  <div className="grid sm:grid-cols-[200px_minmax(0,280px)_auto] gap-4 items-end mt-4">
+                  <div className="grid sm:grid-cols-[240px_minmax(0,280px)_auto] gap-4 items-end mt-4">
                     <Field label={adding === 'ir' ? 'Mês de referência' : 'Mês'}>
-                      <MonthField value={formYm} onChange={setFormYm} />
+                      <MonthField
+                        value={formYm}
+                        onChange={setFormYm}
+                        ariaLabel={adding === 'ir' ? 'Mês de referência' : 'Mês'}
+                        min={model.contract.firstDueMonth}
+                        max={currentYearMonth()}
+                        marked={adding === 'extra' ? extraMonths : balanceMonths}
+                        markedLabel={adding === 'extra' ? 'já amortizou' : 'saldo registrado'}
+                      />
                     </Field>
                     <Field
                       label={adding === 'extra' ? 'Valor amortizado' : 'Saldo devedor'}
