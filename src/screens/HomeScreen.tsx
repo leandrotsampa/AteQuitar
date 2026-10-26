@@ -169,8 +169,17 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
             <div className="mt-4 flex items-start gap-3 p-3 rounded-2xl bg-sol-50 dark:bg-sol-400/10">
               <Sparkles className="w-5 h-5 text-sol-600 dark:text-sol-300 shrink-0 mt-0.5" />
               <div className="text-sm text-sol-900 dark:text-sol-100 leading-snug">
-                Faltam <b>{formatBRL0(Math.max(0, toNextMilestone))}</b> de dívida para chegar a <b>{nextMilestone}%</b> e acender mais uma
-                luz da casa.
+                {/* A frase acompanha o momento: a primeira luz, mais uma, ou a última (quitar) */}
+                {nextMilestone >= 100 ? (
+                  <>
+                    Faltam <b>{formatBRL0(Math.max(0, toNextMilestone))}</b> para <b>quitar a casa</b> e acender a última luz.
+                  </>
+                ) : (
+                  <>
+                    Faltam <b>{formatBRL0(Math.max(0, toNextMilestone))}</b> de dívida para chegar a <b>{nextMilestone}%</b> e acender{' '}
+                    {nextMilestone === 10 ? 'a primeira luz' : 'mais uma luz'} da casa.
+                  </>
+                )}
               </div>
             </div>
           )}

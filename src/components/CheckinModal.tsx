@@ -30,9 +30,18 @@ export const CheckinModal: React.FC<{
   onClose: () => void;
 }> = ({ model, data, update, onClose }) => {
   const reduce = Boolean(useReducedMotion());
+  // Último mês vencido e a próxima parcela: dá para registrar a próxima com antecedência
+  // (paga adiantada ou já agendada no débito automático), mas não meses além dela
+  const lastDueYm = model.summary.paidCount > 0 ? model.rows[model.summary.paidCount - 1].yearMonth : null;
+  const nextYm = model.summary.next?.yearMonth ?? null;
+  const maxYm = [currentYearMonth(), nextYm].filter((v): v is string => Boolean(v)).sort().at(-1)!;
   const defaultYm =
     pendingCheckinMonth(model, data) ??
-    (model.summary.paidCount > 0 ? model.rows[model.summary.paidCount - 1].yearMonth : currentYearMonth());
+    // O mês vencido já tem check-in: abre direto na próxima parcela
+    (lastDueYm && nextYm && data.checkins.some((c) => c.yearMonth === lastDueYm) ? nextYm : null) ??
+    lastDueYm ??
+    nextYm ??
+    currentYearMonth();
   const [ym, setYm] = useState(defaultYm);
   const row = model.rows.find((r) => r.yearMonth === ym);
   const checkedMonths = useMemo(() => new Set(data.checkins.map((c) => c.yearMonth)), [data.checkins]);
@@ -46,6 +55,13 @@ export const CheckinModal: React.FC<{
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const [done, setDone] = useState<{ before: number; after: number } | null>(null);
+
+  // Parcela que ainda não venceu (registro adiantado)
+  const ahead = Boolean(lastDueYm ? ym > lastDueYm : nextYm && ym >= nextYm);
+  // Diferença entre o pago e a parcela sem seguros, quando o cadastro não tem seguros nem taxa
+  const noFees = !(model.contract.monthlyInsurance > 0) && !(model.contract.monthlyAdminFee > 0);
+  const feesGap = noFees && row ? paid - (row.amortization + row.interest) : 0;
+  const showFeesGap = feesGap > 1 && row ? feesGap < row.payment * 0.2 : false;
 
   const changeMonth = (v: string) => {
     setYm(v);
@@ -171,14 +187,21 @@ export const CheckinModal: React.FC<{
                 >
                   {step === 0 && (
                     <>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Quanto você pagou em {monthName(ym)}?</h2>
+                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
+                        {ahead ? `Parcela de ${monthName(ym)}, adiantada` : `Quanto você pagou em ${monthName(ym)}?`}
+                      </h2>
+                      {ahead && (
+                        <p className="-mt-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                          Ela vence dia {String(model.contract.dueDay).padStart(2, '0')}/{ym.slice(5)}. Registre agora se já pagou ou se está agendada no débito automático.
+                        </p>
+                      )}
                       <Field label="Mês da parcela">
                         <MonthField
                           value={ym}
                           onChange={changeMonth}
                           ariaLabel="Mês da parcela"
                           min={model.contract.firstDueMonth}
-                          max={currentYearMonth()}
+                          max={maxYm}
                           marked={checkedMonths}
                           markedLabel="check-in feito"
                         />
@@ -190,6 +213,36 @@ export const CheckinModal: React.FC<{
                       >
                         <MoneyField value={paid} onChange={setPaid} />
                       </Field>
+                      {/* Sem seguros no cadastro, a diferença para o boleto quase sempre são eles: oferece usar o valor */}
+                      <AnimatePresence initial={false}>
+                        {showFeesGap && (
+                          <motion.div
+                            initial={{ opacity: 0, height: 0 }}
+                            animate={{ opacity: 1, height: 'auto' }}
+                            exit={{ opacity: 0, height: 0 }}
+                            className="overflow-hidden"
+                          >
+                            <div className="p-3 rounded-2xl bg-sol-50 dark:bg-sol-400/10 text-sm text-sol-900 dark:text-sol-100 leading-relaxed">
+                              Faltam <b>{formatBRL(feesGap)}</b> para chegar ao valor pago. Quase sempre são os seguros (MIP e DFI) e a taxa de
+                              administração, que não estão no seu cadastro.
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  update((prev) =>
+                                    prev.contract
+                                      ? { ...prev, contract: { ...prev.contract, monthlyInsurance: Math.round(feesGap * 100) / 100, monthlyAdminFee: 0 } }
+                                      : prev
+                                  );
+                                  playSound('success');
+                                }}
+                                className="mt-2 flex items-center gap-1.5 h-8 px-3 rounded-full bg-sol-400 hover:bg-sol-300 text-slate-900 text-xs font-bold cursor-pointer"
+                              >
+                                Usar {formatBRL(feesGap)} como seguros e taxas
+                              </button>
+                            </div>
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
                       {row && (
                         <div className={`${tile} p-4 grid grid-cols-3 gap-2 text-sm`}>
                           <div>
