@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { CalendarDays, ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronLeft, ChevronRight } from 'lucide-react';
 import { addMonths, currentYearMonth } from '../../lib/format';
 import { clampMonth, isOutside, MONTH_SHORT_NAMES, monthLongName, navigateMonth } from '../../lib/monthPicker';
 import { DURATION, EASE_OUT, instantIf } from '../../lib/motion';
@@ -312,7 +312,8 @@ export const MonthField: React.FC<
           onClick={toggle}
           aria-haspopup="dialog"
           aria-expanded={Boolean(pos)}
-          aria-label={`${ariaLabel}: ${monthLongName(value)} de ${value.slice(0, 4)}. Escolher outro mês`}
+          aria-label={`${ariaLabel}: ${monthLongName(value)} de ${value.slice(0, 4)}${marked?.has(value) && markedLabel ? `, ${markedLabel}` : ''}. Escolher outro mês`}
+          title={marked?.has(value) && markedLabel ? `${monthLongName(value)} de ${value.slice(0, 4)}: ${markedLabel}` : undefined}
           className="flex-1 min-w-0 rounded-lg hover:bg-white dark:hover:bg-slate-800/60 transition-colors cursor-pointer overflow-hidden active:transform-none"
         >
           <motion.div
@@ -322,21 +323,17 @@ export const MonthField: React.FC<
             transition={{ duration: DURATION.base, ease: EASE_OUT }}
             className="flex flex-col items-center leading-tight"
           >
-            <span className="flex items-center gap-1 text-sm font-bold text-slate-900 dark:text-white">
-              {monthLongName(value)}
-              <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-[var(--duration-base)] ${pos ? 'rotate-180' : ''}`} />
-            </span>
-            {/* Uma linha só: em botões estreitos a marca encurta em vez de quebrar */}
-            <span className="flex items-center gap-1 max-w-full px-1 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap">
-              <CalendarDays className="w-3 h-3 shrink-0" />
-              <span className="font-num">{value.slice(0, 4)}</span>
+            {/* Mês e ano no mesmo eixo: a seta e a marca ficam fora do centro, uma de cada lado */}
+            <span className="relative text-sm font-bold text-slate-900 dark:text-white">
               {marked?.has(value) && markedLabel && (
-                <>
-                  <span className="w-1 h-1 rounded-full bg-sol-500 shrink-0" />
-                  <span className="truncate">{markedLabel}</span>
-                </>
+                <span className="absolute -left-3.5 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-sol-500" aria-hidden />
               )}
+              {monthLongName(value)}
+              <ChevronDown
+                className={`absolute -right-[18px] top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 transition-transform duration-[var(--duration-base)] ${pos ? 'rotate-180' : ''}`}
+              />
             </span>
+            <span className="font-num text-xs text-slate-500 dark:text-slate-400 mt-0.5">{value.slice(0, 4)}</span>
           </motion.div>
         </button>
         <button type="button" onClick={() => go(next, true)} disabled={isOutside(next, min, max)} className={stepBtn} aria-label="Próximo mês">

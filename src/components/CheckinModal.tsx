@@ -1,7 +1,8 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { AlertTriangle, ArrowLeft, ArrowRight, CalendarClock, CalendarDays, Check, CircleCheck, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, CalendarClock, CalendarDays, Check, CircleCheck, ClipboardCheck, PiggyBank, Receipt, X } from 'lucide-react';
 import { ModalShell } from './ui/ModalShell';
+import { StepTrack } from './ui/StepTrack';
 import { Field } from './ui/HelpTip';
 import { MoneyField, MonthField } from './ui/Inputs';
 import { btnGhost, btnPrimary, tile } from './ui/card';
@@ -276,16 +277,22 @@ export const CheckinModal: React.FC<{
         ) : (
           <div className="p-6 sm:p-7">
             <div className="text-sm font-semibold text-anil-700 dark:text-anil-300">Check-in do mês</div>
-            <div className="flex gap-1.5 mt-3 mb-6 pr-10">
-              {steps.map((s, k) => (
-                <div key={s} className="flex-1">
-                  <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                    <motion.div className="h-full bg-anil-500 rounded-full" initial={false} animate={{ width: k <= step ? '100%' : '0%' }} transition={{ duration: 0.35, ease: EASE_OUT }} />
-                  </div>
-                  <div className={`text-xs mt-1.5 font-semibold ${k === step ? 'text-slate-900 dark:text-white' : 'text-slate-400'}`}>{s}</div>
-                </div>
-              ))}
-            </div>
+            <StepTrack
+              ariaLabel="Etapas do check-in"
+              className="mt-3 mb-6 pr-10"
+              steps={steps}
+              icons={[Receipt, PiggyBank, ClipboardCheck]}
+              size="sm"
+              current={step}
+              done={(k) => k < step}
+              // Voltar é sempre possível; avançar, só com a fatura preenchida
+              reachable={(k) => k < step || installment > 0}
+              onSelect={(k) => {
+                playSound('tick');
+                setDir(k > step ? 1 : -1);
+                setStep(k);
+              }}
+            />
 
             <div className="relative min-h-[330px] max-h-[calc(100vh-15rem)] overflow-y-auto overflow-x-clip -mx-1 px-1">
               <AnimatePresence mode="popLayout" initial={false} custom={dir}>

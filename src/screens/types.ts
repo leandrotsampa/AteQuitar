@@ -14,4 +14,6 @@ export interface ScreenProps {
   openContract: (step?: number) => void;
   refreshRates: () => void;
   ratesLoading: boolean;
+  // Abrir Parcelas direto em Registros (link do cadastro)
+  historyTab?: 'table' | 'records';
 }

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Check, Home, Sparkles, X } from 'lucide-react';
-import type { Contract } from '../types/finance';
+import { ArrowLeft, ArrowRight, CalendarDays, Check, HandCoins, Home, Percent, Sparkles, Target, X } from 'lucide-react';
+import type { Contract, ScheduleCheckpoint } from '../types/finance';
 import {
   addMonths,
   annualToMonthly,
@@ -21,6 +21,7 @@ import { Field } from './ui/HelpTip';
 import { MoneyField, MonthField, NumberField } from './ui/Inputs';
 import { btnGhost, btnPrimary, inputBase } from './ui/card';
 import { HouseHero } from './HouseHero';
+import { StepTrack } from './ui/StepTrack';
 import { HELP } from './help';
 import { isTourRunning, runTour, screenStepIds } from '../tour/tour';
 import { loadTourState, markSeen, saveTourState } from '../tour/tourState';
@@ -113,14 +114,13 @@ const SystemCard: React.FC<{
 
 export const ContractWizard: React.FC<{
   initial: Contract | null;
-  // Saldo do banco já informado neste mês (aparece no campo para editar)
-  initialBalance?: number;
-  // Último saldo informado em outro mês (só como referência)
-  lastBalance?: { balance: number; yearMonth: string };
+  // Editando: o último saldo real, mostrado como resumo (o saldo se informa em Registros)
+  realBalance?: ScheduleCheckpoint | null;
+  onOpenRecords?: () => void;
   onCancel?: () => void;
   onSave: (result: WizardResult) => void;
   dark: boolean;
-}> = ({ initial, initialBalance = 0, lastBalance, onCancel, onSave, dark }) => {
+}> = ({ initial, realBalance, onOpenRecords, onCancel, onSave, dark }) => {
   const reduce = Boolean(useReducedMotion());
   const [c, setC] = useState<Contract>(() => initial ?? blankContract());
 
@@ -143,7 +143,8 @@ export const ContractWizard: React.FC<{
     // Só ao abrir o cadastro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  const [balance, setBalance] = useState(initialBalance);
+  // Saldo de hoje: só no primeiro cadastro
+  const [balance, setBalance] = useState(0);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const [rateUnit, setRateUnit] = useState<RateUnit>(() => initial?.rateInput ?? 'efetiva');
@@ -192,8 +193,8 @@ export const ContractWizard: React.FC<{
         bank: c.bank.trim(),
         rateInput: rateUnit,
       },
-      currentBalance: balance,
-      balanceCleared: initialBalance > 0 && !(balance > 0),
+      currentBalance: initial ? 0 : balance,
+      balanceCleared: false,
     });
   };
 
@@ -209,40 +210,25 @@ export const ContractWizard: React.FC<{
   return (
     <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
       <div className="min-w-0">
-        {/* Trilho dos passos: a casinha anda até o passo atual */}
+        {/* Etapas: editando, todas já estão preenchidas; no primeiro cadastro, as anteriores */}
         <div data-tour="cad-passos" className="relative mb-7">
-          <div className="flex items-center justify-between gap-2">
-            {STEPS.map((s, k) => (
-              <button
-                key={s.title}
-                type="button"
-                onClick={() => {
-                  if (k < step || problems.slice(0, k).every((p) => p.length === 0)) {
-                    setDir(k > step ? 1 : -1);
-                    setStep(k);
-                    playSound('tick');
-                  }
-                }}
-                className="flex-1 min-w-0 text-left cursor-pointer group"
-              >
-                <div className="h-1.5 rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                  <motion.div
-                    className="h-full rounded-full bg-anil-500"
-                    initial={false}
-                    animate={{ width: k < step ? '100%' : k === step ? '50%' : '0%' }}
-                    transition={instantIf(reduce, { duration: 0.45, ease: EASE_OUT })}
-                  />
-                </div>
-                <div
-                  className={`mt-2 text-xs font-semibold truncate transition-colors ${
-                    k === step ? 'text-anil-700 dark:text-anil-300' : 'text-slate-500 dark:text-slate-400 group-hover:text-slate-700'
-                  }`}
-                >
-                  {k + 1}. {s.title}
-                </div>
-              </button>
-            ))}
-          </div>
+          <StepTrack
+            ariaLabel="Etapas do cadastro"
+            steps={STEPS.map((x) => x.title)}
+            icons={[Home, HandCoins, Percent, CalendarDays, Target]}
+            numbered
+            current={step}
+            done={(k) => Boolean(initial) || k < step}
+            // Etapas já vistas (ou todas, editando) com dado obrigatório faltando
+            invalid={(k) => (Boolean(initial) || k < step) && problems[k].length > 0}
+            reachable={(k) => k < step || problems.slice(0, k).every((p) => p.length === 0)}
+            onSelect={(k) => {
+              setTried(false);
+              setDir(k > step ? 1 : -1);
+              setStep(k);
+              playSound('tick');
+            }}
+          />
         </div>
 
         <div className="relative overflow-hidden min-h-[380px]">
@@ -486,20 +472,32 @@ export const ContractWizard: React.FC<{
                   <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                     Com estes dados o app sai da <b>estimativa</b> e passa a mostrar a sua situação <b>real</b>. Pode pular e completar depois.
                   </p>
-                  <Field
-                    label="Saldo devedor de hoje"
-                    help={HELP.currentBalance}
-                    optional
-                    hint={
-                      initialBalance > 0
-                        ? 'O que você informou para hoje. Se apagar, deixa de valer.'
-                        : lastBalance
-                          ? `Último saldo informado: ${formatBRL(lastBalance.balance)} em ${monthLong(lastBalance.yearMonth)}. Informe o de hoje para atualizar.`
-                          : undefined
-                    }
-                  >
-                    <MoneyField value={balance} onChange={setBalance} />
-                  </Field>
+                  {initial ? (
+                    // Editando: o saldo real vive em Registros (e o check-in calcula pela fatura)
+                    <div className="p-4 rounded-2xl bg-anil-50 dark:bg-anil-500/10 text-sm text-anil-900 dark:text-anil-100 leading-relaxed">
+                      {realBalance ? (
+                        <>
+                          Último saldo real: <b className="font-num">{formatBRL(realBalance.balance)}</b> depois da parcela de {monthLong(realBalance.yearMonth)} (
+                          {realBalance.source === 'fatura' ? 'calculado pela fatura' : 'do banco'}). Daí em diante o app aplica a TR, os juros e cada parcela paga.
+                        </>
+                      ) : (
+                        'Ainda não há saldo real: o saldo é estimado pelo contrato. Faça o check-in com a fatura do mês ou informe o saldo do banco.'
+                      )}
+                      {onOpenRecords && (
+                        <button
+                          type="button"
+                          onClick={onOpenRecords}
+                          className="mt-2 flex items-center gap-1 font-semibold text-anil-700 dark:text-anil-300 hover:underline cursor-pointer"
+                        >
+                          Ver e informar saldos em Registros <ArrowRight className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <Field label="Saldo devedor de hoje" help={HELP.currentBalance} optional hint="O que o app do banco mostra hoje. Depois, o check-in com a fatura calcula o saldo todo mês.">
+                      <MoneyField value={balance} onChange={setBalance} />
+                    </Field>
+                  )}
                 </>
               )}
 

@@ -18,9 +18,11 @@ import { lastDueBefore } from '../lib/finance';
 type Tab = 'table' | 'records';
 type AddKind = 'banco' | 'extra' | null;
 
-export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, openCheckin }) => {
+export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, openCheckin, historyTab }) => {
   const { rows, summary } = model;
-  const [tab, setTab] = useState<Tab>('table');
+  const [tab, setTab] = useState<Tab>(historyTab ?? 'table');
+  // O saldo que o banco mostra hoje é o de depois da última parcela paga
+  const paidYm = model.summary.paidCount > 0 ? model.rows[model.summary.paidCount - 1].yearMonth : model.contract.firstDueMonth;
   const years = useMemo(() => Array.from(new Set(rows.map((r) => r.yearMonth.slice(0, 4)))), [rows]);
   const currentYear = (summary.next?.yearMonth ?? rows[rows.length - 1]?.yearMonth ?? currentYearMonth()).slice(0, 4);
   const [year, setYear] = useState(years.includes(currentYear) ? currentYear : years[0]);
@@ -56,7 +58,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
     setFormMode('prazo');
     setFormSource('proprio');
     setExtraDraft(draftFromExtra(model.contract, undefined));
-    setFormYm(currentYearMonth());
+    setFormYm(k === 'banco' ? paidYm : currentYearMonth());
   };
   const saveAdd = () => {
     if (!adding) return;
@@ -364,13 +366,13 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                     </div>
                   ) : (
                     <div className="grid sm:grid-cols-[220px_minmax(0,240px)] gap-4 items-start mt-4">
-                      <Field label="Mês">
+                      <Field label="Depois da parcela de" hint={formYm === paidYm ? 'A última parcela paga: o saldo que o banco mostra hoje.' : undefined}>
                         <MonthField
                           value={formYm}
                           onChange={setFormYm}
-                          ariaLabel="Mês"
+                          ariaLabel="Saldo depois da parcela de"
                           min={model.contract.firstDueMonth}
-                          max={currentYearMonth()}
+                          max={paidYm > currentYearMonth() ? paidYm : currentYearMonth()}
                           marked={balanceMonths}
                           markedLabel="saldo registrado"
                         />

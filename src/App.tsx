@@ -200,11 +200,12 @@ export default function App() {
   const [checkinMonth, setCheckinMonth] = useState<string | undefined>();
   const [dataOpen, setDataOpen] = useState(false);
   const [contractOpen, setContractOpen] = useState(false);
-  // Saldos do banco informados: o deste mês (editável no cadastro) e o mais recente (referência)
-  const bankBalances = data.checkpoints.filter((c) => c.source === 'banco').sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
-  const balanceYm = data.contract ? lastPaidMonth(data.contract, paidMonthsOf(data)) : null;
-  const bankBalanceNow = bankBalances.find((c) => c.yearMonth === balanceYm);
-  const lastBankBalance = bankBalances.at(-1);
+  // Parcelas → Registros a partir do link do cadastro
+  const [historyTab, setHistoryTab] = useState<'table' | 'records' | undefined>();
+  const goTo = (target: ScreenId) => {
+    setHistoryTab(undefined);
+    setScreen(target);
+  };
   const [onboardingStage, setOnboardingStage] = useState<'welcome' | 'wizard'>('welcome');
 
   // Tutorial: boas-vindas quando o financiamento aparece pela primeira vez, apresentação de cada
@@ -284,9 +285,11 @@ export default function App() {
     data,
     update,
     dark,
-    go: setScreen,
+    go: goTo,
+    historyTab,
     openCheckin: (month?: string) => {
-      setCheckinMonth(month);
+      // Usado direto como onClick em alguns botões: o evento do clique não é um mês
+      setCheckinMonth(typeof month === 'string' ? month : undefined);
       setCheckinOpen(true);
     },
     openContract: () => setContractOpen(true),
@@ -356,7 +359,7 @@ export default function App() {
         <>
           <Sidebar
             active={screen}
-            onSelect={setScreen}
+            onSelect={goTo}
             nickname={model.contract.nickname}
             progress={model.summary.progress}
             theme={theme}
@@ -430,8 +433,12 @@ export default function App() {
               <Suspense fallback={<div className="skeleton h-96 rounded-3xl" />}>
               <ContractWizard
                 initial={model.contract}
-                initialBalance={bankBalanceNow?.balance ?? 0}
-                lastBalance={lastBankBalance && lastBankBalance.yearMonth !== balanceYm ? lastBankBalance : undefined}
+                realBalance={model.lastRealBalance}
+                onOpenRecords={() => {
+                  setContractOpen(false);
+                  setHistoryTab('records');
+                  setScreen('history');
+                }}
                 dark={dark}
                 onCancel={() => setContractOpen(false)}
                 onSave={(r) => {
