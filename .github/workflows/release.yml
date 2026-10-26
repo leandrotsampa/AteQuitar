@@ -1,0 +1,168 @@
+name: Gerar release
+
+# Disparo manual: Actions → Gerar release → Run workflow.
+# A versão vem do package.json; ajuste o campo "version" antes de rodar.
+on:
+  workflow_dispatch:
+    inputs:
+      prerelease:
+        description: Marcar como pré-lançamento (versão de teste)
+        type: boolean
+        default: false
+      draft:
+        description: Criar como rascunho (revisar antes de publicar)
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    name: Conferir versão
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Ler a versão
+        id: version
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          if git rev-parse "v$VERSION" >/dev/null 2>&1; then
+            echo "::error::A versão v$VERSION já foi publicada. Aumente o campo \"version\" do package.json e rode de novo."
+            exit 1
+          fi
+          echo "Versão a publicar: v$VERSION"
+
+  build:
+    name: Build ${{ matrix.name }}
+    needs: version
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            command: npm run dist:win -- --publish never
+            files: release/*.exe
+          - name: macOS
+            os: macos-latest
+            command: npm run dist:mac -- --publish never
+            files: release/*.dmg
+          - name: Linux
+            os: ubuntu-latest
+            command: npm run dist:linux -- --publish never
+            files: release/*.AppImage
+    env:
+      # Sem certificados de assinatura de código (Windows e Apple)
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Configurar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Checar tipos
+        run: npm run lint
+
+      - name: Rodar os testes
+        run: npm test
+
+      - name: Gerar instalável
+        run: ${{ matrix.command }}
+
+      - name: Guardar arquivos
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-${{ matrix.name }}
+          path: ${{ matrix.files }}
+          if-no-files-found: error
+
+  release:
+    name: Publicar release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Juntar os arquivos dos três sistemas
+        uses: actions/download-artifact@v4
+        with:
+          path: dist-release
+          pattern: build-*
+          merge-multiple: true
+
+      - name: Calcular checksums
+        working-directory: dist-release
+        run: |
+          ls -la
+          sha256sum * > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Gerar changelog
+        run: |
+          VERSION="${{ needs.version.outputs.version }}"
+          node scripts/release-notes.mjs "$VERSION" release-notes.md
+          {
+            echo ""
+            echo "### 📥 Download"
+            echo ""
+            echo "| Sistema | Arquivo |"
+            echo "|---|---|"
+            echo "| Windows (instalador, recomendado) | \`AteQuitar-$VERSION-setup.exe\` (abre mais rápido e atualiza por cima da versão instalada) |"
+            echo "| Windows (portátil) | \`AteQuitar-$VERSION-portable.exe\` (não precisa instalar) |"
+            echo "| macOS com chip Apple (M1 a M4) | \`AteQuitar-$VERSION-mac-arm64.dmg\` |"
+            echo "| macOS com processador Intel | \`AteQuitar-$VERSION-mac-x64.dmg\` |"
+            echo "| Linux | \`AteQuitar-$VERSION-linux-x64.AppImage\` |"
+            echo ""
+            echo "**Windows:** o instalador guarda os dados na pasta do usuário e, numa versão nova, é só rodar o instalador de novo. No portátil, coloque o \`.exe\` na mesma pasta do seu \`atequitar.sqlite\`. Se o SmartScreen avisar, clique em *Mais informações → Executar assim mesmo*."
+            echo ""
+            echo "**macOS:** o app não é assinado pela Apple. Na primeira abertura, vá em *Ajustes do Sistema → Privacidade e Segurança → Abrir Mesmo Assim*. Se aparecer \"está danificado\", rode no Terminal: \`xattr -cr \"/Applications/Até Quitar.app\"\`."
+            echo ""
+            echo "**Linux:** dê permissão de execução (\`chmod +x AteQuitar-*.AppImage\`) e abra. O banco \`atequitar.sqlite\` fica na mesma pasta do \`.AppImage\`."
+            echo ""
+            echo "Os checksums SHA-256 de todos os arquivos estão em \`SHA256SUMS.txt\`."
+          } >> release-notes.md
+
+      - name: Registrar o changelog no repositório
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add CHANGELOG.md
+          git commit -m "chore(release): v${{ needs.version.outputs.version }}"
+          git push origin HEAD:${{ github.ref_name }}
+
+      - name: Publicar a release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ needs.version.outputs.tag }}
+          name: Até Quitar ${{ needs.version.outputs.version }}
+          body_path: release-notes.md
+          target_commitish: ${{ github.ref_name }}
+          prerelease: ${{ inputs.prerelease }}
+          draft: ${{ inputs.draft }}
+          files: dist-release/*
