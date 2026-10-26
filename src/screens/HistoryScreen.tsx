@@ -1,14 +1,14 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { BadgeCheck, CalendarCheck2, Landmark, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
+import { BadgeCheck, CalendarCheck2, Info, Landmark, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
 import type { ScreenProps } from './types';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
 import { Field } from '../components/ui/HelpTip';
-import { MoneyField, MonthField } from '../components/ui/Inputs';
+import { MoneyField, MonthField, NumberField } from '../components/ui/Inputs';
 import { btnGhost, btnPrimary, card, tile } from '../components/ui/card';
 import { HELP } from '../components/help';
-import { currentYearMonth, formatBRL, monthLong, monthShort, uid } from '../lib/format';
+import { currentYearMonth, formatBRL, monthLong, monthName, monthShort, uid } from '../lib/format';
 import { EASE_OUT } from '../lib/motion';
 import { playSound } from '../hooks/useSound';
 import type { ExtraMode, ExtraSource } from '../types/finance';
@@ -48,7 +48,12 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
   const balanceMonths = new Set(data.checkpoints.map((c) => c.yearMonth));
   const yearRows = rows.filter((r) => r.yearMonth.startsWith(year));
   // Parcelas já pagas (e a próxima) ainda sem a TR oficial do Banco Central
-  const trEstimatedCount = rows.filter((r) => r.trEstimated && r.index <= summary.paidCount + 1).length;
+  // Parcelas pagas antes do primeiro dado real (fatura ou saldo do banco): só pelo contrato
+  const firstRealYm = rows.find((r) => !r.estimated)?.yearMonth;
+  const estimatedPaid = rows.filter((r) => r.estimated && r.index <= summary.paidCount).length;
+  const lastEstimatedYm = firstRealYm ? rows[rows.findIndex((r) => r.yearMonth === firstRealYm) - 1]?.yearMonth : undefined;
+  // A TR estimada só importa nas parcelas que já seguem dados reais
+  const trEstimatedCount = rows.filter((r) => r.trEstimated && !r.estimated && r.index <= summary.paidCount + 1).length;
   const yearTotals = yearRows.reduce(
     (a, r) => ({ paid: a.paid + r.payment + r.extra, interest: a.interest + r.interest, amort: a.amort + r.amortization + r.extra }),
     { paid: 0, interest: 0, amort: 0 }
@@ -59,6 +64,8 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formYm, setFormYm] = useState(currentYearMonth());
   const [formValue, setFormValue] = useState(0);
+  // Saldo do banco: as parcelas que faltam junto (opcional) acertam o prazo de quem já amortizou
+  const [formRemaining, setFormRemaining] = useState(0);
   const [formMode, setFormMode] = useState<ExtraMode>('prazo');
   const [formSource, setFormSource] = useState<ExtraSource>('proprio');
   // Amortização extra: valor pago, data e efetiva (como no check-in)
@@ -73,6 +80,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
     setAdding(k);
     setEditingId(null);
     setFormValue(0);
+    setFormRemaining(0);
     setFormMode('prazo');
     setFormSource('proprio');
     setExtraDraft(draftFromExtra(model.contract, undefined));
@@ -104,7 +112,14 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
         checkpoints: [
           // Um saldo por mês e origem: o editado sai, e outro do mesmo mês e origem é substituído
           ...prev.checkpoints.filter((c) => c.id !== editingId && !(c.yearMonth === formYm && c.source === adding)),
-          { id: editingId ?? uid(), yearMonth: formYm, balance: formValue, source: adding, createdAt: new Date().toISOString() },
+          {
+            id: editingId ?? uid(),
+            yearMonth: formYm,
+            balance: formValue,
+            ...(formRemaining > 0 ? { remaining: Math.round(formRemaining) } : {}),
+            source: adding,
+            createdAt: new Date().toISOString(),
+          },
         ],
       }));
     }
@@ -140,7 +155,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
       kind: c.source,
       title: 'Saldo do banco',
       value: c.balance,
-      detail: 'saldo devedor real',
+      detail: c.remaining ? `saldo devedor real, faltam ${c.remaining} parcelas` : 'saldo devedor real',
     })),
   ].sort((a, b) => b.ym.localeCompare(a.ym));
 
@@ -155,6 +170,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
     setEditingId(r.id);
     setFormYm(r.ym);
     setFormValue(r.value);
+    setFormRemaining(r.kind === 'banco' ? data.checkpoints.find((c) => c.id === r.id)?.remaining ?? 0 : 0);
     setFormMode(extra?.mode ?? 'prazo');
     setFormSource(extra?.source ?? 'proprio');
     if (extra) setExtraDraft(draftFromExtra(model.contract, extra));
@@ -251,6 +267,39 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
             ))}
           </div>
 
+          {/* Estimado x real, em palavras simples: o que o app sabe e o que ainda é conta do contrato */}
+          {estimatedPaid > 0 && (
+            <div className="p-4 rounded-2xl bg-anil-50 dark:bg-anil-500/10 text-sm text-anil-900 dark:text-anil-100 leading-relaxed flex gap-3">
+              <Info className="w-5 h-5 shrink-0 mt-0.5 text-anil-600 dark:text-anil-300" />
+              <div>
+                {firstRealYm && lastEstimatedYm ? (
+                  <>
+                    <b>Até {monthLong(lastEstimatedYm)}, as parcelas são estimadas</b> pelo contrato: o app não sabe das amortizações feitas antes de você
+                    começar a usá-lo. A partir de {monthLong(firstRealYm)}, os valores seguem a sua fatura ou o saldo do banco, e o saldo de hoje e as próximas
+                    parcelas já estão certos.
+                    <button
+                      type="button"
+                      onClick={() => setTab('records')}
+                      className="mt-1.5 block font-semibold text-anil-700 dark:text-anil-300 hover:underline cursor-pointer"
+                    >
+                      Quer o histórico exato? Lance as amortizações antigas em Registros
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <b>Por enquanto, todas as parcelas são estimadas</b> pelo contrato. Se você já amortizou, o saldo, o número de parcelas e o valor delas
+                    podem estar diferentes dos do banco. Faça o check-in com a sua última fatura: o app acerta tudo daqui para frente.
+                    <div className="mt-2.5">
+                      <button type="button" onClick={() => openCheckin()} className={`${btnPrimary} h-9`}>
+                        <CalendarCheck2 className="w-4 h-4" /> Fazer check-in
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
           {trEstimatedCount > 0 && (
             <div className="p-3.5 rounded-2xl bg-sol-50 dark:bg-sol-400/10 text-sm text-sol-900 dark:text-sol-100 leading-relaxed">
               A TR de <b>{trEstimatedCount} {trEstimatedCount === 1 ? 'parcela' : 'parcelas'}</b> ainda é estimada: falta buscar no Banco Central a TR
@@ -277,9 +326,18 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                   {yearRows.map((r) => {
                     const paid = r.index <= summary.paidCount;
                     const isNext = r.index === summary.paidCount + 1;
+                    const estimated = paid && r.estimated;
                     return (
+                      <React.Fragment key={r.index}>
+                      {/* Divisa entre o estimado pelo contrato e o que já segue dados reais */}
+                      {r.yearMonth === firstRealYm && estimatedPaid > 0 && (
+                        <tr>
+                          <td colSpan={8} className="px-5 py-2 bg-emerald-50/70 dark:bg-emerald-500/[0.07] text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                            A partir daqui: valores reais, da fatura ou do saldo do banco
+                          </td>
+                        </tr>
+                      )}
                       <tr
-                        key={r.index}
                         className={`border-b last:border-0 border-slate-900/[0.04] dark:border-white/[0.04] ${
                           isNext ? 'bg-sol-50/70 dark:bg-sol-400/[0.07]' : paid ? '' : 'text-slate-500 dark:text-slate-400'
                         }`}
@@ -289,6 +347,14 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                             <span className="font-num font-semibold text-slate-900 dark:text-white">{r.index}</span>
                             {paid && checkinMonths.has(r.yearMonth) && <BadgeCheck className="w-4 h-4 text-emerald-500" aria-label="Check-in feito" />}
                             {isNext && <span className="px-1.5 py-0.5 rounded-full bg-sol-400 text-slate-900 text-[10px] font-bold">próxima</span>}
+                            {estimated && (
+                              <span
+                                className="px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400 text-[10px] font-semibold"
+                                title="Calculada só pelo contrato, sem as amortizações feitas antes de você usar o app"
+                              >
+                                estimada
+                              </span>
+                            )}
                           </span>
                         </td>
                         <td className="px-3 py-2.5 capitalize">{monthShort(r.yearMonth)}</td>
@@ -300,7 +366,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                         <td className="px-3 py-2.5 text-right font-num">{formatBRL(r.interest)}</td>
                         <td className="px-3 py-2.5 text-right font-num">
                           {r.correction > 0 ? formatBRL(r.correction) : '—'}
-                          {r.trEstimated && r.index <= summary.paidCount + 1 && (
+                          {r.trEstimated && !r.estimated && r.index <= summary.paidCount + 1 && (
                             <div className="text-[11px] text-sol-700 dark:text-sol-300 font-semibold" title="Ainda sem a TR oficial do Banco Central">
                               estimada
                             </div>
@@ -319,6 +385,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                           )}
                         </td>
                       </tr>
+                      </React.Fragment>
                     );
                   })}
                 </motion.tbody>
@@ -393,21 +460,33 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                       </div>
                     </div>
                   ) : (
-                    <div className="grid sm:grid-cols-[220px_minmax(0,240px)] gap-4 items-start mt-4">
-                      <Field label="Depois da parcela de" hint={formYm === paidYm ? 'A última parcela paga: o saldo que o banco mostra hoje.' : undefined}>
-                        <MonthField
-                          value={formYm}
-                          onChange={setFormYm}
-                          ariaLabel="Saldo depois da parcela de"
-                          min={model.contract.firstDueMonth}
-                          max={paidYm > currentYearMonth() ? paidYm : currentYearMonth()}
-                          marked={balanceMonths}
-                          markedLabel="saldo registrado"
-                        />
-                      </Field>
-                      <Field label="Saldo devedor" help={HELP.currentBalance}>
-                        <MoneyField value={formValue} onChange={setFormValue} />
-                      </Field>
+                    <div className="mt-4 max-w-3xl">
+                      {/* Três colunas iguais com os rótulos numa linha; a explicação fica uma só, embaixo */}
+                      <div className="grid sm:grid-cols-3 gap-4 items-start">
+                        <Field label="Depois da parcela de">
+                          <MonthField
+                            value={formYm}
+                            onChange={setFormYm}
+                            ariaLabel="Saldo depois da parcela de"
+                            min={model.contract.firstDueMonth}
+                            max={paidYm > currentYearMonth() ? paidYm : currentYearMonth()}
+                            marked={balanceMonths}
+                            markedLabel="saldo registrado"
+                          />
+                        </Field>
+                        <Field label="Saldo devedor" help={HELP.currentBalance}>
+                          <MoneyField value={formValue} onChange={setFormValue} ariaLabel="Saldo devedor" />
+                        </Field>
+                        <Field label="Parcelas que faltam" help={HELP.remaining} optional>
+                          <NumberField value={formRemaining} onChange={setFormRemaining} digits={0} ariaLabel="Parcelas que faltam" />
+                        </Field>
+                      </div>
+                      <p className="mt-2.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
+                        {formYm === paidYm
+                          ? `${monthName(formYm)[0].toUpperCase()}${monthName(formYm).slice(1)} foi a última parcela paga: use o saldo e o prazo que o app do banco mostra hoje.`
+                          : `Use o saldo e o prazo que o banco mostrava logo depois da parcela de ${monthLong(formYm)}.`}{' '}
+                        As parcelas que faltam são opcionais e acertam o prazo de quem já amortizou.
+                      </p>
                     </div>
                   )}
                   <div className="flex gap-2 mt-5">

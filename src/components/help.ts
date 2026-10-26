@@ -70,4 +70,9 @@ export const HELP = {
     body: 'Quanto você ainda deve, segundo o banco. Com ele os números do app ficam exatos em vez de estimados.',
     where: 'No app da Caixa: Habitação → seu contrato → "Saldo devedor".\nNos outros bancos: Habitação (ou Financiamento) → "Saldo devedor". Não use o "valor para quitação", que pode vir com desconto.',
   },
+  remaining: {
+    title: 'Parcelas que faltam',
+    body: 'Quantas parcelas ainda faltam, segundo o banco. Se você já amortizou reduzindo o prazo, esse número é menor que o do contrato, e é ele que acerta o valor das próximas parcelas.',
+    where: 'No app da Caixa: Habitação → seu contrato → "Prazo atual" (ou na simulação de amortização, "Prazo atual").\nNos outros bancos: "Prazo restante" ou "Parcelas a vencer".',
+  },
 } satisfies Record<string, HelpContent>;

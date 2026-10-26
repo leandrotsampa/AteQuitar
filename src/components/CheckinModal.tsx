@@ -11,7 +11,7 @@ import { InvoiceFeesRows, LedgerRow, draftFromFees, draftFromRow, draftTotal, fe
 import type { FinanceModel } from '../lib/model';
 import type { AppData } from '../lib/store';
 import type { ExtraMode, ExtraPayment, ExtraSource, ScheduleCheckpoint } from '../types/finance';
-import { balanceFromInvoice, buildSchedule, effectiveExtra, summarize } from '../lib/finance';
+import { balanceFromInvoice, buildSchedule, effectiveExtra, remainingFromInvoice, summarize } from '../lib/finance';
 import { ExtraPaymentFields, extraEffective, todayIso } from './ExtraPaymentFields';
 import { currentYearMonth, formatBRL, formatPct, monthLong, monthName, uid } from '../lib/format';
 import { pendingCheckinMonth } from '../lib/insights';
@@ -132,10 +132,21 @@ export const CheckinModal: React.FC<{
   const computed = fromInvoice ? balanceFromInvoice(contract, f.interest, f.amort) : null;
   const forecast = row?.closingBalance ?? model.summary.currentBalance;
   const far = computed !== null && forecast > 0 && Math.abs(computed - forecast) / forecast > FAR_FROM_FORECAST;
+  // Parcelas que faltam pela fatura. Se a conta fecha num número inteiro, taxa, juros e amortização
+  // batem entre si: o saldo vale mesmo longe da previsão (a distância vem de amortizações antigas)
+  const remainingCalc = computed !== null ? remainingFromInvoice(contract, f.interest, f.amort) : null;
+  // Não fechou e ficou longe: só com a confirmação da pessoa (vale para estes valores e este mês)
+  const valuesKey = `${ym}|${f.amort}|${f.interest}`;
+  const [confirmedKey, setConfirmedKey] = useState('');
+  const accepted = computed !== null && (!far || remainingCalc !== null || confirmedKey === valuesKey);
   // Saldo do banco de um check-in antigo: continua valendo se a fatura não mudou
   const keptBank = existing?.balanceSource !== 'fatura' && existing?.balanceAfter && !typed ? existing.balanceAfter : undefined;
-  const balanceAfter = computed !== null && !far ? cents(computed) : keptBank;
-  const balanceSource: 'fatura' | 'banco' | undefined = computed !== null && !far ? 'fatura' : keptBank ? 'banco' : undefined;
+  const balanceAfter = accepted ? cents(computed!) : keptBank;
+  const balanceSource: 'fatura' | 'banco' | undefined = accepted ? 'fatura' : keptBank ? 'banco' : undefined;
+  // Parcelas que faltam: corrige o prazo de quem já amortizou antes de usar o app
+  const remainingAfter = accepted ? remainingCalc ?? undefined : undefined;
+  // O que o app contava antes (parcelas depois desta na tabela atual)
+  const remainingForecast = row ? model.rows.length - row.index : undefined;
 
   // Amortização extra: só o efetivo abate o saldo; o resto são juros pro rata
   const eff = extraEffective(contract, { paid: f.extraPaid, date: f.extraDate, eff: f.extraEff, effEdited: f.effEdited });
@@ -156,7 +167,16 @@ export const CheckinModal: React.FC<{
     const checkpoints: ScheduleCheckpoint[] = [
       ...(model.options.checkpoints ?? []).filter((c) => c.id !== `ci-${existing?.id}`),
       ...(balanceAfter && !data.checkpoints.some((c) => c.yearMonth === ym)
-        ? [{ id: 'x', yearMonth: ym, balance: balanceAfter, source: balanceSource!, createdAt: balanceSource === 'fatura' ? '' : at }]
+        ? [
+            {
+              id: 'x',
+              yearMonth: ym,
+              balance: balanceAfter,
+              source: balanceSource!,
+              createdAt: balanceSource === 'fatura' ? '' : at,
+              ...(remainingAfter ? { remaining: remainingAfter } : {}),
+            },
+          ]
         : []),
     ];
     const actuals = [
@@ -172,7 +192,7 @@ export const CheckinModal: React.FC<{
     return { progress: summarize(contract, rows, new Date(), paidMonths).progress, afterExtra: r?.closingBalance ?? forecast };
     // extraRecord depende só dos campos já listados
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [model, data.checkpoints, existing?.id, balanceAfter, balanceSource, ym, f, fromInvoice, keepExtra, eff, otherExtras, at, ahead, contract, forecast]);
+  }, [model, data.checkpoints, existing?.id, balanceAfter, balanceSource, remainingAfter, ym, f, fromInvoice, keepExtra, eff, otherExtras, at, ahead, contract, forecast]);
 
   const go = (d: number) => {
     playSound('tick');
@@ -199,6 +219,7 @@ export const CheckinModal: React.FC<{
           ...(f.fgts > 0 ? { fgts: f.fgts } : {}),
           ...(ahead && f.scheduled ? { scheduled: true } : {}),
           ...(balanceAfter ? { balanceAfter, balanceSource } : {}),
+          ...(remainingAfter ? { remainingAfter } : {}),
           ...(extraId ? { extraId } : {}),
           createdAt: at,
         },
@@ -488,13 +509,30 @@ export const CheckinModal: React.FC<{
                             <span className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(balanceAfter ?? forecast)}</span>
                           </div>
                           <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            {balanceSource === 'fatura'
+                            {balanceSource === 'fatura' && far
+                              ? `Calculado pela fatura. O contrato sozinho previa ${formatBRL(forecast)}: a diferença vem de amortizações feitas antes de você usar o app. A partir de agora vale o saldo da fatura.`
+                              : balanceSource === 'fatura'
                               ? 'Calculado pelos juros e pela amortização da fatura: não precisa esperar o banco atualizar o saldo.'
                               : balanceSource === 'banco'
                                 ? 'O saldo do banco que você informou neste mês.'
-                                : 'Previsto. Com os juros e a amortização da fatura, o app calcula o saldo exato.'}
+                                : far && computed !== null
+                                  ? 'Previsto, até você confirmar a fatura abaixo.'
+                                  : 'Previsto. Com os juros e a amortização da fatura, o app calcula o saldo exato.'}
                           </div>
                         </div>
+                        {remainingAfter !== undefined && (
+                          <div>
+                            <div className="flex justify-between gap-3">
+                              <span className="text-slate-500">Parcelas que faltam depois desta</span>
+                              <span className="font-num font-semibold text-slate-900 dark:text-white">{remainingAfter}</span>
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                              {remainingForecast !== undefined && Math.abs(remainingForecast - remainingAfter) >= 1
+                                ? `O app contava ${remainingForecast}. A diferença vem de amortizações feitas antes de você usar o app, que encurtaram o prazo. A partir de agora, as próximas parcelas seguem o prazo da fatura.`
+                                : 'Calculado pela fatura: bate com o que o app já previa.'}
+                            </div>
+                          </div>
+                        )}
                         {keepExtra && (
                           <div className="flex justify-between gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
                             <span className="text-slate-500">Depois da amortização extra</span>
@@ -502,13 +540,22 @@ export const CheckinModal: React.FC<{
                           </div>
                         )}
                       </div>
-                      {far && computed !== null && (
+                      {/* Longe e sem fechar o prazo: pode ser um valor digitado ou a taxa do cadastro. A pessoa decide */}
+                      {far && computed !== null && !accepted && (
                         <div className="p-3 rounded-2xl bg-sol-50 dark:bg-sol-400/10 text-sm text-sol-900 dark:text-sol-100 leading-relaxed flex gap-2.5">
                           <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                          <span>
-                            Pela fatura, o saldo seria <b>{formatBRL(computed)}</b>, longe do previsto ({formatBRL(forecast)}). Confira os juros e a amortização
-                            ou a taxa de juros do cadastro. Por enquanto, seguimos com a previsão.
-                          </span>
+                          <div>
+                            Pela fatura, o saldo seria <b>{formatBRL(computed)}</b>, bem longe do previsto ({formatBRL(forecast)}), e os juros e a amortização não
+                            batem com a taxa do cadastro. Confira esses dois valores ou a taxa de juros em Meu financiamento. Se estiver tudo certo, use a fatura.
+                            <div className="mt-2.5 flex flex-wrap gap-2">
+                              <button type="button" onClick={() => setConfirmedKey(valuesKey)} className={`${btnGhost} h-9`}>
+                                Usar mesmo assim
+                              </button>
+                              <button type="button" onClick={() => go(-step)} className={`${btnGhost} h-9`}>
+                                Conferir a fatura
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       )}
                       {ahead && f.scheduled && (

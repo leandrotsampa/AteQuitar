@@ -90,7 +90,7 @@ const HISTORY_STEPS: TourStep[] = [
     id: 'hist-tabela',
     title: 'Cada parcela por dentro',
     description: () =>
-      'Valor, quanto abateu a dívida, juros, a <b>TR</b> do mês, seguros e o saldo depois. O selo verde marca os meses com check-in; <b>da fatura</b> e <b>pela fatura</b> mostram os valores copiados dela, e <b>estimada</b>, a TR que ainda não é a oficial.',
+      'Valor, quanto abateu a dívida, juros, a <b>TR</b> do mês, seguros e o saldo depois. O selo verde marca os meses com check-in, e <b>da fatura</b> e <b>pela fatura</b>, os valores copiados dela. <b>Estimada</b> é o que ainda não é dado real: parcelas calculadas só pelo contrato, antes do seu primeiro saldo ou fatura.',
     side: 'top',
     align: 'start',
   },

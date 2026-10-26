@@ -58,11 +58,14 @@ export interface ExtraPayment {
   createdAt?: string;
 }
 
-// Saldo devedor real informado (app do banco ou extrato anual do IR)
+// Saldo devedor real informado (app do banco)
 export interface BalanceCheckpoint {
   id: string;
   yearMonth: string;
   balance: number;
+  // Parcelas que faltam depois da deste mês (o "prazo atual" do banco): amortizações antigas
+  // encurtam o prazo, e só o saldo não diz quanto
+  remaining?: number;
   source: 'banco';
   // Quando o saldo foi informado
   createdAt?: string;
@@ -87,6 +90,8 @@ export interface CheckIn {
   fgts?: number;
   // Parcela adiantada só agendada no débito automático: conta como paga no vencimento
   scheduled?: boolean;
+  // Parcelas que faltam depois desta, calculadas pela fatura (saldo corrigido ÷ amortização)
+  remainingAfter?: number;
   // Saldo depois da parcela; 'fatura' = calculado pelos juros e pela amortização da fatura
   balanceAfter?: number;
   balanceSource?: 'fatura' | 'banco';
@@ -120,4 +125,7 @@ export interface ScheduleRow {
   checkpoint: ScheduleCheckpoint['source'] | null;
   // Amortização e juros copiados da fatura do check-in (não previstos)
   fromInvoice: boolean;
+  // Antes do primeiro dado real (saldo ou fatura): calculado só pelo contrato, sem as
+  // amortizações que a pessoa não registrou
+  estimated: boolean;
 }

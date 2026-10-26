@@ -84,7 +84,8 @@ export const DataModal: React.FC<{
       tone: 'danger',
     });
     if (!ok) return;
-    update((prev) => ({ ...prev, contract: null, extras: [], checkpoints: [], checkins: [], celebrated: [], isDemo: false }));
+    // Dados novos (nova data de criação): os tutoriais voltam a aparecer
+    update((prev) => ({ ...prev, contract: null, extras: [], checkpoints: [], checkins: [], celebrated: [], isDemo: false, createdAt: new Date().toISOString() }));
     playSound('delete');
     onReset();
   };

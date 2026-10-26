@@ -56,6 +56,7 @@ export function useFinanceModel(data: AppData): FinanceModel | null {
           yearMonth: ci.yearMonth,
           balance: ci.balanceAfter!,
           source: ci.balanceSource === 'fatura' ? ('fatura' as const) : ('banco' as const),
+          ...(ci.remainingAfter ? { remaining: ci.remainingAfter } : {}),
           createdAt: ci.balanceSource === 'fatura' ? '' : ci.createdAt,
         })),
     ];

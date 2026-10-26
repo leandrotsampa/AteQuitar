@@ -20,7 +20,7 @@ import { getUiPrefs, setUiPrefs } from './hooks/useUiPrefs';
 import { HomeScreen } from './screens/HomeScreen';
 import type { ScreenId, ScreenProps } from './screens/types';
 import { ALL_TOUR_STEP_IDS, isTourRunning, runTour, screenStepIds } from './tour/tour';
-import { completeTour, loadTourState, planScreenTour, planTour, saveTourState, skipTour } from './tour/tourState';
+import { bindTourToData, completeTour, loadTourState, planScreenTour, planTour, saveTourState, skipTour } from './tour/tourState';
 
 const loadHistory = () => import('./screens/HistoryScreen');
 const loadAmortize = () => import('./screens/AmortizeScreen');
@@ -66,7 +66,17 @@ function applyWizard(prev: AppData, r: WizardResult): AppData {
     r.currentBalance > 0
       ? current && Math.abs(current.balance - r.currentBalance) < 0.005
         ? prev.checkpoints
-        : [...others, { id: uid(), yearMonth: ym, balance: r.currentBalance, source: 'banco' as const, createdAt: new Date().toISOString() }]
+        : [
+            ...others,
+            {
+              id: uid(),
+              yearMonth: ym,
+              balance: r.currentBalance,
+              ...(r.currentRemaining > 0 ? { remaining: r.currentRemaining } : {}),
+              source: 'banco' as const,
+              createdAt: new Date().toISOString(),
+            },
+          ]
       : r.balanceCleared
         ? others
         : prev.checkpoints;
@@ -227,8 +237,16 @@ export default function App() {
   };
   const overlayOpen = checkinOpen || dataOpen || contractOpen;
   const hasModel = Boolean(model);
+  // Os tutoriais vistos são dos dados de agora: dados novos começam do zero
+  useEffect(() => {
+    if (loaded) bindTourToData(data.createdAt, Boolean(data.contract));
+    // Só quando os dados trocam (abertura, banco novo ou recomeçar)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, data.createdAt]);
   const tourChecked = useRef(false);
   useEffect(() => {
+    // Sem financiamento (primeira abertura ou depois de recomeçar): o próximo cadastro tem boas-vindas
+    if (loaded && !hasModel) tourChecked.current = false;
     if (!loaded || !hasModel || tourChecked.current) return;
     tourChecked.current = true;
     const plan = planTour(screenStepIds('home'), loadTourState());

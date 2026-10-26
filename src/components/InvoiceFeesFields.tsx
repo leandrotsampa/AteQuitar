@@ -27,11 +27,12 @@ export function draftFromFees(f: InvoiceFees | undefined, split = false): FeesDr
   return { split: hasSplit, mip: f.mip ?? 0, dfi: f.dfi ?? 0, insurance: f.insurance, adminFee: f.adminFee };
 }
 
-// Valores previstos para o mês, já corrigidos a partir da fatura anterior
+// Valores previstos para o mês, já corrigidos a partir da fatura anterior. Abre no formato da
+// última fatura informada (`split`); com a previsão separada, o detalhe já vem pronto se abrir
 export function draftFromRow(row: ScheduleRow | undefined, split = false): FeesDraft {
   if (!row || !(row.fees > 0)) return emptyFeesDraft(split);
   const hasSplit = row.mip !== undefined && row.dfi !== undefined;
-  return { split: hasSplit, mip: row.mip ?? 0, dfi: row.dfi ?? 0, insurance: row.insurance, adminFee: row.adminFee };
+  return { split: hasSplit && split, mip: row.mip ?? 0, dfi: row.dfi ?? 0, insurance: row.insurance, adminFee: row.adminFee };
 }
 
 export const draftInsurance = (d: FeesDraft) => cents(d.split ? d.mip + d.dfi : d.insurance);
@@ -86,11 +87,12 @@ export const InvoiceFeesRows: React.FC<{
   onChange: (d: FeesDraft) => void;
 }> = ({ value: d, onChange }) => {
   const set = (patch: Partial<FeesDraft>) => onChange({ ...d, ...patch });
-  // Detalhar parte do total: sem detalhe anterior, o total vai para o DFI até a pessoa digitar o MIP
+  // Detalhar parte do total: com um DFI previsto, ele fica e o MIP é o resto (o detalhe soma o
+  // total digitado); sem previsão, o total vai para o DFI até a pessoa digitar o MIP
   const toggle = () =>
     d.split
       ? set({ split: false, insurance: draftInsurance(d) })
-      : set(d.mip + d.dfi > 0 ? { split: true } : { split: true, mip: 0, dfi: d.insurance });
+      : set(d.dfi > 0 && d.dfi < d.insurance ? { split: true, mip: cents(d.insurance - d.dfi) } : { split: true, mip: 0, dfi: d.insurance });
   return (
     <>
       <LedgerRow

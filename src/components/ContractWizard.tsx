@@ -55,6 +55,8 @@ export interface WizardResult {
   contract: Contract;
   // Saldo de hoje informado no último passo (opcional); 0 = não informado
   currentBalance: number;
+  // Parcelas que faltam hoje, segundo o banco (opcional); 0 = não informado
+  currentRemaining: number;
   // Havia saldo deste mês e a pessoa apagou o campo: remover
   balanceCleared: boolean;
 }
@@ -145,6 +147,7 @@ export const ContractWizard: React.FC<{
   }, []);
   // Saldo de hoje: só no primeiro cadastro
   const [balance, setBalance] = useState(0);
+  const [remainingNow, setRemainingNow] = useState(0);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const [rateUnit, setRateUnit] = useState<RateUnit>(() => initial?.rateInput ?? 'efetiva');
@@ -194,6 +197,7 @@ export const ContractWizard: React.FC<{
         rateInput: rateUnit,
       },
       currentBalance: initial ? 0 : balance,
+      currentRemaining: initial ? 0 : Math.round(remainingNow),
       balanceCleared: false,
     });
   };
@@ -486,9 +490,33 @@ export const ContractWizard: React.FC<{
                       )}
                     </div>
                   ) : (
-                    <Field label="Saldo devedor de hoje" help={HELP.currentBalance} optional hint="O que o app do banco mostra hoje. Depois, o check-in com a fatura calcula o saldo todo mês.">
-                      <MoneyField value={balance} onChange={setBalance} />
-                    </Field>
+                    <div className="space-y-4">
+                      {/* Para leigos: por que o saldo e o prazo de hoje importam num contrato que já anda */}
+                      <div className="p-4 rounded-2xl bg-anil-50 dark:bg-anil-500/10 text-sm text-anil-900 dark:text-anil-100 leading-relaxed">
+                        <b>Seu financiamento já tem um tempo?</b> Se você já amortizou, o saldo e o número de parcelas mudaram, e o contrato sozinho não sabe disso.
+                        Com os dois números de hoje, o app acerta as próximas parcelas <b>sem você precisar lançar o passado</b>. Não tem agora? O primeiro check-in com a
+                        fatura faz o mesmo.
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-4 items-start">
+                        <Field label="Saldo devedor de hoje" help={HELP.currentBalance} optional hint="O que o app do banco mostra hoje.">
+                          <MoneyField value={balance} onChange={setBalance} />
+                        </Field>
+                        <Field
+                          label="Parcelas que faltam"
+                          help={HELP.remaining}
+                          optional
+                          hint={
+                            remainingNow > 0 && !(balance > 0)
+                              ? 'Informe também o saldo de hoje: os dois juntos acertam as próximas parcelas.'
+                              : remainingNow > 0 && paidSoFar > 0 && Math.round(remainingNow) < c.termMonths - paidSoFar
+                              ? `Pelo contrato seriam ${c.termMonths - paidSoFar}: as amortizações já tiraram ${c.termMonths - paidSoFar - Math.round(remainingNow)} do fim.`
+                              : 'O "prazo atual" no app do banco.'
+                          }
+                        >
+                          <NumberField value={remainingNow} onChange={setRemainingNow} digits={0} ariaLabel="Parcelas que faltam" />
+                        </Field>
+                      </div>
+                    </div>
                   )}
                 </>
               )}

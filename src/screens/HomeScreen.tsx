@@ -45,6 +45,16 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
   const equity = contract.propertyValue > 0 ? Math.max(0, Math.min(1, 1 - summary.currentBalance / contract.propertyValue)) : null;
   const next = summary.next;
   const monthsLeft = summary.remainingCount;
+  // Prazo do contrato em partes: pagas + que faltam + eliminadas pelas amortizações = prazo
+  const term = Math.max(contract.termMonths, summary.paidCount + monthsLeft);
+  const eliminated = Math.max(0, term - summary.paidCount - monthsLeft);
+  const prazoParts = [
+    { key: 'pagas', label: 'Pagas', value: summary.paidCount, bar: 'bg-anil-500', dot: 'bg-anil-500', text: 'text-slate-900 dark:text-white' },
+    { key: 'faltam', label: 'Faltam', value: monthsLeft, bar: 'bg-slate-300 dark:bg-slate-600', dot: 'bg-slate-300 dark:bg-slate-600', text: 'text-slate-900 dark:text-white' },
+    ...(eliminated > 0
+      ? [{ key: 'eliminadas', label: 'Eliminadas ao amortizar', value: eliminated, bar: 'bg-emerald-400', dot: 'bg-emerald-400', text: 'text-emerald-700 dark:text-emerald-400' }]
+      : []),
+  ];
   // De onde vem o saldo de hoje: do último saldo real, mais as parcelas pagas desde então
   const real = model.lastRealBalance;
   const realIndex = real ? model.rows.findIndex((r) => r.yearMonth === real.yearMonth) : -1;
@@ -142,6 +152,7 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
             {monthsLeft > 0 ? (
               <>
                 <b className="text-slate-900 dark:text-white">{monthsLeft} parcelas</b> até {monthLong(summary.endYearMonth)}
+                <span className="text-slate-500 dark:text-slate-400"> · {formatDuration(monthsLeft)}</span>
               </>
             ) : (
               'Nenhuma parcela restante'
@@ -196,17 +207,41 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
             </div>
           )}
 
-          <div className="mt-auto pt-5 grid grid-cols-2 gap-2">
-            <div className={`${tile} p-3`}>
-              <div className="text-xs text-slate-500 dark:text-slate-400">Quitação em</div>
-              <div className="font-display font-bold text-slate-900 dark:text-white mt-0.5">{formatDuration(monthsLeft)}</div>
+          {/* O prazo do contrato em três partes que somam o total: pagas, que faltam e as que as
+              amortizações eliminaram do fim. Assim ninguém precisa fazer a conta de cabeça */}
+          <div className="mt-auto pt-5">
+          <div className={`${tile} p-3.5`}>
+            <div className="flex items-baseline justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <span>Prazo do contrato</span>
+              <span className="font-num font-semibold text-slate-700 dark:text-slate-200">{term} parcelas</span>
             </div>
-            <div className={`${tile} p-3`}>
-              <div className="text-xs text-slate-500 dark:text-slate-400">Parcelas pagas</div>
-              <div className="font-display font-bold text-slate-900 dark:text-white mt-0.5 tabular-nums">
-                {summary.paidCount} de {summary.totalCount}
-              </div>
+            <div
+              className="mt-2 flex h-2.5 gap-0.5 rounded-full overflow-hidden"
+              role="img"
+              aria-label={`${summary.paidCount} pagas, ${monthsLeft} faltam${eliminated > 0 ? `, ${eliminated} eliminadas ao amortizar` : ''}, de ${term}`}
+            >
+              {prazoParts.map((p) => (
+                <motion.span
+                  key={p.key}
+                  className={`h-full ${p.bar}`}
+                  initial={reduce ? false : { width: 0 }}
+                  animate={{ width: `${(p.value / term) * 100}%` }}
+                  transition={instantIf(reduce, { duration: 1, ease: EASE_OUT, delay: 0.3 })}
+                />
+              ))}
             </div>
+            <div className={`mt-2.5 grid gap-2 ${eliminated > 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+              {prazoParts.map((p) => (
+                <div key={p.key} className="min-w-0">
+                  <div className="flex items-center gap-1.5 text-[11px] text-slate-500 dark:text-slate-400 truncate">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${p.dot}`} />
+                    {p.label}
+                  </div>
+                  <div className={`font-display font-bold tabular-nums ${p.text}`}>{p.value}</div>
+                </div>
+              ))}
+            </div>
+          </div>
           </div>
         </div>
       </section>

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Contract } from '../types/finance';
 import { migrateCheckpoints } from './store';
-import { balanceFromInvoice, buildSchedule, effectiveExtra, lastDueBefore, lastPaidMonth, summarize, simulateExtra, compareSystems } from './finance';
+import { balanceFromInvoice, remainingFromInvoice, buildSchedule, effectiveExtra, lastDueBefore, lastPaidMonth, summarize, simulateExtra, compareSystems } from './finance';
 
 const base: Contract = {
   nickname: 'Teste',
@@ -239,5 +239,80 @@ describe('amortização extra', () => {
   it('o último vencimento antes da data respeita meses curtos', () => {
     expect(lastDueBefore(caixa, '2026-11-02').yearMonth).toBe('2026-10');
     expect(lastDueBefore({ ...caixa, dueDay: 31 }, '2026-03-01').date.getDate()).toBe(28);
+  });
+});
+
+describe('prazo de quem já amortizou', () => {
+  it('a fatura diz quantas parcelas faltam (SAC)', () => {
+    // Outubro: juros 2.978,16 e amortização 1.049,99; o app da Caixa mostrava "Prazo atual: 362"
+    expect(remainingFromInvoice(caixa, 2978.16, 1049.99)).toBe(362);
+    expect(remainingFromInvoice(caixa, 2982.93, 1048.79)).toBe(363);
+  });
+
+  it('valores que não fecham um prazo inteiro não mexem no prazo', () => {
+    expect(remainingFromInvoice(caixa, 2978.16, 1100)).toBeNull();
+  });
+
+  it('Price: pela fórmula da prestação', () => {
+    const price = { ...base, system: 'PRICE' as const };
+    const rows = buildSchedule(price);
+    const r = rows[9];
+    expect(remainingFromInvoice(price, Math.round(r.interest * 100) / 100, Math.round(r.amortization * 100) / 100)).toBe(110);
+  });
+
+  it('saldo real com o prazo real: as próximas parcelas seguem o banco', () => {
+    const rows = buildSchedule(caixa, { checkpoints: [{ id: 'c', yearMonth: '2026-10', balance: 380098.96, remaining: 362, source: 'banco' }] });
+    const oct = rows.findIndex((r) => r.yearMonth === '2026-10');
+    expect(rows.length).toBe(oct + 1 + 362);
+    // SAC: a amortização de novembro é o saldo corrigido dividido pelas 362 que faltam
+    expect(rows[oct + 1].amortization).toBeCloseTo((rows[oct + 1].openingBalance + rows[oct + 1].correction) / 362, 2);
+  });
+
+  it('antes do primeiro dado real, as parcelas são estimadas', () => {
+    const rows = buildSchedule(caixa, { checkpoints: [{ id: 'c', yearMonth: '2026-10', balance: 380000, source: 'banco' }] });
+    expect(rows.find((r) => r.yearMonth === '2026-09')!.estimated).toBe(true);
+    expect(rows.find((r) => r.yearMonth === '2026-10')!.estimated).toBe(false);
+    expect(buildSchedule(caixa).every((r) => r.estimated)).toBe(true);
+  });
+});
+
+describe('seguros só com o total', () => {
+  // TR das parcelas de outubro e novembro (período até o vencimento, como nas faturas)
+  const trFor = (ym: string) => (ym === '2026-10' ? 0.115 : ym === '2026-11' ? 0.163 : 0.17);
+  const sep = { yearMonth: '2026-09', insurance: 171.18, mip: 54.68, dfi: 116.5, adminFee: 25 };
+
+  it('divide o total pela última fatura detalhada: DFI corrigido pela TR, MIP o resto', () => {
+    const rows = buildSchedule(caixa, { trFor, invoices: [sep, { yearMonth: '2026-10', insurance: 171.23, adminFee: 25 }] });
+    const at = (ym: string) => rows.find((r) => r.yearMonth === ym)!;
+    expect(at('2026-10')).toMatchObject({ insurance: 171.23, dfi: 116.63, mip: 54.6 });
+    // Novembro: DFI 116,63 × 1,00163 e o MIP caindo com o saldo, como na fatura em aberto (171,37)
+    expect(at('2026-11').dfi).toBeCloseTo(116.82, 2);
+    expect(at('2026-11').mip!).toBeLessThan(54.6);
+    expect(Math.abs(at('2026-11').insurance - 171.37)).toBeLessThan(0.1);
+  });
+
+  it('com o saldo real no mês da fatura, o MIP de novembro quase não cai', () => {
+    // Antes de outubro, a tabela estimada (sem as amortizações antigas) fica bem acima do saldo real
+    const rows = buildSchedule(caixa, {
+      trFor,
+      invoices: [sep, { yearMonth: '2026-10', insurance: 171.23, adminFee: 25 }],
+      checkpoints: [{ id: 'c', yearMonth: '2026-10', balance: 380098.96, remaining: 362, source: 'fatura', createdAt: '' }],
+      actuals: [{ yearMonth: '2026-10', amortization: 1049.99, interest: 2978.16 }],
+    });
+    const nov = rows.find((r) => r.yearMonth === '2026-11')!;
+    // Fatura em aberto de novembro: Seguros 171,37
+    expect(Math.abs(nov.insurance - 171.37)).toBeLessThan(0.05);
+  });
+
+  it('sem nenhuma fatura detalhada, o total segue a TR', () => {
+    const rows = buildSchedule(caixa, { trFor, invoices: [{ yearMonth: '2026-10', insurance: 171.23, adminFee: 25 }] });
+    const nov = rows.find((r) => r.yearMonth === '2026-11')!;
+    expect(nov.mip).toBeUndefined();
+    expect(nov.insurance).toBeCloseTo(171.51, 2);
+  });
+
+  it('total menor que o DFI da divisão: fica só o total', () => {
+    const rows = buildSchedule(caixa, { trFor, invoices: [sep, { yearMonth: '2026-10', insurance: 100, adminFee: 25 }] });
+    expect(rows.find((r) => r.yearMonth === '2026-10')!.mip).toBeUndefined();
   });
 });

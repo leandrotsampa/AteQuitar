@@ -21,6 +21,8 @@ const cents = (v: number) => Math.round(v * 100) / 100;
 // Seguros e taxa de cada mês a partir da fatura de referência mais próxima (a última até o mês;
 // antes da primeira, a primeira vale para trás). O MIP é uma taxa sobre o saldo corrigido, o DFI
 // é corrigido pela TR como o saldo; só com o total, ele inteiro segue a TR. A taxa se repete.
+// Fatura só com o total (como a Caixa mostra a em aberto) é dividida pela última fatura detalhada
+// antes dela: o DFI é o dela corrigido pela TR, e o MIP, o resto do total.
 // Os saldos não dependem dos seguros, por isso o cálculo vem depois da tabela pronta
 function applyFees(rows: ScheduleRow[], refs: FeesReference[]): void {
   if (rows.length === 0 || refs.length === 0) return;
@@ -31,7 +33,21 @@ function applyFees(rows: ScheduleRow[], refs: FeesReference[]): void {
   // Índice acumulado da TR e saldo corrigido (base do MIP) de cada mês
   const cum: number[] = [];
   rows.forEach((r, k) => cum.push((k > 0 ? cum[k - 1] : 1) * (r.openingBalance > 0 ? 1 + r.correction / r.openingBalance : 1)));
-  const base = rows.map((r) => r.openingBalance + r.correction);
+  // Em mês com saldo real, a base é ele (o de antes da parcela), não o estimado que vinha da tabela
+  const base = rows.map((r) => (r.checkpoint ? r.closingBalance + r.amortization + r.extra : r.openingBalance + r.correction));
+
+  // Divide os totais usando a última fatura detalhada antes deles
+  const detailed = sorted.filter((f) => f.mip !== undefined && f.dfi !== undefined);
+  for (let n = 0; n < sorted.length; n++) {
+    const f = sorted[n];
+    if (f.mip !== undefined && f.dfi !== undefined) continue;
+    const from = [...detailed].reverse().find((d) => d.yearMonth < f.yearMonth);
+    if (!from) continue;
+    const dfi = cents(from.dfi! * (cum[rowOf(f.yearMonth)] / cum[rowOf(from.yearMonth)]));
+    const mip = cents(f.insurance - dfi);
+    // Total menor que o DFI: a divisão não serve (outro seguro, outra faixa); fica só o total
+    if (mip > 0) sorted[n] = { ...f, mip, dfi };
+  }
 
   let next = 0;
   rows.forEach((r, k) => {
@@ -96,6 +112,8 @@ export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): S
   }
   const checkpointByMonth = new Map((opts.checkpoints ?? []).map((c) => [c.yearMonth, c]));
   const actualByMonth = new Map((opts.actuals ?? []).map((a) => [a.yearMonth, a]));
+  // Primeiro mês com dado real: antes dele a tabela é só a do contrato
+  const firstReal = [...checkpointByMonth.keys(), ...actualByMonth.keys()].sort()[0];
 
   const rows: ScheduleRow[] = [];
   let balance = contract.financedAmount;
@@ -141,8 +159,13 @@ export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): S
     const afterCheckpoint = (e: ExtraPayment) => Boolean(cp && extraAfterCheckpoint(e, cp));
     monthExtras.filter((e) => !afterCheckpoint(e)).forEach(apply);
 
-    // Saldo real informado: passa a valer daqui em diante
+    // Saldo real informado: passa a valer daqui em diante. Com o prazo real junto, ele também:
+    // o saldo já inclui as amortizações de antes, e só as lançadas depois mexem no prazo de novo
     if (cp) balance = Math.max(0, cp.balance);
+    if (cp?.remaining && cp.remaining > 0) {
+      remaining = Math.round(cp.remaining);
+      mode = null;
+    }
     monthExtras.filter(afterCheckpoint).forEach(apply);
 
     if (balance <= EPS) {
@@ -171,6 +194,7 @@ export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): S
       closingBalance: balance,
       checkpoint: cp?.source ?? null,
       fromInvoice: Boolean(actual),
+      estimated: !firstReal || ym < firstReal,
     });
   }
   applyFees(rows, feeReferences(contract, opts.invoices));
@@ -379,4 +403,24 @@ export function lastPaidMonth(contract: Contract, paidMonths: ReadonlySet<string
   let ym = today.getDate() >= contract.dueDay ? now : addMonths(now, -1);
   while (paidMonths.has(addMonths(ym, 1))) ym = addMonths(ym, 1);
   return ym < contract.firstDueMonth ? null : ym;
+}
+
+// Parcelas que faltam depois desta, pela fatura: no SAC a amortização é o saldo corrigido dividido
+// pelas parcelas que faltam (contando esta); no Price, pela fórmula da prestação. Os valores da
+// fatura vêm arredondados: só vale se a conta der um número (quase) inteiro
+export function remainingFromInvoice(contract: Contract, interest: number, amortization: number): number | null {
+  const i = annualToMonthly(contract.annualRate) / 100;
+  if (!(i > 0) || !(interest > 0) || !(amortization > 0)) return null;
+  const corrected = interest / i;
+  let n: number;
+  if (contract.system === 'SAC') {
+    n = corrected / amortization;
+  } else {
+    const x = 1 - (corrected * i) / (amortization + interest);
+    if (!(x > 0)) return null;
+    n = -Math.log(x) / Math.log(1 + i);
+  }
+  const whole = Math.round(n);
+  if (Math.abs(n - whole) > 0.1 || whole < 1 || whole > contract.termMonths) return null;
+  return whole - 1;
 }

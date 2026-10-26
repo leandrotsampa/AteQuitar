@@ -112,6 +112,7 @@ function docToRows(doc) {
       fgts: optNum(c.fgts) || null,
       scheduled: c.scheduled ? 1 : 0,
       balance_source: c.balanceSource === 'fatura' || c.balanceSource === 'banco' ? c.balanceSource : null,
+      remaining_after: Number.isInteger(c.remainingAfter) && c.remainingAfter > 0 ? c.remainingAfter : null,
       created_at: str(c.createdAt) || new Date().toISOString(),
     });
   }
@@ -141,6 +142,7 @@ function docToRows(doc) {
       id: str(c.id) || `cp-${month}-${source}`,
       year_month: month,
       balance: num(c.balance),
+      remaining: Number.isInteger(c.remaining) && c.remaining > 0 ? c.remaining : null,
       source,
       created_at: typeof c.createdAt === 'string' && c.createdAt ? c.createdAt : null,
     });
@@ -209,6 +211,7 @@ function rowsToDoc(rows) {
         ...(c.fgts != null ? { fgts: c.fgts } : {}),
         ...(c.scheduled ? { scheduled: true } : {}),
         ...(c.balance_source ? { balanceSource: c.balance_source } : {}),
+        ...(c.remaining_after != null ? { remainingAfter: c.remaining_after } : {}),
         createdAt: c.created_at,
       };
     }),
@@ -227,6 +230,7 @@ function rowsToDoc(rows) {
       id: c.id,
       yearMonth: c.year_month,
       balance: c.balance,
+      ...(c.remaining != null ? { remaining: c.remaining } : {}),
       source: c.source,
       ...(c.created_at ? { createdAt: c.created_at } : {}),
     })),

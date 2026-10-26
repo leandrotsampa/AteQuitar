@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { completeTour, emptyTourState, markSeen, parseTourState, planScreenTour, planTour, skipTour } from './tourState';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { bindTourToData, completeTour, emptyTourState, loadTourState, markSeen, parseTourState, planScreenTour, planTour, saveTourState, skipTour } from './tourState';
 
 const BASE = ['casa', 'falta', 'marcos'];
 
@@ -68,5 +68,40 @@ describe('tutorial do cadastro', () => {
   it('quem já foi recebido continua recebido', () => {
     const recebido = completeTour(emptyTourState, BASE);
     expect(markSeen(recebido, CAD).welcomed).toBe(true);
+  });
+});
+
+describe('tutoriais ligados aos dados', () => {
+  const store = new Map<string, string>();
+  beforeEach(() => {
+    store.clear();
+    vi.stubGlobal('localStorage', {
+      getItem: (k: string) => store.get(k) ?? null,
+      setItem: (k: string, v: string) => void store.set(k, v),
+    });
+  });
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('os mesmos dados mantêm o que já foi visto', () => {
+    bindTourToData('dados-a', true);
+    saveTourState(markSeen(emptyTourState, ['cad-passos']));
+    bindTourToData('dados-a', true);
+    expect(loadTourState().seen).toEqual(['cad-passos']);
+  });
+
+  it('dados novos (banco excluído ou recomeçar) mostram os tutoriais de novo', () => {
+    bindTourToData('dados-a', true);
+    saveTourState(completeTour(emptyTourState, ['casa', 'cad-passos']));
+    bindTourToData('dados-b', false);
+    expect(loadTourState()).toEqual(emptyTourState);
+  });
+
+  it('registro de antes desta versão: fica com quem já tem financiamento, banco vazio começa do zero', () => {
+    store.set('atequitar_tour_v1', JSON.stringify({ welcomed: true, seen: ['casa'] }));
+    bindTourToData('dados-a', true);
+    expect(loadTourState().seen).toEqual(['casa']);
+    store.set('atequitar_tour_v1', JSON.stringify({ welcomed: true, seen: ['casa'] }));
+    bindTourToData('dados-b', false);
+    expect(loadTourState()).toEqual(emptyTourState);
   });
 });
