@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import {
   BookOpen,
@@ -84,6 +84,12 @@ export const Sidebar: React.FC<{
   const expanded = prefs.sidebar !== 'collapsed';
   const collapsed = !expanded;
   const reduce = Boolean(useReducedMotion());
+  // Dica do botão de recolher: mouse em cima ou foco pelo teclado; some no clique e só volta
+  // depois que o mouse sai e entra de novo
+  const [tipHover, setTipHover] = useState(false);
+  const [tipFocus, setTipFocus] = useState(false);
+  const [tipHidden, setTipHidden] = useState(false);
+  const showTip = (tipHover || tipFocus) && !tipHidden;
   const navRef = useRef<HTMLElement>(null);
   const pct = Math.round(progress * 100);
 
@@ -114,7 +120,18 @@ export const Sidebar: React.FC<{
           type="button"
           onClick={() => {
             playSound('tick');
+            setTipHidden(true);
             setPrefs({ sidebar: expanded ? 'collapsed' : 'expanded' });
+          }}
+          onMouseEnter={() => setTipHover(true)}
+          onMouseLeave={() => {
+            setTipHover(false);
+            setTipHidden(false);
+          }}
+          onFocus={(e) => setTipFocus(e.currentTarget.matches(':focus-visible'))}
+          onBlur={() => {
+            setTipFocus(false);
+            setTipHidden(false);
           }}
           aria-label={expanded ? 'Recolher menu' : 'Expandir menu'}
           aria-expanded={expanded}
@@ -134,7 +151,9 @@ export const Sidebar: React.FC<{
         </motion.button>
         <span
           role="tooltip"
-          className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 -translate-x-1 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:translate-x-0 transition-[opacity,translate] duration-[var(--duration-micro)] whitespace-nowrap flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-semibold shadow-lg"
+          className={`pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 transition-[opacity,translate] duration-[var(--duration-micro)] whitespace-nowrap ${
+            showTip ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-1'
+          } flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-semibold shadow-lg`}
         >
           {expanded ? 'Recolher menu' : 'Expandir menu'}
           <kbd className="px-1.5 py-0.5 rounded-md bg-white/15 dark:bg-slate-900/10 font-num text-[10px]">Ctrl B</kbd>
