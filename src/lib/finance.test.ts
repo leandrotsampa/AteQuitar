@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Contract } from '../types/finance';
-import { buildSchedule, summarize, simulateExtra, compareSystems } from './finance';
+import { migrateCheckpoints } from './store';
+import { balanceFromInvoice, buildSchedule, effectiveExtra, lastDueBefore, lastPaidMonth, summarize, simulateExtra, compareSystems } from './finance';
 
 const base: Contract = {
   nickname: 'Teste',
@@ -119,7 +120,7 @@ describe('buildSchedule', () => {
     });
     const june = rows.find((r) => r.yearMonth === '2020-06')!;
     expect(june.closingBalance).toBe(100000);
-    expect(june.checkpoint).toBe(true);
+    expect(june.checkpoint).toBe('banco');
     expect(rows[6].amortization).toBeCloseTo(100000 / 114, 2);
   });
 
@@ -134,9 +135,9 @@ describe('buildSchedule', () => {
     expect(june(undefined).closingBalance).toBe(100000);
   });
 
-  it('saldo do IR (31/12) já inclui as amortizações de dezembro', () => {
+  it('saldo do IR das versões antigas (31/12) continua incluindo as amortizações de dezembro', () => {
     const rows = buildSchedule(base, {
-      checkpoints: [{ id: 'c', yearMonth: '2020-12', balance: 95000, source: 'ir' }],
+      checkpoints: migrateCheckpoints([{ id: 'c', yearMonth: '2020-12', balance: 95000, source: 'ir' }]),
       extras: [{ id: 'x', yearMonth: '2020-12', amount: 5000, mode: 'prazo', source: 'proprio', createdAt: '2021-03-01T00:00:00.000Z' }],
     });
     expect(rows.find((r) => r.yearMonth === '2020-12')!.closingBalance).toBe(95000);
@@ -181,5 +182,62 @@ describe('compareSystems', () => {
     const c = compareSystems(base);
     expect(c.sac.totalInterest).toBeLessThan(c.price.totalInterest);
     expect(c.sac.firstPayment).toBeGreaterThan(c.price.firstPayment);
+  });
+});
+
+// Contrato como o das faturas reais: 9,79% ao ano, vencimento dia 5
+const caixa: Contract = { ...base, financedAmount: 388000, annualRate: 9.79, termMonths: 420, firstDueMonth: '2026-03', dueDay: 5, trIndexed: true };
+
+describe('fatura do check-in', () => {
+  it('calcula o saldo depois da parcela pelos juros e pela amortização', () => {
+    // Agosto: juros 2.985,98 e amortização 1.046,98; o banco mostrou 381.102,47
+    expect(balanceFromInvoice(caixa, 2985.98, 1046.98)!).toBeCloseTo(381102.47, -1);
+    // Setembro: o banco mostrou 380.711,09 (juros arredondados: poucos reais de diferença)
+    expect(Math.abs(balanceFromInvoice(caixa, 2982.93, 1048.79)! - 380711.09)).toBeLessThan(10);
+  });
+
+  it('amortização e juros da fatura valem no lugar dos calculados', () => {
+    const rows = buildSchedule(base, { actuals: [{ yearMonth: '2020-02', amortization: 1500, interest: 1100 }] });
+    expect(rows[1]).toMatchObject({ amortization: 1500, interest: 1100, fromInvoice: true });
+    expect(rows[1].closingBalance).toBeCloseTo(rows[0].closingBalance - 1500, 2);
+    expect(rows[2].fromInvoice).toBe(false);
+  });
+
+  it('o saldo calculado pela fatura vira ponto real, e a amortização extra do mês abate em cima', () => {
+    const rows = buildSchedule(base, {
+      checkpoints: [{ id: 'c', yearMonth: '2020-03', balance: 100000, source: 'fatura', createdAt: '' }],
+      extras: [{ id: 'e', yearMonth: '2020-03', amount: 5000, mode: 'parcela', source: 'proprio', createdAt: '2020-03-20T00:00:00.000Z' }],
+    });
+    expect(rows[2].closingBalance).toBeCloseTo(95000, 2);
+    expect(rows[2].checkpoint).toBe('fatura');
+  });
+});
+
+describe('parcela paga', () => {
+  it('o check-in de parcela já paga conta antes do vencimento', () => {
+    const rows = buildSchedule(caixa);
+    const day2 = new Date(2026, 10, 2); // 02/11, antes do vencimento do dia 5
+    expect(summarize(caixa, rows, day2).paidCount).toBe(8); // até outubro
+    expect(summarize(caixa, rows, day2, new Set(['2026-11'])).paidCount).toBe(9);
+  });
+
+  it('o saldo de hoje é o de depois da última parcela paga', () => {
+    expect(lastPaidMonth(caixa, new Set(), new Date(2026, 9, 26))).toBe('2026-10');
+    expect(lastPaidMonth(caixa, new Set(), new Date(2026, 10, 2))).toBe('2026-10');
+    expect(lastPaidMonth(caixa, new Set(['2026-11']), new Date(2026, 10, 2))).toBe('2026-11');
+    expect(lastPaidMonth(caixa, new Set(), new Date(2026, 1, 10))).toBeNull();
+  });
+});
+
+describe('amortização extra', () => {
+  it('desconta os juros pro rata desde o último vencimento', () => {
+    // App da Caixa em 26/10: R$ 2.000 pagos, R$ 1.989,07 de amortização efetiva
+    expect(effectiveExtra(caixa, 2000, '2026-10-26')).toBeCloseTo(1989.07, 0);
+    expect(effectiveExtra(caixa, 2000, '2026-10-05')).toBe(2000);
+  });
+
+  it('o último vencimento antes da data respeita meses curtos', () => {
+    expect(lastDueBefore(caixa, '2026-11-02').yearMonth).toBe('2026-10');
+    expect(lastDueBefore({ ...caixa, dueDay: 31 }, '2026-03-01').date.getDate()).toBe(28);
   });
 });

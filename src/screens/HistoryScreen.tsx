@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { BadgeCheck, CalendarCheck2, FileText, Landmark, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
+import { BadgeCheck, CalendarCheck2, Landmark, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
 import type { ScreenProps } from './types';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
@@ -12,9 +12,11 @@ import { currentYearMonth, formatBRL, monthLong, monthShort, uid } from '../lib/
 import { EASE_OUT } from '../lib/motion';
 import { playSound } from '../hooks/useSound';
 import type { ExtraMode, ExtraSource } from '../types/finance';
+import { ExtraPaymentFields, draftFromExtra, extraEffective, type ExtraDraft } from '../components/ExtraPaymentFields';
+import { lastDueBefore } from '../lib/finance';
 
 type Tab = 'table' | 'records';
-type AddKind = 'banco' | 'ir' | 'extra' | null;
+type AddKind = 'banco' | 'extra' | null;
 
 export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, openCheckin }) => {
   const { rows, summary } = model;
@@ -23,7 +25,6 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
   const currentYear = (summary.next?.yearMonth ?? rows[rows.length - 1]?.yearMonth ?? currentYearMonth()).slice(0, 4);
   const [year, setYear] = useState(years.includes(currentYear) ? currentYear : years[0]);
   const checkinMonths = new Set(data.checkins.map((c) => c.yearMonth));
-  const extraMonths = new Set(data.extras.map((e) => e.yearMonth));
   const balanceMonths = new Set(data.checkpoints.map((c) => c.yearMonth));
   const yearRows = rows.filter((r) => r.yearMonth.startsWith(year));
   // Parcelas já pagas (e a próxima) ainda sem a TR oficial do Banco Central
@@ -40,6 +41,9 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
   const [formValue, setFormValue] = useState(0);
   const [formMode, setFormMode] = useState<ExtraMode>('prazo');
   const [formSource, setFormSource] = useState<ExtraSource>('proprio');
+  // Amortização extra: valor pago, data e efetiva (como no check-in)
+  const [extraDraft, setExtraDraft] = useState<ExtraDraft>(() => draftFromExtra(model.contract, undefined));
+  const extraEff = extraEffective(model.contract, extraDraft);
   const closeForm = () => {
     setAdding(null);
     setEditingId(null);
@@ -51,21 +55,30 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
     setFormValue(0);
     setFormMode('prazo');
     setFormSource('proprio');
-    setFormYm(k === 'ir' ? `${Number(currentYearMonth().slice(0, 4)) - 1}-12` : currentYearMonth());
+    setExtraDraft(draftFromExtra(model.contract, undefined));
+    setFormYm(currentYearMonth());
   };
   const saveAdd = () => {
-    if (!(formValue > 0) || !adding) return;
+    if (!adding) return;
     if (adding === 'extra') {
+      if (!(extraEff > 0)) return;
       const id = editingId ?? uid();
+      // Entra depois da última parcela vencida até a data do pagamento
+      const due = lastDueBefore(model.contract, extraDraft.date).yearMonth;
+      const yearMonth = due < model.contract.firstDueMonth ? model.contract.firstDueMonth : due;
       update((prev) => {
         // Editar não muda quando o pagamento foi lançado
         const createdAt = prev.extras.find((e) => e.id === id)?.createdAt ?? new Date().toISOString();
         return {
           ...prev,
-          extras: [...prev.extras.filter((e) => e.id !== id), { id, yearMonth: formYm, amount: formValue, mode: formMode, source: formSource, createdAt }],
+          extras: [
+            ...prev.extras.filter((e) => e.id !== id),
+            { id, yearMonth, amount: extraEff, paid: extraDraft.paid > 0 ? extraDraft.paid : extraEff, date: extraDraft.date, mode: formMode, source: formSource, createdAt },
+          ],
         };
       });
     } else {
+      if (!(formValue > 0)) return;
       update((prev) => ({
         ...prev,
         checkpoints: [
@@ -79,7 +92,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
     closeForm();
   };
 
-  type Rec = { id: string; ym: string; kind: 'checkin' | 'extra' | 'banco' | 'ir'; title: string; value: number; detail?: string };
+  type Rec = { id: string; ym: string; kind: 'checkin' | 'extra' | 'banco'; title: string; value: number; detail?: string };
   const records: Rec[] = [
     ...data.checkins.map((c) => ({
       id: c.id,
@@ -87,7 +100,11 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
       kind: 'checkin' as const,
       title: 'Check-in',
       value: c.paidAmount,
-      detail: c.balanceAfter ? `saldo informado ${formatBRL(c.balanceAfter)}` : 'parcela paga',
+      detail: c.balanceAfter
+        ? `saldo depois: ${formatBRL(c.balanceAfter)}${c.balanceSource === 'fatura' ? ' (pela fatura)' : ''}`
+        : c.scheduled
+          ? 'agendada no débito'
+          : 'parcela paga',
     })),
     ...data.extras.map((e) => ({
       id: e.id,
@@ -95,13 +112,13 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
       kind: 'extra' as const,
       title: e.source === 'fgts' ? 'Amortização com FGTS' : e.source === 'decimo' ? 'Amortização com 13º' : 'Amortização extra',
       value: e.amount,
-      detail: e.mode === 'prazo' ? 'reduziu o prazo' : 'reduziu a parcela',
+      detail: `${e.paid && e.paid > e.amount + 0.005 ? `pagou ${formatBRL(e.paid)}, ` : ''}${e.mode === 'prazo' ? 'reduziu o prazo' : 'reduziu a parcela'}`,
     })),
     ...data.checkpoints.map((c) => ({
       id: c.id,
       ym: c.yearMonth,
       kind: c.source,
-      title: c.source === 'ir' ? 'Saldo do extrato do IR' : 'Saldo do banco',
+      title: 'Saldo do banco',
       value: c.balance,
       detail: 'saldo devedor real',
     })),
@@ -120,6 +137,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
     setFormValue(r.value);
     setFormMode(extra?.mode ?? 'prazo');
     setFormSource(extra?.source ?? 'proprio');
+    if (extra) setExtraDraft(draftFromExtra(model.contract, extra));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -134,17 +152,16 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
             ? prev.checkins.map((c) => (c.extraId === r.id ? { ...c, extraId: undefined } : c))
             : prev.checkins,
       extras: r.kind === 'extra' ? prev.extras.filter((e) => e.id !== r.id) : prev.extras,
-      checkpoints: r.kind === 'banco' || r.kind === 'ir' ? prev.checkpoints.filter((c) => c.id !== r.id) : prev.checkpoints,
+      checkpoints: r.kind === 'banco' ? prev.checkpoints.filter((c) => c.id !== r.id) : prev.checkpoints,
     }));
     playSound('delete');
   };
 
-  const kindIcon = { checkin: CalendarCheck2, extra: Wallet, banco: Landmark, ir: FileText } as const;
+  const kindIcon = { checkin: CalendarCheck2, extra: Wallet, banco: Landmark } as const;
   const kindTone = {
     checkin: 'bg-anil-100 text-anil-700 dark:bg-anil-500/15 dark:text-anil-300',
     extra: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300',
     banco: 'bg-sky-100 text-sky-700 dark:bg-sky-500/15 dark:text-sky-300',
-    ir: 'bg-sol-100 text-sol-700 dark:bg-sol-400/15 dark:text-sol-300',
   } as const;
 
   return (
@@ -265,7 +282,11 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                         </td>
                         <td className="px-5 py-2.5 text-right font-num font-semibold text-slate-900 dark:text-white">
                           {formatBRL(r.closingBalance)}
-                          {r.checkpoint && <div className="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">valor do banco</div>}
+                          {r.checkpoint && (
+                            <div className="text-[11px] text-sky-600 dark:text-sky-400 font-semibold">
+                              {r.checkpoint === 'fatura' ? 'pela fatura' : 'valor do banco'}
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );
@@ -283,9 +304,6 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
             </button>
             <button type="button" onClick={() => openAdd('banco')} className={btnGhost}>
               <Landmark className="w-4 h-4" /> Saldo do banco
-            </button>
-            <button type="button" onClick={() => openAdd('ir')} className={btnGhost}>
-              <FileText className="w-4 h-4" /> Saldo do extrato do IR
             </button>
             <button type="button" onClick={() => openAdd('extra')} className={btnGhost}>
               <Plus className="w-4 h-4" /> Amortização extra
@@ -306,72 +324,64 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                     {editingId
                       ? adding === 'extra'
                         ? 'Editar amortização extra'
-                        : adding === 'ir'
-                          ? 'Editar saldo do extrato do Imposto de Renda'
-                          : 'Editar saldo devedor do banco'
+                        : 'Editar saldo devedor do banco'
                       : adding === 'extra'
                         ? 'Registrar amortização extra'
-                        : adding === 'ir'
-                          ? 'Saldo do extrato do Imposto de Renda'
-                          : 'Saldo devedor do banco'}
+                        : 'Saldo devedor do banco'}
                   </h3>
-                  <div className="grid sm:grid-cols-[220px_minmax(0,240px)] xl:grid-cols-[220px_minmax(0,240px)_auto_auto] gap-4 items-start mt-4">
-                    <Field label={adding === 'ir' ? 'Mês de referência' : 'Mês'}>
-                      <MonthField
-                        value={formYm}
-                        onChange={setFormYm}
-                        ariaLabel={adding === 'ir' ? 'Mês de referência' : 'Mês'}
-                        min={model.contract.firstDueMonth}
-                        max={currentYearMonth()}
-                        marked={adding === 'extra' ? extraMonths : balanceMonths}
-                        markedLabel={adding === 'extra' ? 'já amortizou' : 'saldo registrado'}
-                      />
-                    </Field>
-                    <Field
-                      label={adding === 'extra' ? 'Valor amortizado' : 'Saldo devedor'}
-                      help={adding === 'ir' ? HELP.irBalance : adding === 'banco' ? HELP.currentBalance : undefined}
-                    >
-                      <MoneyField value={formValue} onChange={setFormValue} />
-                    </Field>
-                    {adding === 'extra' && (
-                      <Field label="De onde veio">
-                        <SegmentedControl
-                          ariaLabel="De onde veio"
-                          layoutId="add-source"
-                          value={formSource}
-                          onChange={setFormSource}
-                          className="w-60"
-                          options={[
-                            { value: 'proprio', label: 'Próprio' },
-                            { value: 'fgts', label: 'FGTS' },
-                            { value: 'decimo', label: '13º' },
-                          ]}
+                  {adding === 'extra' ? (
+                    <div className="mt-4 space-y-4 max-w-3xl">
+                      <ExtraPaymentFields contract={model.contract} value={extraDraft} onChange={setExtraDraft} showMonth />
+                      <div className="flex flex-wrap gap-x-6 gap-y-4">
+                        <Field label="De onde veio o dinheiro">
+                          <SegmentedControl
+                            ariaLabel="De onde veio o dinheiro"
+                            layoutId="add-source"
+                            value={formSource}
+                            onChange={setFormSource}
+                            className="w-64"
+                            options={[
+                              { value: 'proprio', label: 'Próprio' },
+                              { value: 'fgts', label: 'FGTS' },
+                              { value: 'decimo', label: '13º' },
+                            ]}
+                          />
+                        </Field>
+                        <Field label="O que você reduziu">
+                          <SegmentedControl
+                            ariaLabel="O que você reduziu"
+                            layoutId="add-mode"
+                            value={formMode}
+                            onChange={setFormMode}
+                            className="w-52"
+                            options={[
+                              { value: 'prazo', label: 'Prazo' },
+                              { value: 'parcela', label: 'Parcela' },
+                            ]}
+                          />
+                        </Field>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid sm:grid-cols-[220px_minmax(0,240px)] gap-4 items-start mt-4">
+                      <Field label="Mês">
+                        <MonthField
+                          value={formYm}
+                          onChange={setFormYm}
+                          ariaLabel="Mês"
+                          min={model.contract.firstDueMonth}
+                          max={currentYearMonth()}
+                          marked={balanceMonths}
+                          markedLabel="saldo registrado"
                         />
                       </Field>
-                    )}
-                    {adding === 'extra' && (
-                      <Field label="Reduziu">
-                        <SegmentedControl
-                          ariaLabel="Reduziu"
-                          layoutId="add-mode"
-                          value={formMode}
-                          onChange={setFormMode}
-                          className="w-48"
-                          options={[
-                            { value: 'prazo', label: 'Prazo' },
-                            { value: 'parcela', label: 'Parcela' },
-                          ]}
-                        />
+                      <Field label="Saldo devedor" help={HELP.currentBalance}>
+                        <MoneyField value={formValue} onChange={setFormValue} />
                       </Field>
-                    )}
-                  </div>
-                  {adding === 'ir' && (
-                    <div className={`${tile} p-3 mt-4 text-sm text-slate-600 dark:text-slate-300`}>
-                      O extrato do IR mostra o saldo em 31 de dezembro. Por isso já deixamos <b>dezembro de {formYm.slice(0, 4)}</b> selecionado.
                     </div>
                   )}
                   <div className="flex gap-2 mt-5">
-                    <button type="button" onClick={saveAdd} disabled={!(formValue > 0)} className={btnPrimary}>
+                    <button type="button" onClick={saveAdd} disabled={adding === 'extra' ? !(extraEff > 0) : !(formValue > 0)} className={btnPrimary}>
                       {editingId ? 'Salvar alteração' : 'Salvar'}
                     </button>
                     <button type="button" onClick={closeForm} className={btnGhost}>

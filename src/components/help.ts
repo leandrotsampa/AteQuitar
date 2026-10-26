@@ -70,9 +70,4 @@ export const HELP = {
     body: 'Quanto você ainda deve, segundo o banco. Com ele os números do app ficam exatos em vez de estimados.',
     where: 'No app da Caixa: Habitação → seu contrato → "Saldo devedor".\nNos outros bancos: Habitação (ou Financiamento) → "Saldo devedor". Não use o "valor para quitação", que pode vir com desconto.',
   },
-  irBalance: {
-    title: 'Saldo do extrato do IR',
-    body: 'Todo início de ano o banco publica o extrato para o Imposto de Renda com o saldo devedor em 31 de dezembro. Cadastre um por ano: vira um ponto real no gráfico.',
-    where: 'App ou site do banco → Habitação → "Extrato para Imposto de Renda" (ou "Informe de rendimentos").',
-  },
 } satisfies Record<string, HelpContent>;

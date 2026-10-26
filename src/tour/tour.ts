@@ -41,7 +41,7 @@ const HOME_STEPS: TourStep[] = [
     id: 'checkin',
     title: 'Check-in do mês',
     description: () =>
-      'Todo mês, depois do vencimento, registre a parcela paga. Leva menos de um minuto e, se você informar o saldo do app do banco, os números ficam exatos.',
+      'Todo mês, registre a fatura da parcela copiando o detalhe do app do banco. Leva menos de um minuto, e pelos juros e pela amortização o app calcula o saldo exato.',
     side: 'bottom',
     align: 'center',
   },
@@ -98,7 +98,7 @@ const HISTORY_STEPS: TourStep[] = [
     id: 'hist-abas',
     title: 'Seus registros',
     description: () =>
-      'Em <b>Registros</b> ficam os check-ins, as amortizações extras e os saldos do banco e do <b>extrato do Imposto de Renda</b>. Dá para adicionar e excluir.',
+      'Em <b>Registros</b> ficam os check-ins, as amortizações extras e os saldos do banco. Dá para adicionar, editar e excluir.',
     side: 'bottom',
     align: 'end',
   },

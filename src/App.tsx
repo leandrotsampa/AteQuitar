@@ -9,6 +9,7 @@ import { useAppDialog } from './components/ui/AppDialog';
 import type { WizardResult } from './components/ContractWizard';
 import { useAppData, type AppData } from './lib/store';
 import { useFinanceModel } from './lib/model';
+import { lastPaidMonth } from './lib/finance';
 import { fetchMarketRates, missingTrMonths, shouldRefresh } from './lib/rates';
 import { runThemeWipe } from './lib/themeTransition';
 import { EASE_OUT, instantIf } from './lib/motion';
@@ -50,9 +51,14 @@ const preloadAll = () => {
 
 const THEME_KEY = 'atequitar_theme';
 
-// Aplica o resultado do assistente: contrato e, se veio, o saldo de hoje como ponto real
+// Parcelas que o check-in disse que já foram pagas
+const paidMonthsOf = (d: AppData) => new Set(d.checkins.filter((c) => !c.scheduled).map((c) => c.yearMonth));
+
+// Aplica o resultado do assistente: contrato e, se veio, o saldo de hoje como ponto real. O saldo
+// de hoje é o de depois da última parcela paga: antes do vencimento, a do mês anterior
 function applyWizard(prev: AppData, r: WizardResult): AppData {
-  const ym = currentYearMonth();
+  const ym = lastPaidMonth(r.contract, paidMonthsOf(prev));
+  if (!ym) return { ...prev, contract: r.contract, isDemo: false };
   const current = prev.checkpoints.find((c) => c.yearMonth === ym && c.source === 'banco');
   const others = prev.checkpoints.filter((c) => c !== current);
   // Mesmo saldo de antes: continua o mesmo registro (e a mesma data em que foi informado)
@@ -196,7 +202,8 @@ export default function App() {
   const [contractOpen, setContractOpen] = useState(false);
   // Saldos do banco informados: o deste mês (editável no cadastro) e o mais recente (referência)
   const bankBalances = data.checkpoints.filter((c) => c.source === 'banco').sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
-  const bankBalanceNow = bankBalances.find((c) => c.yearMonth === currentYearMonth());
+  const balanceYm = data.contract ? lastPaidMonth(data.contract, paidMonthsOf(data)) : null;
+  const bankBalanceNow = bankBalances.find((c) => c.yearMonth === balanceYm);
   const lastBankBalance = bankBalances.at(-1);
   const [onboardingStage, setOnboardingStage] = useState<'welcome' | 'wizard'>('welcome');
 
@@ -423,9 +430,8 @@ export default function App() {
               <Suspense fallback={<div className="skeleton h-96 rounded-3xl" />}>
               <ContractWizard
                 initial={model.contract}
-                invoiceInCheckin={data.checkins.some((c) => c.fees)}
                 initialBalance={bankBalanceNow?.balance ?? 0}
-                lastBalance={lastBankBalance && lastBankBalance.yearMonth !== currentYearMonth() ? lastBankBalance : undefined}
+                lastBalance={lastBankBalance && lastBankBalance.yearMonth !== balanceYm ? lastBankBalance : undefined}
                 dark={dark}
                 onCancel={() => setContractOpen(false)}
                 onSave={(r) => {

@@ -7,7 +7,7 @@ import { DURATION, EASE_OUT } from '../../lib/motion';
 export interface HelpContent {
   title: string;
   body: React.ReactNode;
-  // Onde achar a informação (contrato, app do banco, extrato do IR)
+  // Onde achar a informação (contrato, app do banco)
   where?: React.ReactNode;
 }
 

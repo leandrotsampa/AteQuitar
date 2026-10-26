@@ -1,17 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { ArrowLeft, ArrowRight, Check, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, CalendarClock, CalendarDays, Check, CircleCheck, X } from 'lucide-react';
 import { ModalShell } from './ui/ModalShell';
 import { Field } from './ui/HelpTip';
 import { MoneyField, MonthField } from './ui/Inputs';
 import { btnGhost, btnPrimary, tile } from './ui/card';
 import { celebrate } from './ui/Confetti';
-import { HELP } from './help';
-import { InvoiceFeesFields, draftFromFees, draftFromRow, draftTotal, feesFromDraft, type FeesDraft } from './InvoiceFeesFields';
+import { InvoiceFeesRows, LedgerRow, draftFromFees, draftFromRow, draftTotal, feesFromDraft, type FeesDraft } from './InvoiceFeesFields';
 import type { FinanceModel } from '../lib/model';
 import type { AppData } from '../lib/store';
-import type { ExtraMode, ExtraSource } from '../types/finance';
-import { buildSchedule, summarize } from '../lib/finance';
+import type { ExtraMode, ExtraPayment, ExtraSource, ScheduleCheckpoint } from '../types/finance';
+import { balanceFromInvoice, buildSchedule, effectiveExtra, summarize } from '../lib/finance';
+import { ExtraPaymentFields, extraEffective, todayIso } from './ExtraPaymentFields';
 import { currentYearMonth, formatBRL, formatPct, monthLong, monthName, uid } from '../lib/format';
 import { pendingCheckinMonth } from '../lib/insights';
 import { EASE_OUT } from '../lib/motion';
@@ -23,6 +23,15 @@ const SOURCES: { v: ExtraSource; l: string }[] = [
   { v: 'decimo', l: '13º salário' },
 ];
 
+const cents = (v: number) => Math.round(v * 100) / 100;
+// Saldo calculado pela fatura muito longe do previsto: quase sempre é a taxa do cadastro
+const FAR_FROM_FORECAST = 0.1;
+
+const pill = (active: boolean) =>
+  `h-10 px-4 rounded-full text-sm font-semibold cursor-pointer transition-colors ${
+    active ? 'bg-anil-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+  }`;
+
 export const CheckinModal: React.FC<{
   model: FinanceModel;
   data: AppData;
@@ -33,6 +42,7 @@ export const CheckinModal: React.FC<{
   onClose: () => void;
 }> = ({ model, data, update, month, onClose }) => {
   const reduce = Boolean(useReducedMotion());
+  const { contract } = model;
   // Último mês vencido e a próxima parcela: dá para registrar a próxima com antecedência
   // (paga adiantada ou já agendada no débito automático), mas não meses além dela
   const lastDueYm = model.summary.paidCount > 0 ? model.rows[model.summary.paidCount - 1].yearMonth : null;
@@ -50,75 +60,121 @@ export const CheckinModal: React.FC<{
   const row = model.rows.find((r) => r.yearMonth === ym);
   const checkedMonths = useMemo(() => new Set(data.checkins.map((c) => c.yearMonth)), [data.checkins]);
   const existing = data.checkins.find((c) => c.yearMonth === ym);
-  const [paid, setPaid] = useState(existing?.paidAmount ?? row?.payment ?? 0);
-  const [balance, setBalance] = useState(existing?.balanceAfter ?? 0);
-  // Faturas já informadas (cadastro e check-ins): a mais recente decide se vêm separados
+
+  // Faturas já informadas: a mais recente decide se os seguros vêm detalhados
   const refs = useMemo(
-    () => [...(model.contract.feesRef ? [model.contract.feesRef] : []), ...(model.options.invoices ?? [])].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)),
-    [model.contract.feesRef, model.options.invoices]
+    () => [...(contract.feesRef ? [contract.feesRef] : []), ...(model.options.invoices ?? [])].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)),
+    [contract.feesRef, model.options.invoices]
   );
-  const lastSplit = refs.length > 0 ? refs[refs.length - 1].mip !== undefined : true;
-  // Seguros do mês: os da fatura já informada, ou os previstos a partir da anterior
-  const feesFor = (month: string): FeesDraft => {
-    const ci = data.checkins.find((c) => c.yearMonth === month);
-    return ci?.fees ? draftFromFees(ci.fees) : draftFromRow(model.rows.find((r) => r.yearMonth === month), lastSplit);
-  };
-  const [fees, setFees] = useState<FeesDraft>(() => feesFor(ym));
-  // Amortização extra que este check-in já registrou: reabre preenchida e é alterada, não duplicada
-  const extraOf = (month: string) => {
-    const ci = data.checkins.find((c) => c.yearMonth === month);
+  const lastSplit = refs.length > 0 && refs[refs.length - 1].mip !== undefined;
+  const extraOf = (m: string) => {
+    const ci = data.checkins.find((c) => c.yearMonth === m);
     return ci?.extraId ? data.extras.find((e) => e.id === ci.extraId) : undefined;
   };
-  const initialExtra = extraOf(ym);
-  const [hasExtra, setHasExtra] = useState(Boolean(initialExtra));
-  const [extra, setExtra] = useState(initialExtra?.amount ?? 0);
-  const [mode, setMode] = useState<ExtraMode>(initialExtra?.mode ?? 'prazo');
-  const [source, setSource] = useState<ExtraSource>(initialExtra?.source ?? 'proprio');
+
+  // Tudo o que a tela mostra de um mês: a fatura já registrada ou a previsão
+  const load = (m: string) => {
+    const ci = data.checkins.find((c) => c.yearMonth === m);
+    const r = model.rows.find((x) => x.yearMonth === m);
+    const e = extraOf(m);
+    return {
+      amort: cents(ci?.amortization ?? r?.amortization ?? 0),
+      interest: cents(ci?.interest ?? r?.interest ?? 0),
+      fees: ci?.fees ? draftFromFees(ci.fees) : draftFromRow(r, lastSplit),
+      charges: ci?.charges ?? 0,
+      fgts: ci?.fgts ?? 0,
+      // Adiantada sem registro: o comum é o débito automático agendado
+      scheduled: ci ? Boolean(ci.scheduled) : true,
+      hasExtra: Boolean(e),
+      extraPaid: e?.paid ?? e?.amount ?? 0,
+      extraDate: e?.date ?? todayIso(),
+      extraEff: e?.amount ?? 0,
+      // Amortização efetiva copiada do banco (diferente da estimativa): não recalcula sozinha
+      effEdited: Boolean(e && (e.paid === undefined || Math.abs(effectiveExtra(contract, e.paid, e.date ?? todayIso()) - e.amount) > 0.005)),
+      mode: e?.mode ?? ('prazo' as ExtraMode),
+      source: e?.source ?? ('proprio' as ExtraSource),
+    };
+  };
+  const [f, setF] = useState(() => load(ym));
+  // O que veio preenchido ao abrir o mês: só o que for diferente disso foi copiado da fatura
+  // (as taxas podem atualizar com a tela aberta e mudar a previsão por baixo)
+  const [prefill, setPrefill] = useState(() => ({ amort: f.amort, interest: f.interest }));
+  const set = (patch: Partial<typeof f>) => setF((prev) => ({ ...prev, ...patch }));
+  const [moreLines, setMoreLines] = useState(f.charges > 0 || f.fgts > 0);
   const linkedExtra = extraOf(ym);
   // As outras amortizações (sem a deste check-in), para as prévias não contarem duas vezes
   const otherExtras = data.extras.filter((e) => e.id !== linkedExtra?.id);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
-  const [done, setDone] = useState<{ before: number; after: number } | null>(null);
+  const [done, setDone] = useState<{ before: number; after: number; scheduled: boolean } | null>(null);
 
   // Parcela que ainda não venceu (registro adiantado)
   const ahead = Boolean(lastDueYm ? ym > lastDueYm : nextYm && ym >= nextYm);
-  // Fatura de onde vêm os valores previstos deste mês (a última antes dele, ou a primeira)
-  const refFor = (month: string) => [...refs].reverse().find((f) => f.yearMonth <= month) ?? refs.find((f) => f.yearMonth > month);
-  const feesSource = existing?.fees ? null : refFor(ym);
-  // Nenhuma fatura informada ainda: a diferença entre o pago e a parcela sem seguros quase sempre são eles
-  const feesGap = refs.length === 0 && draftTotal(fees) === 0 && row ? paid - (row.amortization + row.interest) : 0;
-  const showFeesGap = feesGap > 1 && row ? feesGap < row.payment * 0.2 : false;
 
   const changeMonth = (v: string) => {
     setYm(v);
-    const r = model.rows.find((x) => x.yearMonth === v);
-    const ex = data.checkins.find((c) => c.yearMonth === v);
-    setPaid(ex?.paidAmount ?? r?.payment ?? 0);
-    setBalance(ex?.balanceAfter ?? 0);
-    setFees(feesFor(v));
-    const e = extraOf(v);
-    setHasExtra(Boolean(e));
-    setExtra(e?.amount ?? 0);
-    setMode(e?.mode ?? 'prazo');
-    setSource(e?.source ?? 'proprio');
+    const next = load(v);
+    setF(next);
+    setPrefill({ amort: next.amort, interest: next.interest });
+    setMoreLines(next.charges > 0 || next.fgts > 0);
   };
 
-  // Data deste check-in: a amortização dele entra depois de saldos informados antes,
-  // e o saldo informado aqui (com a mesma data) já inclui a amortização
+  // Data deste check-in: a amortização dele entra depois de saldos informados antes
   const [stamp] = useState(() => new Date().toISOString());
-  const extraAt = existing?.createdAt ?? stamp;
+  const at = existing?.createdAt ?? stamp;
 
-  // Estimativa do saldo do mês já com a amortização extra que a pessoa disse ter feito
-  const estimate = useMemo(() => {
-    if (!(hasExtra && extra > 0)) return row?.closingBalance ?? model.summary.currentBalance;
-    const rows = buildSchedule(model.contract, {
-      ...model.options,
-      extras: [...otherExtras, { id: 'x', yearMonth: ym, amount: extra, mode, source, createdAt: extraAt }],
-    });
-    return rows.find((r) => r.yearMonth === ym)?.closingBalance ?? model.summary.currentBalance;
-  }, [hasExtra, extra, row, model, otherExtras, ym, mode, source, extraAt]);
-  const diff = balance > 0 ? balance - estimate : 0;
+  const installment = cents(f.amort + f.interest + draftTotal(f.fees));
+  const paid = cents(installment + f.charges - f.fgts);
+
+  // Saldo depois da parcela pela fatura: só quando os juros e a amortização são os da fatura
+  // (alterados em relação à previsão, ou já vindos de uma fatura antes)
+  const typed = Math.abs(f.amort - prefill.amort) > 0.005 || Math.abs(f.interest - prefill.interest) > 0.005;
+  // Juros e amortização já vindos de uma fatura antes (reabrindo o mês) também valem
+  const fromInvoice = typed || existing?.balanceSource === 'fatura' || (existing?.amortization !== undefined && existing.interest !== undefined);
+  const computed = fromInvoice ? balanceFromInvoice(contract, f.interest, f.amort) : null;
+  const forecast = row?.closingBalance ?? model.summary.currentBalance;
+  const far = computed !== null && forecast > 0 && Math.abs(computed - forecast) / forecast > FAR_FROM_FORECAST;
+  // Saldo do banco de um check-in antigo: continua valendo se a fatura não mudou
+  const keptBank = existing?.balanceSource !== 'fatura' && existing?.balanceAfter && !typed ? existing.balanceAfter : undefined;
+  const balanceAfter = computed !== null && !far ? cents(computed) : keptBank;
+  const balanceSource: 'fatura' | 'banco' | undefined = computed !== null && !far ? 'fatura' : keptBank ? 'banco' : undefined;
+
+  // Amortização extra: só o efetivo abate o saldo; o resto são juros pro rata
+  const eff = extraEffective(contract, { paid: f.extraPaid, date: f.extraDate, eff: f.extraEff, effEdited: f.effEdited });
+  const keepExtra = f.hasExtra && eff > 0;
+  const extraRecord = (id: string): ExtraPayment => ({
+    id,
+    yearMonth: ym,
+    amount: eff,
+    paid: f.extraPaid > 0 ? f.extraPaid : eff,
+    date: f.extraDate,
+    mode: f.mode,
+    source: f.source,
+    createdAt: at,
+  });
+
+  // Prévia: a tabela como fica depois de salvar
+  const preview = useMemo(() => {
+    const checkpoints: ScheduleCheckpoint[] = [
+      ...(model.options.checkpoints ?? []).filter((c) => c.id !== `ci-${existing?.id}`),
+      ...(balanceAfter && !data.checkpoints.some((c) => c.yearMonth === ym)
+        ? [{ id: 'x', yearMonth: ym, balance: balanceAfter, source: balanceSource!, createdAt: balanceSource === 'fatura' ? '' : at }]
+        : []),
+    ];
+    const actuals = [
+      ...(model.options.actuals ?? []).filter((a) => a.yearMonth !== ym),
+      ...(fromInvoice ? [{ yearMonth: ym, amortization: f.amort, interest: f.interest }] : []),
+    ];
+    const extras = keepExtra ? [...otherExtras, extraRecord('x')] : otherExtras;
+    const rows = buildSchedule(contract, { ...model.options, checkpoints, actuals, extras });
+    const paidMonths = new Set(model.paidMonths);
+    if (ahead && f.scheduled) paidMonths.delete(ym);
+    else paidMonths.add(ym);
+    const r = rows.find((x) => x.yearMonth === ym);
+    return { progress: summarize(contract, rows, new Date(), paidMonths).progress, afterExtra: r?.closingBalance ?? forecast };
+    // extraRecord depende só dos campos já listados
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [model, data.checkpoints, existing?.id, balanceAfter, balanceSource, ym, f, fromInvoice, keepExtra, eff, otherExtras, at, ahead, contract, forecast]);
 
   const go = (d: number) => {
     playSound('tick');
@@ -126,19 +182,10 @@ export const CheckinModal: React.FC<{
     setStep((s) => s + d);
   };
 
-  // Progresso depois de salvar, para mostrar a casa subindo
-  const afterProgress = useMemo(() => {
-    const checkpoints = [...data.checkpoints, ...(balance > 0 ? [{ id: 'x', yearMonth: ym, balance, source: 'banco' as const, createdAt: extraAt }] : [])];
-    const extras = hasExtra && extra > 0 ? [...otherExtras, { id: 'x', yearMonth: ym, amount: extra, mode, source, createdAt: extraAt }] : otherExtras;
-    const rows = buildSchedule(model.contract, { extras, checkpoints, trFor: model.trFor, invoices: model.options.invoices });
-    return summarize(model.contract, rows).progress;
-  }, [data.checkpoints, otherExtras, balance, ym, hasExtra, extra, mode, source, extraAt, model.contract, model.trFor]);
-
   const save = () => {
     const before = model.summary.progress;
-    const keepExtra = hasExtra && extra > 0;
     const extraId = keepExtra ? linkedExtra?.id ?? uid() : undefined;
-    const invoice = feesFromDraft(fees);
+    const invoice = feesFromDraft(f.fees);
     update((prev) => ({
       ...prev,
       checkins: [
@@ -147,19 +194,21 @@ export const CheckinModal: React.FC<{
           id: existing?.id ?? uid(),
           yearMonth: ym,
           paidAmount: paid,
-          balanceAfter: balance > 0 ? balance : undefined,
-          ...(extraId ? { extraId } : {}),
+          // Só os valores copiados da fatura: os previstos continuam vindo da tabela
+          ...(fromInvoice ? { amortization: f.amort, interest: f.interest } : {}),
           ...(invoice ? { fees: invoice } : {}),
-          createdAt: extraAt,
+          ...(f.charges > 0 ? { charges: f.charges } : {}),
+          ...(f.fgts > 0 ? { fgts: f.fgts } : {}),
+          ...(ahead && f.scheduled ? { scheduled: true } : {}),
+          ...(balanceAfter ? { balanceAfter, balanceSource } : {}),
+          ...(extraId ? { extraId } : {}),
+          createdAt: at,
         },
       ],
       // Troca (ou remove) a amortização deste check-in; as outras ficam como estão
-      extras: [
-        ...prev.extras.filter((e) => e.id !== linkedExtra?.id),
-        ...(keepExtra && extraId ? [{ id: extraId, yearMonth: ym, amount: extra, mode, source, createdAt: extraAt }] : []),
-      ],
+      extras: [...prev.extras.filter((e) => e.id !== linkedExtra?.id), ...(keepExtra && extraId ? [extraRecord(extraId)] : [])],
     }));
-    setDone({ before, after: afterProgress });
+    setDone({ before, after: preview.progress, scheduled: ahead && f.scheduled });
     playSound('celebrate');
     window.setTimeout(() => celebrate(), 150);
   };
@@ -170,12 +219,17 @@ export const CheckinModal: React.FC<{
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const steps = ['Parcela', 'Seguros', 'Extra', 'Saldo'];
+  const steps = ['Fatura', 'Extra', 'Resumo'];
+  // Dia do vencimento deste mês (ajustado a meses curtos) e quantos dias faltam
+  const [dueY, dueM] = ym.split('-').map(Number);
+  const dueDate = new Date(dueY, dueM - 1, Math.min(contract.dueDay, new Date(dueY, dueM, 0).getDate()));
+  const dueLabel = `${String(dueDate.getDate()).padStart(2, '0')}/${ym.slice(5)}`;
+  const daysToDue = Math.ceil((dueDate.getTime() - new Date(new Date().toDateString()).getTime()) / 86400000);
 
   return (
     <ModalShell
       ariaLabel="Check-in do mês"
-      panelClassName="bg-white dark:bg-slate-900 rounded-[28px] w-full max-w-xl shadow-2xl ring-1 ring-slate-900/[0.06] dark:ring-white/[0.08] overflow-hidden"
+      panelClassName="bg-white dark:bg-slate-900 rounded-[28px] w-full max-w-2xl shadow-2xl ring-1 ring-slate-900/[0.06] dark:ring-white/[0.08] overflow-hidden"
     >
       <div className="relative">
         <button
@@ -201,9 +255,11 @@ export const CheckinModal: React.FC<{
             </motion.div>
             <h2 className="mt-5 text-2xl font-bold text-slate-900 dark:text-white">Check-in de {monthName(ym)} feito!</h2>
             <p className="mt-1 text-slate-600 dark:text-slate-300">
-              {done.after > done.before
-                ? `Sua casa foi de ${formatPct(done.before * 100, 1)} para ${formatPct(done.after * 100, 1)} quitada.`
-                : 'Tudo registrado. Mês que vem tem mais.'}
+              {done.scheduled
+                ? `A parcela está agendada: no dia ${dueLabel}, quando o banco debitar, ela conta como paga e a casa avança.`
+                : done.after > done.before
+                  ? `Sua casa foi de ${formatPct(done.before * 100, 1)} para ${formatPct(done.after * 100, 1)} quitada.`
+                  : 'Tudo registrado. Mês que vem tem mais.'}
             </p>
             <div className="mt-6 h-4 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden text-left">
               <motion.div
@@ -231,7 +287,7 @@ export const CheckinModal: React.FC<{
               ))}
             </div>
 
-            <div className="relative min-h-[330px] overflow-x-clip">
+            <div className="relative min-h-[330px] max-h-[calc(100vh-15rem)] overflow-y-auto overflow-x-clip -mx-1 px-1">
               <AnimatePresence mode="popLayout" initial={false} custom={dir}>
                 <motion.div
                   key={step}
@@ -243,147 +299,140 @@ export const CheckinModal: React.FC<{
                 >
                   {step === 0 && (
                     <>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">
-                        {ahead ? `Parcela de ${monthName(ym)}, adiantada` : `Quanto você pagou em ${monthName(ym)}?`}
-                      </h2>
-                      {ahead && (
-                        <p className="-mt-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                          Ela vence dia {String(model.contract.dueDay).padStart(2, '0')}/{ym.slice(5)}. Registre agora se já pagou ou se está agendada no débito automático.
-                        </p>
-                      )}
-                      <Field label="Mês da parcela">
-                        <MonthField
-                          value={ym}
-                          onChange={changeMonth}
-                          ariaLabel="Mês da parcela"
-                          min={model.contract.firstDueMonth}
-                          max={maxYm}
-                          marked={checkedMonths}
-                          markedLabel="check-in feito"
-                        />
-                      </Field>
-                      <Field
-                        label="Valor pago"
-                        hint="Já preenchemos com o valor previsto. Se o boleto veio diferente, corrija."
-                        help={{ title: 'Valor pago', body: 'O valor total do boleto ou do débito em conta, com seguros e taxas.', where: 'No comprovante de pagamento ou no extrato da conta.' }}
-                      >
-                        <MoneyField value={paid} onChange={setPaid} />
-                      </Field>
-                      {row && (
-                        <div className={`${tile} p-4 grid grid-cols-3 gap-2 text-sm`}>
-                          <div>
-                            <div className="text-xs text-slate-500">Abate a dívida</div>
-                            <div className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(row.amortization)}</div>
+                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-x-4 gap-y-3">
+                        <div className="min-w-0 flex-1">
+                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white text-balance">
+                            Fatura de {monthName(ym)}
+                          </h2>
+                          <p className="mt-1 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                            {existing ? 'Os valores que você registrou. Corrija o que precisar.' : 'Copie do detalhe da parcela no app do banco. Já vem com a previsão.'}
+                          </p>
+                        </div>
+                        <div className="w-full sm:w-60 shrink-0">
+                          <MonthField
+                            value={ym}
+                            onChange={changeMonth}
+                            ariaLabel="Mês da parcela"
+                            min={contract.firstDueMonth}
+                            max={maxYm}
+                            marked={checkedMonths}
+                            markedLabel="check-in feito"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Vencimento: antes dele, a pessoa diz se já pagou ou se está agendada; depois, já conta como paga */}
+                      {ahead ? (
+                        <div>
+                          <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300 mb-2">
+                            <CalendarDays className="w-4 h-4 text-anil-600 dark:text-anil-300" />
+                            Vence em <b className="font-num text-slate-900 dark:text-white">{dueLabel}</b>
+                            {daysToDue > 0 && <span className="text-slate-500 dark:text-slate-400">· daqui a {daysToDue} {daysToDue === 1 ? 'dia' : 'dias'}</span>}
                           </div>
-                          <div>
-                            <div className="text-xs text-slate-500">Juros</div>
-                            <div className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(row.interest)}</div>
-                          </div>
-                          <div>
-                            <div className="text-xs text-slate-500">Seguros e taxa</div>
-                            <div className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(draftTotal(fees))}</div>
+                          <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="A parcela já foi paga?">
+                            {[
+                              { v: true, icon: CalendarClock, l: 'Agendada no débito', d: `Conta como paga em ${dueLabel}, quando o banco debitar.` },
+                              { v: false, icon: CircleCheck, l: 'Já paguei', d: 'Conta como paga a partir de hoje.' },
+                            ].map((o) => {
+                              const on = f.scheduled === o.v;
+                              const Icon = o.icon;
+                              return (
+                                <button
+                                  key={o.l}
+                                  type="button"
+                                  role="radio"
+                                  aria-checked={on}
+                                  onClick={() => set({ scheduled: o.v })}
+                                  className={`flex items-start gap-2.5 p-3 rounded-2xl text-left cursor-pointer transition-colors ${
+                                    on
+                                      ? 'bg-anil-50 ring-2 ring-anil-500 dark:bg-anil-500/10'
+                                      : 'ring-1 ring-slate-200 hover:ring-anil-300 dark:ring-slate-700 dark:hover:ring-anil-500/50'
+                                  }`}
+                                >
+                                  <Icon className={`w-5 h-5 mt-0.5 shrink-0 ${on ? 'text-anil-600 dark:text-anil-300' : 'text-slate-400'}`} />
+                                  <span>
+                                    <span className="block text-sm font-semibold text-slate-900 dark:text-white">{o.l}</span>
+                                    <span className="block text-xs leading-snug text-slate-500 dark:text-slate-400 mt-0.5">{o.d}</span>
+                                  </span>
+                                </button>
+                              );
+                            })}
                           </div>
                         </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+                          <CircleCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                          Venceu em <b className="font-num text-slate-900 dark:text-white">{dueLabel}</b>
+                          <span className="text-slate-500 dark:text-slate-400">· conta como paga</span>
+                        </div>
                       )}
+
+                      {/* Detalhe da parcela: as mesmas linhas, na mesma ordem, do app do banco */}
+                      <div className={`${tile} px-4 pt-2`}>
+                        <div className="divide-y divide-slate-200/70 dark:divide-slate-800">
+                          <LedgerRow label="Amortização">
+                            <MoneyField size="sm" value={f.amort} onChange={(v) => set({ amort: v })} ariaLabel="Amortização" />
+                          </LedgerRow>
+                          <LedgerRow label="Juros">
+                            <MoneyField size="sm" value={f.interest} onChange={(v) => set({ interest: v })} ariaLabel="Juros" />
+                          </LedgerRow>
+                          <InvoiceFeesRows value={f.fees} onChange={(fees: FeesDraft) => set({ fees })} />
+                          {moreLines && (
+                            <>
+                              <LedgerRow label="Atraso" note="Multa e juros de mora. Não mexem no saldo.">
+                                <MoneyField size="sm" value={f.charges} onChange={(v) => set({ charges: v })} ariaLabel="Atraso" />
+                              </LedgerRow>
+                              <LedgerRow label="FGTS na prestação" sign="−">
+                                <MoneyField size="sm" value={f.fgts} onChange={(v) => set({ fgts: v })} ariaLabel="FGTS na prestação" />
+                              </LedgerRow>
+                            </>
+                          )}
+                        </div>
+                        <div className="sticky bottom-0 -mx-4 px-4 mt-1 pt-3 pb-2.5 rounded-b-2xl bg-slate-50 dark:bg-slate-950 border-t border-slate-400 dark:border-slate-600">
+                          <div className="flex items-baseline justify-between gap-3">
+                            <span className="text-sm font-semibold text-slate-900 dark:text-white">
+                              Valor da prestação <span className="text-slate-400 dark:text-slate-500 font-normal">(=)</span>
+                            </span>
+                            <span className="font-num text-xl font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(installment)}</span>
+                          </div>
+                          {(f.charges > 0 || f.fgts > 0) && (
+                            <div className="flex items-baseline justify-between gap-3 mt-1 text-sm">
+                              <span className="text-slate-500">Você pagou</span>
+                              <span className="font-num font-semibold text-slate-900 dark:text-white tabular-nums">{formatBRL(paid)}</span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 -mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        <span>Confira com o "Valor da prestação" da fatura: se não bater, falta alguma linha.</span>
+                        {!moreLines && (
+                          <button type="button" onClick={() => setMoreLines(true)} className="font-semibold text-anil-700 dark:text-anil-300 hover:underline cursor-pointer">
+                            Teve atraso ou FGTS?
+                          </button>
+                        )}
+                      </div>
                     </>
                   )}
 
                   {step === 1 && (
                     <>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Seguros e taxa da fatura</h2>
-                      <p className="-mt-3 text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                        {existing?.fees
-                          ? 'Os valores que você informou neste check-in.'
-                          : feesSource?.yearMonth === ym
-                            ? 'Os valores da fatura informada no cadastro. Confira e corrija o que vier diferente.'
-                            : feesSource
-                            ? `Já preenchemos com a fatura de ${monthName(feesSource.yearMonth)}, corrigida: o MIP acompanha o saldo e o DFI, a TR. Confira na fatura e corrija o que vier diferente.`
-                            : 'Copie do detalhe da parcela no app do banco. A partir destes valores o app prevê as próximas faturas.'}
-                      </p>
-                      <InvoiceFeesFields value={fees} onChange={setFees} />
-                      {/* Sem nenhuma fatura ainda, a diferença para o valor pago quase sempre são os seguros e a taxa */}
-                      {showFeesGap && (
-                        <div className="p-3 rounded-2xl bg-sol-50 dark:bg-sol-400/10 text-sm text-sol-900 dark:text-sol-100 leading-relaxed">
-                          Faltam <b>{formatBRL(feesGap)}</b> para chegar ao valor pago. Quase sempre são os seguros (MIP e DFI) e a taxa de administração.
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setFees({ ...fees, split: false, insurance: Math.round(feesGap * 100) / 100, adminFee: 0 });
-                              playSound('success');
-                            }}
-                            className="mt-2 flex items-center gap-1.5 h-8 px-3 rounded-full bg-sol-400 hover:bg-sol-300 text-slate-900 text-xs font-bold cursor-pointer"
-                          >
-                            Usar {formatBRL(feesGap)} como total dos seguros
-                          </button>
-                        </div>
-                      )}
-                    </>
-                  )}
-
-                  {step === 3 && (
-                    <>
-                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Quanto o banco diz que falta?</h2>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                        Opcional, mas é o que deixa o app exato. Abra o app do banco e copie o saldo devedor de agora
-                        {hasExtra && extra > 0 ? ', que já inclui a amortização extra' : ''}.
-                      </p>
-                      <Field label="Saldo devedor" help={HELP.currentBalance} optional>
-                        <MoneyField value={balance} onChange={setBalance} />
-                      </Field>
-                      <div className={`${tile} p-4 text-sm`}>
-                        <div className="flex justify-between">
-                          <span className="text-slate-500">Nossa estimativa para {monthLong(ym)}</span>
-                          <span className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(estimate)}</span>
-                        </div>
-                        <AnimatePresence>
-                          {balance > 0 && (
-                            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
-                              <div className="flex justify-between mt-2 pt-2 border-t border-slate-200 dark:border-slate-800">
-                                <span className="text-slate-500">Diferença</span>
-                                <span className={`font-num font-semibold ${Math.abs(diff) < estimate * 0.01 ? 'text-emerald-600 dark:text-emerald-400' : 'text-sol-700 dark:text-sol-300'}`}>
-                                  {diff >= 0 ? '+' : '−'}
-                                  {formatBRL(Math.abs(diff))}
-                                </span>
-                              </div>
-                              <div className="text-xs text-slate-500 mt-1.5">
-                                {Math.abs(diff) < estimate * 0.01
-                                  ? 'Bem perto! A partir de agora usamos o valor do banco.'
-                                  : 'Diferenças acontecem por TR, seguros ou arredondamentos. A partir de agora usamos o valor do banco.'}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    </>
-                  )}
-
-                  {step === 2 && (
-                    <>
                       <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Pagou algo a mais este mês?</h2>
                       <div className="flex gap-2">
-                        {[
-                          { v: false, l: 'Não, só a parcela' },
-                          { v: true, l: 'Sim, amortizei' },
-                        ].map((o) => (
-                          <button
-                            key={o.l}
-                            type="button"
-                            onClick={() => setHasExtra(o.v)}
-                            aria-pressed={hasExtra === o.v}
-                            className={`h-10 px-4 rounded-full text-sm font-semibold cursor-pointer transition-colors ${
-                              hasExtra === o.v ? 'bg-anil-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                            }`}
-                          >
-                            {o.l}
-                          </button>
-                        ))}
+                        <button type="button" onClick={() => set({ hasExtra: false })} aria-pressed={!f.hasExtra} className={pill(!f.hasExtra)}>
+                          Não, só a parcela
+                        </button>
+                        <button type="button" onClick={() => set({ hasExtra: true })} aria-pressed={f.hasExtra} className={pill(f.hasExtra)}>
+                          Sim, amortizei
+                        </button>
                       </div>
                       <AnimatePresence>
-                        {hasExtra && (
+                        {f.hasExtra && (
                           <motion.div className="space-y-4" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
-                            <Field label="Valor amortizado">
-                              <MoneyField value={extra} onChange={setExtra} />
-                            </Field>
+                            <ExtraPaymentFields
+                              contract={contract}
+                              value={{ paid: f.extraPaid, date: f.extraDate, eff: f.extraEff, effEdited: f.effEdited }}
+                              onChange={(d) => set({ extraPaid: d.paid, extraDate: d.date, extraEff: d.eff, effEdited: d.effEdited })}
+                            />
                             <Field
                               label="O que você escolheu reduzir?"
                               help={{
@@ -394,15 +443,7 @@ export const CheckinModal: React.FC<{
                             >
                               <div className="flex gap-2">
                                 {(['prazo', 'parcela'] as const).map((m) => (
-                                  <button
-                                    key={m}
-                                    type="button"
-                                    onClick={() => setMode(m)}
-                                    aria-pressed={mode === m}
-                                    className={`h-10 px-4 rounded-full text-sm font-semibold cursor-pointer ${
-                                      mode === m ? 'bg-anil-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                                    }`}
-                                  >
+                                  <button key={m} type="button" onClick={() => set({ mode: m })} aria-pressed={f.mode === m} className={pill(f.mode === m)}>
                                     {m === 'prazo' ? 'Reduzi o prazo' : 'Reduzi a parcela'}
                                   </button>
                                 ))}
@@ -414,10 +455,10 @@ export const CheckinModal: React.FC<{
                                   <button
                                     key={s.v}
                                     type="button"
-                                    onClick={() => setSource(s.v)}
-                                    aria-pressed={source === s.v}
+                                    onClick={() => set({ source: s.v })}
+                                    aria-pressed={f.source === s.v}
                                     className={`h-9 px-3.5 rounded-full text-sm font-semibold cursor-pointer ${
-                                      source === s.v ? 'bg-sol-400 text-slate-900' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
+                                      f.source === s.v ? 'bg-sol-400 text-slate-900' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
                                     }`}
                                   >
                                     {s.l}
@@ -428,9 +469,52 @@ export const CheckinModal: React.FC<{
                           </motion.div>
                         )}
                       </AnimatePresence>
-                      {afterProgress > model.summary.progress && (
+                    </>
+                  )}
+
+                  {step === 2 && (
+                    <>
+                      <h2 className="text-2xl font-bold text-slate-900 dark:text-white">Como fica</h2>
+                      <div className={`${tile} p-4 space-y-3 text-sm`}>
+                        <div className="flex justify-between gap-3">
+                          <span className="text-slate-500">Prestação de {monthLong(ym)}</span>
+                          <span className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(installment)}</span>
+                        </div>
+                        <div>
+                          <div className="flex justify-between gap-3">
+                            <span className="text-slate-500">Saldo depois da parcela</span>
+                            <span className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(balanceAfter ?? forecast)}</span>
+                          </div>
+                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            {balanceSource === 'fatura'
+                              ? 'Calculado pelos juros e pela amortização da fatura: não precisa esperar o banco atualizar o saldo.'
+                              : balanceSource === 'banco'
+                                ? 'O saldo do banco que você informou neste mês.'
+                                : 'Previsto. Com os juros e a amortização da fatura, o app calcula o saldo exato.'}
+                          </div>
+                        </div>
+                        {keepExtra && (
+                          <div className="flex justify-between gap-3 pt-3 border-t border-slate-200 dark:border-slate-800">
+                            <span className="text-slate-500">Depois da amortização extra</span>
+                            <span className="font-num font-semibold text-emerald-700 dark:text-emerald-400">{formatBRL(preview.afterExtra)}</span>
+                          </div>
+                        )}
+                      </div>
+                      {far && computed !== null && (
+                        <div className="p-3 rounded-2xl bg-sol-50 dark:bg-sol-400/10 text-sm text-sol-900 dark:text-sol-100 leading-relaxed flex gap-2.5">
+                          <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
+                          <span>
+                            Pela fatura, o saldo seria <b>{formatBRL(computed)}</b>, longe do previsto ({formatBRL(forecast)}). Confira os juros e a amortização
+                            ou a taxa de juros do cadastro. Por enquanto, seguimos com a previsão.
+                          </span>
+                        </div>
+                      )}
+                      {ahead && f.scheduled && (
+                        <div className="text-sm text-slate-600 dark:text-slate-400">A parcela conta como paga no dia {dueLabel}, quando o banco debitar.</div>
+                      )}
+                      {preview.progress > model.summary.progress && (
                         <div className="p-3 rounded-2xl bg-emerald-50 dark:bg-emerald-500/10 text-sm text-emerald-800 dark:text-emerald-200">
-                          Depois deste check-in: <b>{formatPct(afterProgress * 100, 1)}</b> quitado.
+                          Depois deste check-in: <b>{formatPct(preview.progress * 100, 1)}</b> quitado.
                         </div>
                       )}
                     </>
@@ -448,12 +532,12 @@ export const CheckinModal: React.FC<{
                 <span />
               )}
               {step < steps.length - 1 ? (
-                <button type="button" onClick={() => go(1)} className={btnPrimary} disabled={step === 0 && !(paid > 0)}>
+                <button type="button" onClick={() => go(1)} className={btnPrimary} disabled={step === 0 && !(installment > 0)}>
                   Continuar <ArrowRight className="w-4 h-4" />
                 </button>
               ) : (
                 <button type="button" onClick={save} className={`${btnPrimary} bg-emerald-600 hover:bg-emerald-500 shadow-[0_8px_20px_-8px_rgba(5,150,105,0.8)]`}>
-                  <Check className="w-4 h-4" /> {balance > 0 ? 'Concluir check-in' : 'Concluir sem o saldo'}
+                  <Check className="w-4 h-4" /> Concluir check-in
                 </button>
               )}
             </div>

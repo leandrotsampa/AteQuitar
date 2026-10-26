@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Contract } from '../types/finance';
-import { migrateContract } from './store';
+import { migrateCheckpoints, migrateContract } from './store';
 
 const contract: Contract = {
   nickname: 'Casa',
@@ -33,5 +33,19 @@ describe('migrateContract', () => {
     expect(migrateContract({ ...contract, monthlyInsurance: 0, monthlyAdminFee: 0 }).feesRef).toBeUndefined();
     const ref = { yearMonth: '2026-09', insurance: 171.18, mip: 54.68, dfi: 116.5, adminFee: 25 };
     expect(migrateContract({ ...contract, feesRef: ref, monthlyInsurance: 99 }).feesRef).toBe(ref);
+  });
+});
+
+describe('migrateCheckpoints', () => {
+  it('o saldo do IR vira saldo do banco, e o do banco no mesmo mês fica', () => {
+    const out = migrateCheckpoints([
+      { id: 'a', yearMonth: '2024-12', balance: 300000, source: 'ir' },
+      { id: 'b', yearMonth: '2025-12', balance: 290000, source: 'ir' },
+      { id: 'c', yearMonth: '2025-12', balance: 289000, source: 'banco', createdAt: '2026-01-10T00:00:00.000Z' },
+    ]);
+    expect(out.map((c) => [c.id, c.source])).toEqual([
+      ['a', 'banco'],
+      ['c', 'banco'],
+    ]);
   });
 });

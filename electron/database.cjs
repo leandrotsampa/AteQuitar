@@ -52,6 +52,15 @@ const SCHEMA = `
     mip REAL,
     dfi REAL,
     admin_fee REAL,
+    -- Linhas da fatura: amortização, juros, atraso e FGTS na prestação
+    amortization REAL,
+    interest REAL,
+    charges REAL,
+    fgts REAL,
+    -- Adiantada só agendada no débito: conta como paga no vencimento
+    scheduled INTEGER NOT NULL DEFAULT 0,
+    -- De onde veio balance_after: 'fatura' (calculado pelos juros) ou 'banco'
+    balance_source TEXT CHECK (balance_source IS NULL OR balance_source IN ('fatura', 'banco')),
     created_at TEXT NOT NULL
   );
 
@@ -62,11 +71,14 @@ const SCHEMA = `
     mode TEXT NOT NULL CHECK (mode IN ('prazo', 'parcela')),
     source TEXT NOT NULL CHECK (source IN ('proprio', 'fgts', 'decimo')),
     note TEXT,
+    -- Valor pago (com os juros pro rata) e a data; amount é a amortização efetiva
+    paid REAL,
+    paid_date TEXT,
     created_at TEXT
   );
   CREATE INDEX IF NOT EXISTS idx_extra_payments_month ON extra_payments (year_month);
 
-  -- Saldo devedor real informado (app do banco ou extrato do IR)
+  -- Saldo devedor real informado no app do banco ('ir' só nos bancos das versões antigas)
   CREATE TABLE IF NOT EXISTS balance_checkpoints (
     id TEXT PRIMARY KEY,
     year_month TEXT NOT NULL,
@@ -120,6 +132,14 @@ const ADDED_COLUMNS = [
   { table: 'checkins', name: 'mip', ddl: 'REAL' },
   { table: 'checkins', name: 'dfi', ddl: 'REAL' },
   { table: 'checkins', name: 'admin_fee', ddl: 'REAL' },
+  { table: 'checkins', name: 'amortization', ddl: 'REAL' },
+  { table: 'checkins', name: 'interest', ddl: 'REAL' },
+  { table: 'checkins', name: 'charges', ddl: 'REAL' },
+  { table: 'checkins', name: 'fgts', ddl: 'REAL' },
+  { table: 'checkins', name: 'scheduled', ddl: 'INTEGER NOT NULL DEFAULT 0' },
+  { table: 'checkins', name: 'balance_source', ddl: "TEXT CHECK (balance_source IS NULL OR balance_source IN ('fatura', 'banco'))" },
+  { table: 'extra_payments', name: 'paid', ddl: 'REAL' },
+  { table: 'extra_payments', name: 'paid_date', ddl: 'TEXT' },
 ];
 
 function ensureColumns(db) {
@@ -189,8 +209,8 @@ function writeDoc(db, doc) {
       const stmt = db.prepare(sql);
       for (const r of list) stmt.run(r);
     };
-    ins('INSERT INTO checkins (id, year_month, paid_amount, balance_after, extra_id, insurance, mip, dfi, admin_fee, created_at) VALUES (@id, @year_month, @paid_amount, @balance_after, @extra_id, @insurance, @mip, @dfi, @admin_fee, @created_at)', rows.checkins);
-    ins('INSERT OR REPLACE INTO extra_payments (id, year_month, amount, mode, source, note, created_at) VALUES (@id, @year_month, @amount, @mode, @source, @note, @created_at)', rows.extras);
+    ins('INSERT INTO checkins (id, year_month, paid_amount, balance_after, extra_id, insurance, mip, dfi, admin_fee, amortization, interest, charges, fgts, scheduled, balance_source, created_at) VALUES (@id, @year_month, @paid_amount, @balance_after, @extra_id, @insurance, @mip, @dfi, @admin_fee, @amortization, @interest, @charges, @fgts, @scheduled, @balance_source, @created_at)', rows.checkins);
+    ins('INSERT OR REPLACE INTO extra_payments (id, year_month, amount, mode, source, note, paid, paid_date, created_at) VALUES (@id, @year_month, @amount, @mode, @source, @note, @paid, @paid_date, @created_at)', rows.extras);
     ins('INSERT INTO balance_checkpoints (id, year_month, balance, source, created_at) VALUES (@id, @year_month, @balance, @source, @created_at)', rows.checkpoints);
     ins('INSERT INTO milestones (percent) VALUES (@percent)', rows.milestones.map((percent) => ({ percent })));
     ins('INSERT INTO rate_latest (series, date, value) VALUES (@series, @date, @value)', rows.rateLatest);

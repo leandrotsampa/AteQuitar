@@ -1,17 +1,19 @@
 // Motor de cálculo do financiamento: tabela mês a mês (SAC ou Price), com TR, seguros,
 // amortizações extras e saldos reais informados pelo usuário. Funções puras.
-import type { BalanceCheckpoint, Contract, ExtraMode, ExtraPayment, FeesReference, ScheduleRow } from '../types/finance';
+import type { Contract, ExtraMode, ExtraPayment, FeesReference, ScheduleCheckpoint, ScheduleRow } from '../types/finance';
 import { addMonths, annualToMonthly, currentYearMonth } from './format';
 
 export interface ScheduleOptions {
   extras?: ExtraPayment[];
-  checkpoints?: BalanceCheckpoint[];
+  checkpoints?: ScheduleCheckpoint[];
   // TR do mês (% a.m.); sem a função, a TR é zero
   trFor?: (yearMonth: string) => number;
   // Seguros e taxa das faturas informadas no check-in (a do cadastro vem do contrato)
   invoices?: FeesReference[];
   // A TR do mês é a oficial que o banco aplica? Sem a função, nenhum mês é marcado como estimado
   trOfficial?: (yearMonth: string) => boolean;
+  // Amortização e juros copiados da fatura do check-in: valem no lugar dos calculados
+  actuals?: { yearMonth: string; amortization: number; interest: number }[];
 }
 
 const cents = (v: number) => Math.round(v * 100) / 100;
@@ -79,10 +81,9 @@ function monthsToPayOff(system: Contract['system'], balance: number, i: number, 
 const PLANNED_AT = '9999-12-31T00:00:00.000Z';
 
 // A amortização foi lançada depois do saldo real do mesmo mês? Sem data (registros antigos),
-// o saldo vale como informado. O saldo do IR é o de 31/12 e já inclui tudo o que foi pago no ano
-function extraAfterCheckpoint(e: ExtraPayment, cp: BalanceCheckpoint): boolean {
+// o saldo vale como informado
+function extraAfterCheckpoint(e: ExtraPayment, cp: ScheduleCheckpoint): boolean {
   if (!e.createdAt) return false;
-  if (cp.source === 'ir') return e.createdAt === PLANNED_AT;
   return e.createdAt > (cp.createdAt ?? '');
 }
 
@@ -94,6 +95,7 @@ export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): S
     extrasByMonth.set(e.yearMonth, [...(extrasByMonth.get(e.yearMonth) ?? []), e]);
   }
   const checkpointByMonth = new Map((opts.checkpoints ?? []).map((c) => [c.yearMonth, c]));
+  const actualByMonth = new Map((opts.actuals ?? []).map((a) => [a.yearMonth, a]));
 
   const rows: ScheduleRow[] = [];
   let balance = contract.financedAmount;
@@ -106,10 +108,13 @@ export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): S
     const tr = contract.trIndexed && opts.trFor ? Math.max(0, opts.trFor(ym)) / 100 : 0;
     const correction = balance * tr;
     balance += correction;
-    const interest = balance * i;
+    const actual = actualByMonth.get(ym);
+    const interest = actual ? actual.interest : balance * i;
 
     let amortization: number;
-    if (remaining <= 1) {
+    if (actual) {
+      amortization = actual.amortization;
+    } else if (remaining <= 1) {
       amortization = balance;
     } else if (contract.system === 'SAC') {
       amortization = balance / remaining;
@@ -164,7 +169,8 @@ export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): S
       payment: amortization + interest,
       extra,
       closingBalance: balance,
-      checkpoint: Boolean(cp),
+      checkpoint: cp?.source ?? null,
+      fromInvoice: Boolean(actual),
     });
   }
   applyFees(rows, feeReferences(contract, opts.invoices));
@@ -192,20 +198,21 @@ export interface Summary {
   monthsAhead: number;
 }
 
-// A parcela do mês conta como paga depois do dia do vencimento
-function paidUntilIndex(contract: Contract, rows: ScheduleRow[], today = new Date()): number {
+// A parcela do mês conta como paga depois do dia do vencimento, ou antes dele se o check-in
+// disse que já foi paga (adiantada, não só agendada)
+function paidUntilIndex(contract: Contract, rows: ScheduleRow[], today: Date, paidMonths?: ReadonlySet<string>): number {
   const ym = currentYearMonth(today);
   const passedDue = today.getDate() >= contract.dueDay;
   let count = 0;
   for (const r of rows) {
-    if (r.yearMonth < ym || (r.yearMonth === ym && passedDue)) count++;
+    if (r.yearMonth < ym || (r.yearMonth === ym && passedDue) || paidMonths?.has(r.yearMonth)) count++;
     else break;
   }
   return count;
 }
 
-export function summarize(contract: Contract, rows: ScheduleRow[], today = new Date()): Summary {
-  const paidCount = paidUntilIndex(contract, rows, today);
+export function summarize(contract: Contract, rows: ScheduleRow[], today = new Date(), paidMonths?: ReadonlySet<string>): Summary {
+  const paidCount = paidUntilIndex(contract, rows, today, paidMonths);
   const paid = rows.slice(0, paidCount);
   const future = rows.slice(paidCount);
   const sum = (list: ScheduleRow[], f: (r: ScheduleRow) => number) => list.reduce((acc, r) => acc + f(r), 0);
@@ -334,3 +341,42 @@ export function interestWithRate(contract: Contract, balance: number, months: nu
   return rows.reduce((a, r) => a + r.interest, 0);
 }
 
+// Saldo depois da parcela pelas linhas da fatura: os juros do mês são a taxa sobre o saldo
+// corrigido, então saldo corrigido = juros ÷ taxa, e o saldo depois = esse − amortização.
+// Os juros vêm arredondados nos centavos: a conta erra poucos reais
+export function balanceFromInvoice(contract: Contract, interest: number, amortization: number): number | null {
+  const i = annualToMonthly(contract.annualRate) / 100;
+  if (!(i > 0) || !(interest > 0)) return null;
+  return Math.max(0, interest / i - amortization);
+}
+
+const daysInMonth = (y: number, m: number) => new Date(y, m, 0).getDate();
+
+// Último vencimento até a data (AAAA-MM-DD): o mês da parcela e o dia, ajustado a meses curtos
+export function lastDueBefore(contract: Contract, date: string): { yearMonth: string; date: Date } {
+  const [y, m, d] = date.split('-').map(Number);
+  const dueThis = Math.min(contract.dueDay, daysInMonth(y, m));
+  if (d >= dueThis) return { yearMonth: date.slice(0, 7), date: new Date(y, m - 1, dueThis) };
+  const prev = addMonths(date.slice(0, 7), -1);
+  const [py, pm] = prev.split('-').map(Number);
+  return { yearMonth: prev, date: new Date(py, pm - 1, Math.min(contract.dueDay, daysInMonth(py, pm))) };
+}
+
+// Amortização extra: do valor pago, uma parte são os juros pro rata desde o último vencimento
+// (sobre o próprio valor amortizado); o resto abate o saldo. Estimativa: o banco informa o exato
+export function effectiveExtra(contract: Contract, paid: number, date: string): number {
+  if (!(paid > 0)) return 0;
+  const i = annualToMonthly(contract.annualRate) / 100;
+  const [y, m, d] = date.split('-').map(Number);
+  const days = Math.max(0, Math.round((new Date(y, m - 1, d).getTime() - lastDueBefore(contract, date).date.getTime()) / 86400000));
+  return Math.round((paid / (1 + (i * days) / 30)) * 100) / 100;
+}
+
+// Mês da última parcela paga hoje (pela data ou pelo check-in que disse que já pagou): o saldo
+// que o banco mostra hoje é o de depois dela. Null antes da primeira parcela
+export function lastPaidMonth(contract: Contract, paidMonths: ReadonlySet<string>, today = new Date()): string | null {
+  const now = currentYearMonth(today);
+  let ym = today.getDate() >= contract.dueDay ? now : addMonths(now, -1);
+  while (paidMonths.has(addMonths(ym, 1))) ym = addMonths(ym, 1);
+  return ym < contract.firstDueMonth ? null : ym;
+}

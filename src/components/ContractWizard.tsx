@@ -22,7 +22,6 @@ import { MoneyField, MonthField, NumberField } from './ui/Inputs';
 import { btnGhost, btnPrimary, inputBase } from './ui/card';
 import { HouseHero } from './HouseHero';
 import { HELP } from './help';
-import { InvoiceFeesFields, draftFromFees, feesFromDraft } from './InvoiceFeesFields';
 import { isTourRunning, runTour, screenStepIds } from '../tour/tour';
 import { loadTourState, markSeen, saveTourState } from '../tour/tourState';
 
@@ -118,12 +117,10 @@ export const ContractWizard: React.FC<{
   initialBalance?: number;
   // Último saldo informado em outro mês (só como referência)
   lastBalance?: { balance: number; yearMonth: string };
-  // Algum check-in já tem a fatura: os seguros vêm de lá, e a fatura do cadastro fica como está
-  invoiceInCheckin?: boolean;
   onCancel?: () => void;
   onSave: (result: WizardResult) => void;
   dark: boolean;
-}> = ({ initial, initialBalance = 0, lastBalance, invoiceInCheckin = false, onCancel, onSave, dark }) => {
+}> = ({ initial, initialBalance = 0, lastBalance, onCancel, onSave, dark }) => {
   const reduce = Boolean(useReducedMotion());
   const [c, setC] = useState<Contract>(() => initial ?? blankContract());
 
@@ -147,10 +144,6 @@ export const ContractWizard: React.FC<{
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const [balance, setBalance] = useState(initialBalance);
-  // Última fatura (opcional): seguros e taxa mudam um pouco todo mês, então vêm de uma fatura
-  // e o check-in atualiza depois
-  const [fees, setFees] = useState(() => draftFromFees(initial?.feesRef));
-  const [feesMonth, setFeesMonth] = useState(() => initial?.feesRef?.yearMonth ?? currentYearMonth());
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const [rateUnit, setRateUnit] = useState<RateUnit>(() => initial?.rateInput ?? 'efetiva');
@@ -192,15 +185,12 @@ export const ContractWizard: React.FC<{
       playSound('warning');
       return;
     }
-    const invoice = feesFromDraft(fees);
-    const month = feesMonth < c.firstDueMonth ? c.firstDueMonth : feesMonth;
     onSave({
       contract: {
         ...c,
         nickname: c.nickname.trim() || 'Minha casa',
         bank: c.bank.trim(),
         rateInput: rateUnit,
-        feesRef: invoiceInCheckin ? initial?.feesRef : invoice ? { ...invoice, yearMonth: month } : undefined,
       },
       currentBalance: balance,
       balanceCleared: initialBalance > 0 && !(balance > 0),
@@ -502,7 +492,7 @@ export const ContractWizard: React.FC<{
                     optional
                     hint={
                       initialBalance > 0
-                        ? `Informado em ${monthLong(currentYearMonth())}. Se apagar, deixa de valer.`
+                        ? 'O que você informou para hoje. Se apagar, deixa de valer.'
                         : lastBalance
                           ? `Último saldo informado: ${formatBRL(lastBalance.balance)} em ${monthLong(lastBalance.yearMonth)}. Informe o de hoje para atualizar.`
                           : undefined
@@ -510,32 +500,6 @@ export const ContractWizard: React.FC<{
                   >
                     <MoneyField value={balance} onChange={setBalance} />
                   </Field>
-                  {invoiceInCheckin ? (
-                    <div className="p-4 rounded-2xl bg-anil-50 dark:bg-anil-500/10 text-sm text-anil-900 dark:text-anil-100 leading-relaxed">
-                      Os seguros e a taxa vêm das faturas que você informa no <b>check-in</b>: cada uma vira a base da previsão das próximas.
-                    </div>
-                  ) : (
-                  <div className="pt-5 border-t border-slate-900/[0.06] dark:border-white/[0.06] space-y-4">
-                    <div>
-                      <div className="font-semibold text-slate-900 dark:text-white">
-                        Sua última fatura <span className="text-xs font-normal text-slate-400 dark:text-slate-500">opcional</span>
-                      </div>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed mt-0.5">
-                        Os seguros mudam um pouco todo mês, por isso vêm da fatura. A partir dela o app prevê as próximas, e cada check-in atualiza.
-                      </p>
-                    </div>
-                    <Field label="Mês da fatura">
-                      <MonthField
-                        value={feesMonth}
-                        onChange={setFeesMonth}
-                        ariaLabel="Mês da fatura"
-                        min={c.firstDueMonth}
-                        max={addMonths(currentYearMonth(), 1)}
-                      />
-                    </Field>
-                    <InvoiceFeesFields value={fees} onChange={setFees} />
-                  </div>
-                  )}
                 </>
               )}
 

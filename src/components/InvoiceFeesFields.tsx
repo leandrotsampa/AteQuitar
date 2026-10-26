@@ -1,12 +1,14 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { Field } from './ui/HelpTip';
+import { ChevronDown } from 'lucide-react';
+import { HelpTip, type HelpContent } from './ui/HelpTip';
 import { MoneyField } from './ui/Inputs';
 import { HELP } from './help';
 import { formatBRL } from '../lib/format';
 import type { InvoiceFees, ScheduleRow } from '../types/finance';
 
-// Seguros e taxa como a pessoa está preenchendo: separados (MIP e DFI) ou só o total
+// Seguros e taxa como a pessoa está preenchendo: o total (como a fatura em aberto mostra) e,
+// se quiser, o detalhe em MIP e DFI (como a fatura paga mostra)
 export interface FeesDraft {
   split: boolean;
   mip: number;
@@ -17,96 +19,113 @@ export interface FeesDraft {
 
 const cents = (v: number) => Math.round(v * 100) / 100;
 
-export const emptyFeesDraft = (split = true): FeesDraft => ({ split, mip: 0, dfi: 0, insurance: 0, adminFee: 0 });
+export const emptyFeesDraft = (split = false): FeesDraft => ({ split, mip: 0, dfi: 0, insurance: 0, adminFee: 0 });
 
-export function draftFromFees(f: InvoiceFees | undefined, split = true): FeesDraft {
+export function draftFromFees(f: InvoiceFees | undefined, split = false): FeesDraft {
   if (!f) return emptyFeesDraft(split);
   const hasSplit = f.mip !== undefined && f.dfi !== undefined;
   return { split: hasSplit, mip: f.mip ?? 0, dfi: f.dfi ?? 0, insurance: f.insurance, adminFee: f.adminFee };
 }
 
 // Valores previstos para o mês, já corrigidos a partir da fatura anterior
-export function draftFromRow(row: ScheduleRow | undefined, split = true): FeesDraft {
+export function draftFromRow(row: ScheduleRow | undefined, split = false): FeesDraft {
   if (!row || !(row.fees > 0)) return emptyFeesDraft(split);
   const hasSplit = row.mip !== undefined && row.dfi !== undefined;
   return { split: hasSplit, mip: row.mip ?? 0, dfi: row.dfi ?? 0, insurance: row.insurance, adminFee: row.adminFee };
 }
 
+export const draftInsurance = (d: FeesDraft) => cents(d.split ? d.mip + d.dfi : d.insurance);
+
 // Nada preenchido: sem fatura
 export function feesFromDraft(d: FeesDraft): InvoiceFees | undefined {
-  const insurance = d.split ? cents(d.mip + d.dfi) : cents(d.insurance);
+  const insurance = draftInsurance(d);
   if (!(insurance > 0) && !(d.adminFee > 0)) return undefined;
   return d.split && insurance > 0 ? { insurance, mip: d.mip, dfi: d.dfi, adminFee: d.adminFee } : { insurance, adminFee: d.adminFee };
 }
 
-export const draftTotal = (d: FeesDraft) => cents((d.split ? d.mip + d.dfi : d.insurance) + d.adminFee);
+export const draftTotal = (d: FeesDraft) => cents(draftInsurance(d) + d.adminFee);
 
-export const InvoiceFeesFields: React.FC<{
+// Uma linha do detalhe da fatura, como no app do banco: rótulo à esquerda, valor à direita
+export const LedgerRow: React.FC<{
+  label: React.ReactNode;
+  help?: HelpContent;
+  sign?: '+' | '−';
+  // Ação ao lado do rótulo (ex.: detalhar os seguros)
+  action?: React.ReactNode;
+  note?: React.ReactNode;
+  sub?: boolean;
+  children: React.ReactNode;
+}> = ({ label, help, sign = '+', action, note, sub = false, children }) => (
+  <div className={`flex items-center gap-3 ${sub ? 'py-1.5 pl-4 ml-1 border-l border-slate-200 dark:border-slate-700' : 'py-2'}`}>
+    <div className="flex-1 min-w-0">
+      <div className={`flex items-center gap-1.5 ${sub ? 'text-[13px] text-slate-500 dark:text-slate-400' : 'text-sm font-medium text-slate-800 dark:text-slate-100'}`}>
+        {label}
+        {/* As partes de uma linha (MIP e DFI) não levam sinal: somam no total dela */}
+        {!sub && (
+          <span className="text-slate-400 dark:text-slate-500 font-normal" aria-hidden>
+            ({sign})
+          </span>
+        )}
+        {help && <HelpTip help={help} />}
+        {action}
+      </div>
+      {note && <div className="mt-0.5 text-[11px] leading-snug text-slate-500 dark:text-slate-400">{note}</div>}
+    </div>
+    <div className="w-36 sm:w-40 shrink-0">{children}</div>
+  </div>
+);
+
+// Valor calculado (não editável), alinhado com os campos
+export const LedgerValue: React.FC<{ value: number }> = ({ value }) => (
+  <div className="h-10 px-3 flex items-center justify-end font-num font-semibold text-slate-900 dark:text-white tabular-nums">{formatBRL(value)}</div>
+);
+
+// Seguros (total, com o detalhe em MIP e DFI) e taxas, como linhas do detalhe da fatura
+export const InvoiceFeesRows: React.FC<{
   value: FeesDraft;
   onChange: (d: FeesDraft) => void;
-  hint?: React.ReactNode;
-}> = ({ value: d, onChange, hint }) => {
+}> = ({ value: d, onChange }) => {
   const set = (patch: Partial<FeesDraft>) => onChange({ ...d, ...patch });
-  // Trocar o jeito de informar leva o que já foi digitado
-  const setSplit = (split: boolean) => {
-    if (split === d.split) return;
-    if (!split) set({ split, insurance: d.mip + d.dfi > 0 ? cents(d.mip + d.dfi) : d.insurance });
-    else set({ split });
-  };
+  // Detalhar parte do total: sem detalhe anterior, o total vai para o DFI até a pessoa digitar o MIP
+  const toggle = () =>
+    d.split
+      ? set({ split: false, insurance: draftInsurance(d) })
+      : set(d.mip + d.dfi > 0 ? { split: true } : { split: true, mip: 0, dfi: d.insurance });
   return (
-    <div className="space-y-4">
-      <Field label="Seguros" help={HELP.insurance} hint={hint}>
-        <div className="flex rounded-full bg-slate-100 dark:bg-slate-800 p-1 w-fit mb-2" role="group" aria-label="Como a fatura mostra os seguros">
-          {[
-            { v: true, l: 'MIP e DFI separados' },
-            { v: false, l: 'Só o total' },
-          ].map((o) => (
+    <>
+      <LedgerRow
+        label="Seguros"
+        action={
             <button
-              key={o.l}
               type="button"
-              aria-pressed={d.split === o.v}
-              onClick={() => setSplit(o.v)}
-              className={`h-8 px-3 rounded-full text-sm font-semibold cursor-pointer transition-colors ${
-                d.split === o.v ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500'
-              }`}
+              onClick={toggle}
+              aria-expanded={d.split}
+              className="ml-1 inline-flex items-center gap-0.5 h-6 px-2 rounded-full whitespace-nowrap text-[11px] font-semibold text-anil-700 dark:text-anil-300 bg-anil-50 dark:bg-anil-500/10 hover:bg-anil-100 dark:hover:bg-anil-500/20 cursor-pointer transition-colors"
             >
-              {o.l}
+              {d.split ? 'só o total' : 'MIP e DFI'}
+              <ChevronDown className={`w-3 h-3 transition-transform ${d.split ? 'rotate-180' : ''}`} />
             </button>
-          ))}
-        </div>
-        {d.split ? (
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <div className="text-xs text-slate-500 mb-1">Seguro MIP</div>
-              <MoneyField value={d.mip} onChange={(v) => set({ mip: v })} ariaLabel="Seguro MIP" />
-            </div>
-            <div>
-              <div className="text-xs text-slate-500 mb-1">Seguro DFI</div>
-              <MoneyField value={d.dfi} onChange={(v) => set({ dfi: v })} ariaLabel="Seguro DFI" />
-            </div>
-          </div>
-        ) : (
-          <MoneyField value={d.insurance} onChange={(v) => set({ insurance: v })} ariaLabel="Seguros" />
+        }
+        help={HELP.insurance}
+        note={!d.split && d.insurance > 0 ? 'Só com o total, a previsão das próximas pode variar alguns centavos.' : undefined}
+      >
+        {d.split ? <LedgerValue value={draftInsurance(d)} /> : <MoneyField size="sm" value={d.insurance} onChange={(v) => set({ insurance: v })} ariaLabel="Seguros" />}
+      </LedgerRow>
+      <AnimatePresence initial={false}>
+        {d.split && (
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+            <LedgerRow label="Seguro MIP" sub>
+              <MoneyField size="sm" value={d.mip} onChange={(v) => set({ mip: v })} ariaLabel="Seguro MIP" />
+            </LedgerRow>
+            <LedgerRow label="Seguro DFI" sub>
+              <MoneyField size="sm" value={d.dfi} onChange={(v) => set({ dfi: v })} ariaLabel="Seguro DFI" />
+            </LedgerRow>
+          </motion.div>
         )}
-        <AnimatePresence initial={false}>
-          {!d.split && (
-            <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
-              <div className="mt-2 p-2.5 rounded-xl bg-sol-50 dark:bg-sol-400/10 text-xs text-sol-900 dark:text-sol-100 leading-relaxed">
-                Só com o total, a previsão da próxima fatura pode ter alguns centavos de diferença: o MIP cai com o saldo e o DFI sobe com a TR,
-                e o total não diz quanto é cada um.
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Field>
-      <Field label="Taxa de administração" help={HELP.adminFee} optional>
-        <MoneyField value={d.adminFee} onChange={(v) => set({ adminFee: v })} ariaLabel="Taxa de administração" />
-      </Field>
-      {draftTotal(d) > 0 && (
-        <div className="text-xs text-slate-500 dark:text-slate-400">
-          Seguros e taxa somam <b className="font-num text-slate-700 dark:text-slate-200">{formatBRL(draftTotal(d))}</b> na parcela.
-        </div>
-      )}
-    </div>
+      </AnimatePresence>
+      <LedgerRow label="Taxas" help={HELP.adminFee}>
+        <MoneyField size="sm" value={d.adminFee} onChange={(v) => set({ adminFee: v })} ariaLabel="Taxa de administração" />
+      </LedgerRow>
+    </>
   );
 };

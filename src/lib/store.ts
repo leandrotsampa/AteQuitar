@@ -72,6 +72,17 @@ export function migrateContract(raw: Contract & { monthlyInsurance?: number; mon
   return { ...contract, feesRef: { yearMonth, insurance, adminFee } };
 }
 
+// Até a 1.0.1 havia o saldo do extrato do IR (31/12): vira um saldo do banco que, como antes,
+// já inclui todas as amortizações registradas (só as simuladas, que vêm depois, abatem em cima).
+// Se o mês já tem um saldo do banco, ele fica
+const IR_INCLUDES_EXTRAS = '9999-12-30T00:00:00.000Z';
+export function migrateCheckpoints(list: (Omit<BalanceCheckpoint, 'source'> & { source: string })[]): BalanceCheckpoint[] {
+  const bank = new Set(list.filter((c) => c.source !== 'ir').map((c) => c.yearMonth));
+  return list
+    .filter((c) => c.source !== 'ir' || !bank.has(c.yearMonth))
+    .map((c) => (c.source === 'ir' ? { ...c, source: 'banco' as const, createdAt: IR_INCLUDES_EXTRAS } : { ...c, source: 'banco' as const }));
+}
+
 // Aceita só o que tem o formato esperado; o resto volta para o padrão
 export function normalizeData(raw: unknown): AppData {
   const base = emptyData();
@@ -82,7 +93,7 @@ export function normalizeData(raw: unknown): AppData {
     ...base,
     contract: r.contract && typeof r.contract === 'object' ? migrateContract({ ...r.contract }) : null,
     extras: arr<ExtraPayment>(r.extras),
-    checkpoints: arr<BalanceCheckpoint>(r.checkpoints),
+    checkpoints: migrateCheckpoints(arr<BalanceCheckpoint>(r.checkpoints)),
     checkins: arr<CheckIn>(r.checkins),
     rates:
       r.rates && typeof r.rates === 'object' && r.rates.latest

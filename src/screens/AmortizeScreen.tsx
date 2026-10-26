@@ -9,7 +9,7 @@ import { AreaChart } from '../components/charts/AreaChart';
 import { Field } from '../components/ui/HelpTip';
 import { MoneyField, MonthField } from '../components/ui/Inputs';
 import { btnPrimary, card, tile } from '../components/ui/card';
-import { simulateExtra, type ExtraFrequency } from '../lib/finance';
+import { effectiveExtra, simulateExtra, type ExtraFrequency } from '../lib/finance';
 import type { ExtraMode } from '../types/finance';
 import {
   addMonths,
@@ -42,7 +42,12 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) =
 
   const canRegister = frequency === 'once' && startYm <= now && amount > 0;
   // A mesma amortização (mês, valor e tipo) já registrada: não deixa lançar de novo, só desfazer
-  const registered = frequency === 'once' ? data.extras.find((e) => e.yearMonth === startYm && Math.abs(e.amount - amount) < 0.005 && e.mode === mode) : undefined;
+  const registered =
+    frequency === 'once' ? data.extras.find((e) => e.yearMonth === startYm && Math.abs((e.paid ?? e.amount) - amount) < 0.005 && e.mode === mode) : undefined;
+  // Pagando hoje, o banco desconta os juros desde o último vencimento: só o resto abate o saldo
+  const today = new Date().toLocaleDateString('sv-SE');
+  const payingNow = frequency === 'once' && startYm === now;
+  const effectiveNow = payingNow ? effectiveExtra(contract, amount, today) : amount;
   // Depois de registrar, a simulação continua mostrando quanto essa amortização economiza
   // (sem descontar, ela já estaria nos dados e a economia apareceria zerada)
   const simOptions = useMemo(
@@ -79,7 +84,11 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) =
 
   const register = () => {
     if (registered) return;
-    update((prev) => ({ ...prev, extras: [...prev.extras, { id: uid(), yearMonth: startYm, amount, mode, source: 'proprio', createdAt: new Date().toISOString() }] }));
+    const paidNow = payingNow ? { paid: amount, date: today } : {};
+    update((prev) => ({
+      ...prev,
+      extras: [...prev.extras, { id: uid(), yearMonth: startYm, amount: effectiveNow, ...paidNow, mode, source: 'proprio', createdAt: new Date().toISOString() }],
+    }));
     playSound('celebrate');
     celebrate();
   };
@@ -314,6 +323,12 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) =
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
             Registre para os números da sua casa refletirem o pagamento. Funciona para uma amortização única num mês que já chegou.
           </p>
+          {payingNow && amount > effectiveNow + 0.005 && (
+            <p className="text-sm text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">
+              Pagando hoje, cerca de <b className="font-num text-slate-900 dark:text-white">{formatBRL(effectiveNow)}</b> abatem o saldo: o banco desconta{' '}
+              {formatBRL(amount - effectiveNow)} de juros desde o último vencimento. Se o comprovante mostrar outro valor, corrija em Parcelas → Registros.
+            </p>
+          )}
           <div className="mt-5 flex flex-wrap items-center gap-x-4 gap-y-2">
             <button type="button" onClick={register} disabled={!canRegister || Boolean(registered)} className={`${btnPrimary} whitespace-nowrap`}>
               {registered ? (

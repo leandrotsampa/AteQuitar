@@ -46,7 +46,11 @@ export interface FeesReference extends InvoiceFees {
 export interface ExtraPayment {
   id: string;
   yearMonth: string;
+  // Amortização efetiva: o que abate o saldo
   amount: number;
+  // Valor pago, com os juros pro rata desde o último vencimento, e a data do pagamento (AAAA-MM-DD)
+  paid?: number;
+  date?: string;
   mode: ExtraMode;
   source: ExtraSource;
   note?: string;
@@ -59,17 +63,33 @@ export interface BalanceCheckpoint {
   id: string;
   yearMonth: string;
   balance: number;
-  source: 'banco' | 'ir';
-  // Quando o saldo foi informado (o do IR é sempre o de 31 de dezembro)
+  source: 'banco';
+  // Quando o saldo foi informado
   createdAt?: string;
 }
 
-// Registro do mês: parcela paga (e, se quiser, o saldo depois dela)
+// Saldo real usado na tabela: os informados e os calculados pela fatura do check-in ('fatura')
+export interface ScheduleCheckpoint extends Omit<BalanceCheckpoint, 'source'> {
+  source: BalanceCheckpoint['source'] | 'fatura';
+}
+
+// Registro do mês: a fatura da parcela, linha a linha como no app do banco
 export interface CheckIn {
   id: string;
   yearMonth: string;
+  // Total pago: prestação + atraso − FGTS
   paidAmount: number;
+  amortization?: number;
+  interest?: number;
+  // Multa e juros de mora: entram no total pago, não mexem no saldo nem nos seguros
+  charges?: number;
+  // FGTS usado na prestação: abate do que a pessoa pagou
+  fgts?: number;
+  // Parcela adiantada só agendada no débito automático: conta como paga no vencimento
+  scheduled?: boolean;
+  // Saldo depois da parcela; 'fatura' = calculado pelos juros e pela amortização da fatura
   balanceAfter?: number;
+  balanceSource?: 'fatura' | 'banco';
   // Amortização extra registrada junto neste check-in (para reabrir e editar sem duplicar)
   extraId?: string;
   // Seguros e taxa da fatura do mês: passam a ser a base da previsão dos meses seguintes
@@ -96,5 +116,8 @@ export interface ScheduleRow {
   payment: number; // parcela total
   extra: number;
   closingBalance: number;
-  checkpoint: boolean; // saldo ajustado pelo valor real informado
+  // Saldo ajustado por um valor real: do banco ou calculado pela fatura
+  checkpoint: ScheduleCheckpoint['source'] | null;
+  // Amortização e juros copiados da fatura do check-in (não previstos)
+  fromInvoice: boolean;
 }

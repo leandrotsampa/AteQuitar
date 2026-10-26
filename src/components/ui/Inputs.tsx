@@ -27,7 +27,7 @@ interface NumberFieldProps {
   placeholder?: string;
   ariaLabel?: string;
   className?: string;
-  size?: 'md' | 'lg';
+  size?: 'sm' | 'md' | 'lg';
 }
 
 // Campo numérico só por digitação (sem setas nem rolagem do mouse); formata ao sair do campo
@@ -68,7 +68,9 @@ export const NumberField: React.FC<NumberFieldProps> = ({
           onChange(parseBrNumber(e.target.value));
         }}
         onBlur={() => setDraft(null)}
-        className={`${inputBase} font-num font-semibold text-right ${size === 'lg' ? 'h-14 text-xl' : 'text-base'} ${prefix ? 'pl-11' : ''} ${
+        className={`${size === 'sm' ? inputBase.replace('h-12', 'h-10') : inputBase} font-num font-semibold text-right ${
+          size === 'lg' ? 'h-14 text-xl' : 'text-base'
+        } ${prefix ? 'pl-11' : ''} ${
           suffix ? (suffix.length > 4 ? 'pr-16' : 'pr-11') : ''
         }`}
       />

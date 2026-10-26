@@ -326,13 +326,14 @@ export const MonthField: React.FC<
               {monthLongName(value)}
               <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform duration-[var(--duration-base)] ${pos ? 'rotate-180' : ''}`} />
             </span>
-            <span className="flex items-center gap-1 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">
-              <CalendarDays className="w-3 h-3" />
+            {/* Uma linha só: em botões estreitos a marca encurta em vez de quebrar */}
+            <span className="flex items-center gap-1 max-w-full px-1 text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 whitespace-nowrap">
+              <CalendarDays className="w-3 h-3 shrink-0" />
               <span className="font-num">{value.slice(0, 4)}</span>
               {marked?.has(value) && markedLabel && (
                 <>
-                  <span className="w-1 h-1 rounded-full bg-sol-500" />
-                  <span>{markedLabel}</span>
+                  <span className="w-1 h-1 rounded-full bg-sol-500 shrink-0" />
+                  <span className="truncate">{markedLabel}</span>
                 </>
               )}
             </span>

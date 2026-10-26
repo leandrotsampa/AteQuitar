@@ -45,6 +45,11 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
   const equity = contract.propertyValue > 0 ? Math.max(0, Math.min(1, 1 - summary.currentBalance / contract.propertyValue)) : null;
   const next = summary.next;
   const monthsLeft = summary.remainingCount;
+  // De onde vem o saldo de hoje: do último saldo real, mais as parcelas pagas desde então
+  const real = model.lastRealBalance;
+  const realIndex = real ? model.rows.findIndex((r) => r.yearMonth === real.yearMonth) : -1;
+  const sinceReal = real && realIndex >= 0 ? summary.paidCount - 1 - realIndex : 0;
+  const realLabel = real ? (real.source === 'fatura' ? 'pela fatura' : 'do banco') : '';
 
   // Economia que as amortizações extras já garantiram
   const originalInterest = originalRows.reduce((a, r) => a + r.interest + r.fees, 0);
@@ -121,9 +126,9 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
             <HelpTip
               help={{
                 title: 'Saldo devedor',
-                body: model.calibrated
-                  ? 'Calculado a partir do último saldo real que você informou, aplicando TR, juros e as parcelas pagas desde então.'
-                  : 'Estimado a partir do contrato. Para ficar exato, informe o saldo do app do banco no check-in.',
+                body: real
+                  ? `Parte do último saldo real: ${formatBRL(real.balance)} depois da parcela de ${monthLong(real.yearMonth)} (${realLabel}). Desde então o app aplica a TR, os juros e cada parcela paga.`
+                  : 'Estimado a partir do contrato. Para ficar exato, faça o check-in com a fatura do mês: o app calcula o saldo pelos juros e pela amortização.',
               }}
             />
           </div>
@@ -142,6 +147,13 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
               'Nenhuma parcela restante'
             )}
           </div>
+          {real && (
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              {sinceReal > 0
+                ? `Saldo real ${realLabel} em ${monthLong(real.yearMonth)}, atualizado com ${sinceReal} ${sinceReal === 1 ? 'parcela' : 'parcelas'} desde então`
+                : `Saldo real ${realLabel}`}
+            </div>
+          )}
 
           {/* Régua dos marcos: cada 10% é uma conquista */}
           <div data-tour="marcos" className="mt-6">
@@ -218,7 +230,9 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
                   A parcela de {monthName(pending)} já venceu. Vamos registrar?
                 </div>
                 <div className="text-sm text-white/80 mt-0.5">
-                  Leva menos de um minuto: confirme o valor pago e, se quiser, o saldo que aparece no app do banco.
+                  {data.checkins.length === 0
+                    ? 'Copie o detalhe da parcela do app do banco: com ele o app inclui seguros e taxa e calcula o saldo exato.'
+                    : 'Leva menos de um minuto: copie o detalhe da parcela do app do banco.'}
                 </div>
               </div>
               <button
@@ -242,7 +256,11 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
           icon={CalendarClock}
           label="Próxima parcela"
           value={next ? <AnimatedNumber value={next.payment} format={formatBRL} /> : '—'}
-          detail={next ? `vence em ${String(contract.dueDay).padStart(2, '0')}/${next.yearMonth.slice(5)}` : 'nenhuma pendente'}
+          detail={
+            next
+              ? `${data.checkins.some((c) => c.yearMonth === next.yearMonth && c.scheduled) ? 'agendada para' : 'vence em'} ${String(contract.dueDay).padStart(2, '0')}/${next.yearMonth.slice(5)}`
+              : 'nenhuma pendente'
+          }
         />
         <Stat
           icon={Receipt}
@@ -509,7 +527,7 @@ const Completeness: React.FC<{
               <button
                 type="button"
                 onClick={
-                  m.includes('check-in') || m.includes('saldo devedor') ? onCheckin : m.includes('IR') ? onHistory : onContract
+                  m.includes('check-in') || m.includes('fatura') ? onCheckin : onContract
                 }
                 className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-xl text-left text-sm text-slate-700 dark:text-slate-200 bg-slate-50 hover:bg-anil-50 dark:bg-slate-950/60 dark:hover:bg-anil-500/10 cursor-pointer transition-colors"
               >

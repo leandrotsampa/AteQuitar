@@ -44,7 +44,7 @@ export function buildTips(model: FinanceModel, data: AppData): Tip[] {
     tips.push({
       id: 'calibrar',
       title: 'Deixe os números exatos',
-      text: 'Hoje o saldo é uma estimativa. Abra o app do banco, copie o saldo devedor e registre no check-in: o resto se ajusta sozinho.',
+      text: 'Hoje o saldo é uma estimativa. Faça o check-in com o detalhe da parcela do app do banco: pelos juros e pela amortização, o app calcula o saldo exato.',
       action: { label: 'Fazer check-in', checkin: true },
       tone: 'sol',
     });
@@ -83,8 +83,8 @@ export function buildTips(model: FinanceModel, data: AppData): Tip[] {
     tips.push({
       id: 'ir',
       title: 'Época do Imposto de Renda',
-      text: 'O banco já publicou o extrato com o saldo de 31/12. Registre esse saldo: vira um ponto real no seu gráfico e você declara o imóvel com o valor certo.',
-      action: { label: 'Registrar saldo do IR', screen: 'history' },
+      text: 'O banco já publicou o extrato do financiamento para a declaração. Veja como declarar o imóvel e o que pagou no ano em Bens e Direitos.',
+      action: { label: 'Como declarar', screen: 'learn' },
       tone: 'anil',
     });
   }

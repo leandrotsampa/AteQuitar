@@ -33,6 +33,7 @@ function colsToFees(r, prefix) {
 const SYSTEMS = ['SAC', 'PRICE'];
 const MODES = ['prazo', 'parcela'];
 const EXTRA_SOURCES = ['proprio', 'fgts', 'decimo'];
+// 'ir' só nos bancos das versões antigas: a interface converte em saldo do banco ao carregar
 const BALANCE_SOURCES = ['banco', 'ir'];
 
 function contractToRow(c) {
@@ -105,6 +106,12 @@ function docToRows(doc) {
       balance_after: num(c.balanceAfter) > 0 ? num(c.balanceAfter) : null,
       extra_id: typeof c.extraId === 'string' && c.extraId ? c.extraId : null,
       ...feesToCols(c.fees, ''),
+      amortization: optNum(c.amortization),
+      interest: optNum(c.interest),
+      charges: optNum(c.charges) || null,
+      fgts: optNum(c.fgts) || null,
+      scheduled: c.scheduled ? 1 : 0,
+      balance_source: c.balanceSource === 'fatura' || c.balanceSource === 'banco' ? c.balanceSource : null,
       created_at: str(c.createdAt) || new Date().toISOString(),
     });
   }
@@ -118,6 +125,8 @@ function docToRows(doc) {
       mode: MODES.includes(e.mode) ? e.mode : 'prazo',
       source: EXTRA_SOURCES.includes(e.source) ? e.source : 'proprio',
       note: typeof e.note === 'string' && e.note ? e.note : null,
+      paid: num(e.paid) > 0 ? num(e.paid) : null,
+      paid_date: typeof e.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(e.date) ? e.date : null,
       created_at: typeof e.createdAt === 'string' && e.createdAt ? e.createdAt : null,
     }));
 
@@ -194,6 +203,12 @@ function rowsToDoc(rows) {
         ...(c.balance_after != null ? { balanceAfter: c.balance_after } : {}),
         ...(c.extra_id ? { extraId: c.extra_id } : {}),
         ...(fees ? { fees } : {}),
+        ...(c.amortization != null ? { amortization: c.amortization } : {}),
+        ...(c.interest != null ? { interest: c.interest } : {}),
+        ...(c.charges != null ? { charges: c.charges } : {}),
+        ...(c.fgts != null ? { fgts: c.fgts } : {}),
+        ...(c.scheduled ? { scheduled: true } : {}),
+        ...(c.balance_source ? { balanceSource: c.balance_source } : {}),
         createdAt: c.created_at,
       };
     }),
@@ -204,6 +219,8 @@ function rowsToDoc(rows) {
       mode: e.mode,
       source: e.source,
       ...(e.note ? { note: e.note } : {}),
+      ...(e.paid != null ? { paid: e.paid } : {}),
+      ...(e.paid_date ? { date: e.paid_date } : {}),
       ...(e.created_at ? { createdAt: e.created_at } : {}),
     })),
     checkpoints: rows.checkpoints.map((c) => ({
