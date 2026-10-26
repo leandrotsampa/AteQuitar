@@ -8,7 +8,7 @@ import { AnimatedNumber } from '../components/ui/AnimatedNumber';
 import { AreaChart } from '../components/charts/AreaChart';
 import { Field } from '../components/ui/HelpTip';
 import { MoneyField, MonthField } from '../components/ui/Inputs';
-import { btnPrimary, card, tile } from '../components/ui/card';
+import { btnPrimary, card, chip, tile } from '../components/ui/card';
 import { effectiveExtra, simulateExtra, type ExtraFrequency } from '../lib/finance';
 import type { ExtraMode } from '../types/finance';
 import {
@@ -135,9 +135,7 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) =
                     playSound('tick');
                     setAmount(p);
                   }}
-                  className={`h-8 px-3 rounded-full text-xs font-bold cursor-pointer transition-colors ${
-                    amount === p ? 'bg-anil-600 text-white' : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200'
-                  }`}
+                  className={`h-8 px-3 text-xs ${chip(amount === p)}`}
                 >
                   {formatBRL0(p)}
                 </button>

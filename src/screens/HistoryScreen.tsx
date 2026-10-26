@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { BadgeCheck, CalendarCheck2, Landmark, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
 import type { ScreenProps } from './types';
@@ -26,6 +26,24 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
   const years = useMemo(() => Array.from(new Set(rows.map((r) => r.yearMonth.slice(0, 4)))), [rows]);
   const currentYear = (summary.next?.yearMonth ?? rows[rows.length - 1]?.yearMonth ?? currentYearMonth()).slice(0, 4);
   const [year, setYear] = useState(years.includes(currentYear) ? currentYear : years[0]);
+  // O ano escolhido sempre à vista no trilho
+  const yearsRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = yearsRef.current?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    el?.scrollIntoView({ block: 'nearest', inline: 'center', behavior: 'smooth' });
+  }, [year, tab]);
+  // A roda do mouse (vertical) rola os anos de lado, sem rolar a página junto
+  useEffect(() => {
+    const el = yearsRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX) || el.scrollWidth <= el.clientWidth) return;
+      e.preventDefault();
+      el.scrollLeft += e.deltaY;
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [tab]);
   const checkinMonths = new Set(data.checkins.map((c) => c.yearMonth));
   const balanceMonths = new Set(data.checkpoints.map((c) => c.yearMonth));
   const yearRows = rows.filter((r) => r.yearMonth.startsWith(year));
@@ -191,23 +209,33 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
 
       {tab === 'table' ? (
         <>
-          <div data-tour="hist-anos" className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+          {/* Anos num trilho, como os outros seletores: soltos no fundo pareciam texto */}
+          <div
+            data-tour="hist-anos"
+            className="rounded-full bg-white border border-slate-200 shadow-[0_1px_2px_rgba(30,34,80,0.06)] dark:bg-slate-900 dark:border-white/[0.06] dark:shadow-none"
+          >
+          <div
+            ref={yearsRef}
+            className="flex gap-1 overflow-x-auto p-1 px-3 scroll-quiet fade-edges"
+          >
             {years.map((y) => (
               <button
                 key={y}
                 type="button"
+                aria-pressed={y === year}
                 onClick={() => {
                   playSound('tick');
                   setYear(y);
                 }}
                 className={`relative h-9 px-3.5 rounded-full text-sm font-num font-semibold shrink-0 cursor-pointer transition-colors ${
-                  y === year ? 'text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-800'
+                  y === year ? 'text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-anil-50 hover:text-anil-700 dark:hover:bg-slate-800 dark:hover:text-white'
                 }`}
               >
                 {y === year && <motion.span layoutId="year-pill" className="absolute inset-0 rounded-full bg-anil-600" transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
                 <span className="relative">{y}</span>
               </button>
             ))}
+          </div>
           </div>
 
           <div className="grid grid-cols-3 gap-4">

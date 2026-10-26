@@ -19,7 +19,7 @@ import { EASE_OUT, instantIf } from '../lib/motion';
 import { playSound } from '../hooks/useSound';
 import { Field } from './ui/HelpTip';
 import { MoneyField, MonthField, NumberField } from './ui/Inputs';
-import { btnGhost, btnPrimary, inputBase } from './ui/card';
+import { btnGhost, btnPrimary, chip, inputBase } from './ui/card';
 import { HouseHero } from './HouseHero';
 import { StepTrack } from './ui/StepTrack';
 import { HELP } from './help';
@@ -267,11 +267,7 @@ export const ContractWizard: React.FC<{
                           type="button"
                           onClick={() => setC((prev) => ({ ...prev, bank: b, bankPreposition: undefined }))}
                           aria-pressed={c.bank === b}
-                          className={`h-9 px-4 rounded-full text-sm font-semibold transition-colors cursor-pointer ${
-                            c.bank === b
-                              ? 'bg-anil-600 text-white'
-                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700'
-                          }`}
+                          className={`h-9 px-4 text-sm ${chip(c.bank === b)}`}
                         >
                           {b}
                         </button>
@@ -427,11 +423,7 @@ export const ContractWizard: React.FC<{
                           type="button"
                           onClick={() => set('trIndexed', o.v)}
                           aria-pressed={c.trIndexed === o.v}
-                          className={`h-10 px-4 rounded-full text-sm font-semibold transition-colors cursor-pointer ${
-                            c.trIndexed === o.v
-                              ? 'bg-anil-600 text-white'
-                              : 'bg-slate-100 text-slate-700 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200'
-                          }`}
+                          className={`h-10 px-4 text-sm ${chip(c.trIndexed === o.v)}`}
                         >
                           {o.l}
                         </button>

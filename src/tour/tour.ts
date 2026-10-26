@@ -26,7 +26,7 @@ const HOME_STEPS: TourStep[] = [
     id: 'falta',
     title: 'Quanto falta',
     description: () =>
-      'O saldo devedor de hoje, quantas parcelas faltam e quando acaba. O selo no topo diz se é uma <b>estimativa</b> ou se já usa o <b>saldo real</b> do banco.',
+      'O saldo devedor de hoje, quantas parcelas faltam e quando acaba. O selo no topo diz se é uma <b>estimativa</b> ou se já parte de um <b>saldo real</b>: o calculado pela fatura do check-in ou o informado do banco.',
     side: 'left',
     align: 'start',
   },
@@ -90,7 +90,7 @@ const HISTORY_STEPS: TourStep[] = [
     id: 'hist-tabela',
     title: 'Cada parcela por dentro',
     description: () =>
-      'Valor, quanto abateu a dívida, juros, a <b>TR</b> do mês, seguros e o saldo depois. O selo verde marca os meses com check-in.',
+      'Valor, quanto abateu a dívida, juros, a <b>TR</b> do mês, seguros e o saldo depois. O selo verde marca os meses com check-in; <b>da fatura</b> e <b>pela fatura</b> mostram os valores copiados dela, e <b>estimada</b>, a TR que ainda não é a oficial.',
     side: 'top',
     align: 'start',
   },
@@ -249,7 +249,7 @@ const WIZARD_STEPS: TourStep[] = [
     id: 'cad-passos',
     title: 'Cinco passos curtos',
     description: () =>
-      'Imóvel, empréstimo, juros, datas e, por último, os dados que deixam tudo exato. Dá para voltar a qualquer passo clicando no nome dele.',
+      'Imóvel, empréstimo, juros, datas e, por último, os dados que deixam tudo exato. Clique num passo para voltar a ele; os seguintes abrem quando os anteriores estiverem completos.',
     side: 'bottom',
     align: 'start',
   },
@@ -272,7 +272,7 @@ const WIZARD_STEPS: TourStep[] = [
     id: 'cad-avancar',
     title: 'Sem pressa',
     description: () =>
-      'Os campos marcados como <b>opcional</b> podem ficar para depois. Você completa quando quiser em <b>Meu financiamento</b>, no menu.',
+      'Os campos marcados como <b>opcional</b> podem ficar para depois: os do contrato em <b>Meu financiamento</b>, no menu, e o saldo pelo check-in ou em <b>Parcelas → Registros</b>.',
     side: 'top',
     align: 'center',
   },

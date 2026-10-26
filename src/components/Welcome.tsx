@@ -74,7 +74,7 @@ export const Welcome: React.FC<{
           <button
             type="button"
             onClick={(e) => toggleTheme(e.currentTarget)}
-            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full hover:bg-white/70 dark:hover:bg-slate-800 cursor-pointer"
+            className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full border border-slate-300/90 bg-white text-slate-700 hover:border-anil-300 hover:bg-anil-50 dark:bg-slate-800 dark:border-transparent dark:text-slate-200 dark:hover:bg-slate-700 cursor-pointer"
             title="Trocar entre dia e noite"
           >
             {dark ? <Moon className="w-4 h-4 text-anil-300" /> : <Sun className="w-4 h-4 text-sol-500" />}

@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence } from 'motion/react';
 import { AlertTriangle, Info } from 'lucide-react';
 import { ModalShell } from './ModalShell';
+import { btnGhost } from './card';
 
 // Confirmação e aviso no tema do app, no lugar do window.confirm/alert nativos do sistema
 interface DialogRequest {
@@ -81,7 +82,7 @@ export function useAppDialog(): {
                   type="button"
                   autoFocus
                   onClick={() => close(false)}
-                  className="px-4 py-2 rounded-full text-sm font-semibold bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 cursor-pointer"
+                  className={btnGhost}
                 >
                   {request.cancelLabel}
                 </button>

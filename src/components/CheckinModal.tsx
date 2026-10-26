@@ -5,7 +5,7 @@ import { ModalShell } from './ui/ModalShell';
 import { StepTrack } from './ui/StepTrack';
 import { Field } from './ui/HelpTip';
 import { MoneyField, MonthField } from './ui/Inputs';
-import { btnGhost, btnPrimary, tile } from './ui/card';
+import { btnGhost, btnPrimary, chip, tile } from './ui/card';
 import { celebrate } from './ui/Confetti';
 import { InvoiceFeesRows, LedgerRow, draftFromFees, draftFromRow, draftTotal, feesFromDraft, type FeesDraft } from './InvoiceFeesFields';
 import type { FinanceModel } from '../lib/model';
@@ -28,10 +28,7 @@ const cents = (v: number) => Math.round(v * 100) / 100;
 // Saldo calculado pela fatura muito longe do previsto: quase sempre é a taxa do cadastro
 const FAR_FROM_FORECAST = 0.1;
 
-const pill = (active: boolean) =>
-  `h-10 px-4 rounded-full text-sm font-semibold cursor-pointer transition-colors ${
-    active ? 'bg-anil-600 text-white' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
-  }`;
+const pill = (active: boolean) => `h-10 px-4 text-sm ${chip(active)}`;
 
 export const CheckinModal: React.FC<{
   model: FinanceModel;
@@ -464,9 +461,7 @@ export const CheckinModal: React.FC<{
                                     type="button"
                                     onClick={() => set({ source: s.v })}
                                     aria-pressed={f.source === s.v}
-                                    className={`h-9 px-3.5 rounded-full text-sm font-semibold cursor-pointer ${
-                                      f.source === s.v ? 'bg-sol-400 text-slate-900' : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200'
-                                    }`}
+                                    className={`h-9 px-3.5 text-sm ${chip(f.source === s.v, 'sol')}`}
                                   >
                                     {s.l}
                                   </button>

@@ -210,6 +210,15 @@
 ::-webkit-scrollbar-thumb { background: rgb(99 106 136 / 0.35); border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: rgb(129 137 168 / 0.6); }
 
+/* Trilho que rola de lado sem barra (a roda do mouse e o arrasto rolam), com as bordas
+   esmaecidas indicando que há mais itens */
+.scroll-quiet { scrollbar-width: none; }
+.scroll-quiet::-webkit-scrollbar { display: none; }
+.fade-edges {
+  -webkit-mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+  mask-image: linear-gradient(to right, transparent, #000 20px, #000 calc(100% - 20px), transparent);
+}
+
 input[type='range'].range {
   -webkit-appearance: none;
   appearance: none;
