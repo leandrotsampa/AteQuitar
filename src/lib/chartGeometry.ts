@@ -1,13 +1,10 @@
-// Geometria pura dos gráficos SVG (escala, linhas, áreas, arcos e marcas do eixo)
+// Geometria pura dos gráficos SVG (escala, linhas, áreas e marcas do eixo)
 
 type Point = { x: number; y: number };
 
 // Arredonda para 2 casas e troca -0 por 0, para o "d" do path ficar curto e estável
 const fmt = (v: number): string => String(Math.round(v * 100) / 100 || 0);
 
-export function clamp(v: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, v));
-}
 
 export function linearScale(domain: [number, number], range: [number, number]): (v: number) => number {
   const [d0, d1] = domain;
@@ -61,17 +58,6 @@ export function areaPath(points: Point[], baselineY: number): string {
   return `${linePath(points)} L ${fmt(last.x)} ${fmt(baselineY)} L ${fmt(first.x)} ${fmt(baselineY)} Z`;
 }
 
-// Arco em graus no sistema da tela (0° = direita, 90° = baixo, 270° = cima)
-export function arcPath(cx: number, cy: number, r: number, startDeg: number, endDeg: number): string {
-  const rad = (deg: number) => (deg * Math.PI) / 180;
-  const sx = cx + r * Math.cos(rad(startDeg));
-  const sy = cy + r * Math.sin(rad(startDeg));
-  const ex = cx + r * Math.cos(rad(endDeg));
-  const ey = cy + r * Math.sin(rad(endDeg));
-  const large = Math.abs(endDeg - startDeg) > 180 ? 1 : 0;
-  const sweep = endDeg >= startDeg ? 1 : 0;
-  return `M ${fmt(sx)} ${fmt(sy)} A ${fmt(r)} ${fmt(r)} 0 ${large} ${sweep} ${fmt(ex)} ${fmt(ey)}`;
-}
 
 // Marcas "redondas" do zero até cobrir o máximo (passo de 1, 2, 2,5 ou 5 × 10^k)
 export function niceTicks(max: number, count = 4): number[] {

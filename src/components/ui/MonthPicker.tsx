@@ -20,7 +20,7 @@ interface Limits {
 // Grade de meses: ano com setas, 12 meses (o escolhido em anil, os marcados com um ponto,
 // o mês atual com contorno) e atalho para o mês atual. Teclado: setas, Home/End, PageUp/PageDown e Enter.
 // Meses fora dos limites ficam bloqueados.
-export const MonthPickerPanel: React.FC<Limits & { value: string; onSelect: (yearMonth: string) => void }> = ({
+const MonthPickerPanel: React.FC<Limits & { value: string; onSelect: (yearMonth: string) => void }> = ({
   value,
   onSelect,
   min,

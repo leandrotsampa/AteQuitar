@@ -58,10 +58,6 @@ const RECIPES: Record<SoundName, SoundRecipe> = {
   },
 };
 
-export function soundRecipe(name: SoundName): SoundRecipe {
-  return RECIPES[name];
-}
-
 
 const REPEAT_GAP_MS = 60;
 const ATTACK_S = 0.005;

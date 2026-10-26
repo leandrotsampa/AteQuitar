@@ -17,7 +17,7 @@ export interface AppData {
   createdAt: string;
 }
 
-export const emptyData = (): AppData => ({
+const emptyData = (): AppData => ({
   version: 1,
   contract: null,
   extras: [],

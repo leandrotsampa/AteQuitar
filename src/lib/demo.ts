@@ -3,7 +3,7 @@
 import type { Contract, ExtraPayment } from '../types/finance';
 import { addMonths, currentYearMonth } from './format';
 
-export function demoContract(): Contract {
+function demoContract(): Contract {
   return {
     nickname: 'Apartamento de exemplo',
     bank: 'Caixa',

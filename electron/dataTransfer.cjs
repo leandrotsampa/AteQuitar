@@ -41,4 +41,4 @@ function parseImport(text) {
   return doc;
 }
 
-module.exports = { FORMAT, FORMAT_VERSION, exportDocument, parseImport };
+module.exports = { exportDocument, parseImport };

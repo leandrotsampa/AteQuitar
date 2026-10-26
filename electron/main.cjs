@@ -98,7 +98,9 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
+      // Corretor ortográfico não é usado; guarda o JS compilado para as próximas aberturas
       spellcheck: false,
+      v8CacheOptions: 'bypassHeatCheck',
     },
   });
   mainWindow.once('ready-to-show', () => mainWindow.show());

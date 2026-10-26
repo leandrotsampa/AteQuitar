@@ -20,7 +20,7 @@ export interface FinanceModel {
   calibrated: boolean;
 }
 
-export function completenessOf(data: AppData): { score: number; missing: string[] } {
+function completenessOf(data: AppData): { score: number; missing: string[] } {
   const c = data.contract;
   if (!c) return { score: 0, missing: ['contrato'] };
   const checks: [boolean, string][] = [

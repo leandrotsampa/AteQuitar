@@ -246,7 +246,7 @@ const LEARN_STEPS: TourStep[] = [
 
 export type TourScreen = ScreenId;
 
-export const TOUR_SCREENS: Record<TourScreen, TourStep[]> = {
+const TOUR_SCREENS: Record<TourScreen, TourStep[]> = {
   home: HOME_STEPS,
   history: HISTORY_STEPS,
   amortize: AMORTIZE_STEPS,

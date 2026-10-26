@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { inputBase } from './card';
 
 // "30.000,50" / "30000.5" / "30000" -> 30000.5
-export const parseBrNumber = (text: string): number => {
+const parseBrNumber = (text: string): number => {
   const clean = text.replace(/[^\d.,-]/g, '');
   if (!clean) return 0;
   const normalized = clean.includes(',')

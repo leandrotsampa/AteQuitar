@@ -6,8 +6,7 @@ import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { ConfettiLayer, celebrate } from './components/ui/Confetti';
 import { useAppDialog } from './components/ui/AppDialog';
-import { Welcome } from './components/Welcome';
-import { ContractWizard, type WizardResult } from './components/ContractWizard';
+import type { WizardResult } from './components/ContractWizard';
 import { useAppData, type AppData } from './lib/store';
 import { useFinanceModel } from './lib/model';
 import { fetchMarketRates, shouldRefresh } from './lib/rates';
@@ -30,6 +29,11 @@ const loadRate = () => import('./screens/RateScreen');
 const loadMarket = () => import('./screens/MarketScreen');
 const loadLearn = () => import('./screens/LearnScreen');
 const loadCheckin = () => import('./components/CheckinModal');
+// Boas-vindas e cadastro só são usados na primeira abertura ou ao editar o contrato
+const loadWelcome = () => import('./components/Welcome');
+const loadWizard = () => import('./components/ContractWizard');
+const Welcome = lazy(() => loadWelcome().then((m) => ({ default: m.Welcome })));
+const ContractWizard = lazy(() => loadWizard().then((m) => ({ default: m.ContractWizard })));
 const loadData = () => import('./components/DataModal');
 const HistoryScreen = lazy(() => loadHistory().then((m) => ({ default: m.HistoryScreen })));
 const AmortizeScreen = lazy(() => loadAmortize().then((m) => ({ default: m.AmortizeScreen })));
@@ -41,7 +45,7 @@ const LearnScreen = lazy(() => loadLearn().then((m) => ({ default: m.LearnScreen
 const CheckinModal = lazy(() => loadCheckin().then((m) => ({ default: m.CheckinModal })));
 const DataModal = lazy(() => loadData().then((m) => ({ default: m.DataModal })));
 const preloadAll = () => {
-  for (const l of [loadHistory, loadAmortize, loadInvest, loadSystems, loadRate, loadMarket, loadLearn, loadCheckin, loadData]) void l();
+  for (const l of [loadHistory, loadAmortize, loadInvest, loadSystems, loadRate, loadMarket, loadLearn, loadCheckin, loadData, loadWizard]) void l();
 };
 
 const THEME_KEY = 'atequitar_theme';
@@ -263,6 +267,7 @@ export default function App() {
         <div className="flex-1 flex flex-col h-screen">
           <TopBar ratesUpdatedAt={data.rates.fetchedAt} ratesLoading={ratesLoading} onRefreshRates={() => void refreshRates(true)} />
           <div className="flex-1 overflow-y-auto">
+            <Suspense fallback={null}>
             <AnimatePresence mode="wait">
               {onboardingStage === 'welcome' ? (
                 <motion.div key="welcome" exit={{ opacity: 0, y: -12 }} transition={{ duration: 0.25 }}>
@@ -299,6 +304,7 @@ export default function App() {
                 </motion.div>
               )}
             </AnimatePresence>
+            </Suspense>
           </div>
         </div>
       ) : (
@@ -373,6 +379,7 @@ export default function App() {
             <div className="max-w-6xl mx-auto px-6 lg:px-10 py-10">
               <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">Meu financiamento</h1>
               <p className="text-slate-600 dark:text-slate-400 mb-7">Corrija o que precisar. As contas são refeitas na hora.</p>
+              <Suspense fallback={<div className="skeleton h-96 rounded-3xl" />}>
               <ContractWizard
                 initial={model.contract}
                 dark={dark}
@@ -383,6 +390,7 @@ export default function App() {
                   playSound('success');
                 }}
               />
+              </Suspense>
             </div>
           </motion.div>
         )}

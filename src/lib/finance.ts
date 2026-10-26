@@ -1,7 +1,7 @@
 // Motor de cálculo do financiamento: tabela mês a mês (SAC ou Price), com TR, seguros,
 // amortizações extras e saldos reais informados pelo usuário. Funções puras.
 import type { BalanceCheckpoint, Contract, ExtraMode, ExtraPayment, ScheduleRow } from '../types/finance';
-import { addMonths, annualToMonthly, currentYearMonth, diffMonths } from './format';
+import { addMonths, annualToMonthly, currentYearMonth } from './format';
 
 export interface ScheduleOptions {
   extras?: ExtraPayment[];
@@ -119,7 +119,7 @@ export interface Summary {
 }
 
 // A parcela do mês conta como paga depois do dia do vencimento
-export function paidUntilIndex(contract: Contract, rows: ScheduleRow[], today = new Date()): number {
+function paidUntilIndex(contract: Contract, rows: ScheduleRow[], today = new Date()): number {
   const ym = currentYearMonth(today);
   const passedDue = today.getDate() >= contract.dueDay;
   let count = 0;
@@ -168,7 +168,7 @@ export interface ExtraPlan {
 }
 
 // Lança o plano de amortização como extras mês a mês (até o fim do financiamento)
-export function planToExtras(plan: ExtraPlan, untilYm: string): ExtraPayment[] {
+function planToExtras(plan: ExtraPlan, untilYm: string): ExtraPayment[] {
   if (!(plan.amount > 0)) return [];
   if (plan.frequency === 'once') {
     return [{ id: 'sim-0', yearMonth: plan.startYm, amount: plan.amount, mode: plan.mode, source: 'proprio' }];
@@ -257,4 +257,3 @@ export function interestWithRate(contract: Contract, balance: number, months: nu
   return rows.reduce((a, r) => a + r.interest, 0);
 }
 
-export { diffMonths };

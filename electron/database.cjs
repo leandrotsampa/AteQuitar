@@ -167,4 +167,4 @@ function importLegacyJson(db, jsonPath) {
   }
 }
 
-module.exports = { SCHEMA_VERSION, openDatabase, readDoc, writeDoc, importLegacyJson };
+module.exports = { openDatabase, readDoc, writeDoc, importLegacyJson };

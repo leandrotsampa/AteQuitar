@@ -156,4 +156,4 @@ function rowsToDoc(rows) {
   };
 }
 
-module.exports = { docToRows, rowsToDoc, contractToRow, rowToContract };
+module.exports = { docToRows, rowsToDoc };

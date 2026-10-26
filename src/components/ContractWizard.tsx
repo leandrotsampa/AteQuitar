@@ -13,7 +13,7 @@ import { HELP } from './help';
 
 const BANKS = ['Caixa', 'Banco do Brasil', 'Itaú', 'Bradesco', 'Santander', 'Inter', 'Cooperativa'];
 
-export const blankContract = (): Contract => ({
+const blankContract = (): Contract => ({
   nickname: '',
   bank: '',
   propertyValue: 0,

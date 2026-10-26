@@ -7,7 +7,3 @@ const player = createSoundPlayer(getUiPrefs);
 export function playSound(name: SoundName): void {
   player.play(name);
 }
-
-export function useSound(): (name: SoundName) => void {
-  return playSound;
-}

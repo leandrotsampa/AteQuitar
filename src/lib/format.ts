@@ -17,8 +17,6 @@ export function formatBRLShort(n: number): string {
 export const formatPct = (n: number, digits = 2): string =>
   `${(Number.isFinite(n) ? n : 0).toLocaleString('pt-BR', { minimumFractionDigits: digits, maximumFractionDigits: digits })}%`;
 
-export const formatInt = (n: number): string => Math.round(n).toLocaleString('pt-BR');
-
 const MONTHS_SHORT = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
 const MONTHS_LONG = [
   'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
