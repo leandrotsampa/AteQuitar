@@ -31,6 +31,9 @@ const MonthPickerPanel: React.FC<Limits & { value: string; onSelect: (yearMonth:
   const reduce = Boolean(useReducedMotion());
   const [viewYear, setViewYear] = useState(() => Number(value.slice(0, 4)));
   const [focused, setFocused] = useState(value);
+  // Clicar no ano abre a grade de anos (12 por página): ir para 2016 é um clique, não seis
+  const [view, setView] = useState<'months' | 'years'>('months');
+  const [yearsFrom, setYearsFrom] = useState(() => Math.floor(Number(value.slice(0, 4)) / 12) * 12);
   const gridRef = useRef<HTMLDivElement>(null);
   const today = currentYearMonth();
   const minYear = min ? Number(min.slice(0, 4)) : -Infinity;
@@ -38,8 +41,20 @@ const MonthPickerPanel: React.FC<Limits & { value: string; onSelect: (yearMonth:
 
   // Foco segue o mês navegado pelo teclado (inclusive ao abrir o painel)
   useEffect(() => {
-    gridRef.current?.querySelector<HTMLButtonElement>(`[data-month="${focused}"]`)?.focus();
-  }, [focused, viewYear]);
+    if (view === 'months') gridRef.current?.querySelector<HTMLButtonElement>(`[data-month="${focused}"]`)?.focus();
+  }, [focused, viewYear, view]);
+
+  const openYears = () => {
+    setYearsFrom(Math.floor(viewYear / 12) * 12);
+    setView('years');
+    playSound('tick');
+  };
+  const pickYear = (y: number) => {
+    setViewYear(y);
+    setFocused(clampMonth(`${y}-${focused.slice(5, 7)}`, min, max));
+    setView('months');
+    playSound('tick');
+  };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
     const next = navigateMonth(focused, e.key, min, max);
@@ -60,15 +75,93 @@ const MonthPickerPanel: React.FC<Limits & { value: string; onSelect: (yearMonth:
   const navBtn =
     'w-8 h-8 flex items-center justify-center rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:bg-transparent';
 
+  const currentYear = Number(today.slice(0, 4));
+  if (view === 'years') {
+    return (
+      <div className="w-64">
+        <div className="flex items-center justify-between mb-2">
+          <button
+            type="button"
+            onClick={() => setYearsFrom((y) => y - 12)}
+            disabled={yearsFrom <= minYear}
+            className={navBtn}
+            aria-label="Anos anteriores"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('months')}
+            className="h-8 px-2.5 rounded-lg text-sm font-bold font-num text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+            aria-label="Voltar para os meses"
+          >
+            {yearsFrom} a {yearsFrom + 11}
+          </button>
+          <button
+            type="button"
+            onClick={() => setYearsFrom((y) => y + 12)}
+            disabled={yearsFrom + 11 >= maxYear}
+            className={navBtn}
+            aria-label="Próximos anos"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+        <motion.div
+          key={yearsFrom}
+          role="group"
+          aria-label="Anos"
+          className="grid grid-cols-3 gap-1"
+          initial={reduce ? false : { opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.18 }}
+        >
+          {Array.from({ length: 12 }, (_, i) => yearsFrom + i).map((y) => {
+            const selected = y === viewYear;
+            const blocked = y < minYear || y > maxYear;
+            return (
+              <button
+                key={y}
+                type="button"
+                disabled={blocked}
+                aria-pressed={selected}
+                onClick={() => pickYear(y)}
+                className={`h-11 rounded-lg text-sm font-num transition-colors ${
+                  selected
+                    ? 'bg-anil-600 text-white font-semibold dark:bg-anil-500 cursor-pointer'
+                    : blocked
+                      ? 'text-slate-300 dark:text-slate-600 cursor-not-allowed'
+                      : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800 cursor-pointer'
+                } ${y === currentYear && !selected ? 'ring-1 ring-inset ring-anil-500/60' : ''}`}
+              >
+                {y}
+              </button>
+            );
+          })}
+        </motion.div>
+        <div className="mt-3 pt-2.5 border-t border-slate-200 dark:border-slate-800 text-[11px] text-slate-500 dark:text-slate-400">
+          Escolha o ano e depois o mês
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="w-64">
       <div className="flex items-center justify-between mb-2">
         <button type="button" onClick={() => changeYear(-1)} disabled={viewYear <= minYear} className={navBtn} aria-label="Ano anterior">
           <ChevronLeft className="w-4 h-4" />
         </button>
-        <span className="text-sm font-bold font-num text-slate-900 dark:text-white" aria-live="polite">
+        <button
+          type="button"
+          onClick={openYears}
+          className="inline-flex items-center gap-1 h-8 px-2.5 rounded-lg text-sm font-bold font-num text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+          aria-label={`Ano ${viewYear}. Escolher outro ano`}
+          aria-live="polite"
+        >
           {viewYear}
-        </span>
+          <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+        </button>
         <button type="button" onClick={() => changeYear(1)} disabled={viewYear >= maxYear} className={navBtn} aria-label="Próximo ano">
           <ChevronRight className="w-4 h-4" />
         </button>
