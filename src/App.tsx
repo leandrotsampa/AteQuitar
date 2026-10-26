@@ -12,7 +12,7 @@ import { useFinanceModel } from './lib/model';
 import { fetchMarketRates, shouldRefresh } from './lib/rates';
 import { runThemeWipe } from './lib/themeTransition';
 import { EASE_OUT, instantIf } from './lib/motion';
-import { currentYearMonth, uid } from './lib/format';
+import { currentYearMonth, uid, withBank } from './lib/format';
 import { demoData } from './lib/demo';
 import { playSound } from './hooks/useSound';
 import { getUiPrefs, setUiPrefs } from './hooks/useUiPrefs';
@@ -336,7 +336,7 @@ export default function App() {
           />
           <div className="flex-1 flex flex-col min-w-0 h-screen">
             <TopBar
-              title={`${model.contract.nickname}${model.contract.bank ? ` no ${model.contract.bank}` : ''}`}
+              title={`${model.contract.nickname}${model.contract.bank ? ` ${withBank(model.contract.bank, model.contract.bankPreposition)}` : ''}`}
               calibrated={model.calibrated}
               onCalibrate={() => setCheckinOpen(true)}
               ratesUpdatedAt={data.rates.fetchedAt}

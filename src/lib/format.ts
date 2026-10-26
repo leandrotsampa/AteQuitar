@@ -71,3 +71,15 @@ export const annualToMonthly = (pctYear: number): number => (Math.pow(1 + pctYea
 export const monthlyToAnnual = (pctMonth: number): number => (Math.pow(1 + pctMonth / 100, 12) - 1) * 100;
 
 export const uid = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+
+// "no Itaú", "na Caixa": a preposição certa para o nome da instituição. Bancos são "o banco";
+// caixa, cooperativas, financeiras e algumas marcas conhecidas são femininas
+const FEMININE_BANKS = /^(caixa|cooperativa|cresol|financeira|poupex|unicred|sicredi|cef\b)/i;
+export function bankPreposition(bank: string): 'no' | 'na' {
+  const name = bank.trim().replace(/^(a|o)\s+/i, '');
+  return FEMININE_BANKS.test(name) ? 'na' : 'no';
+}
+
+// Com a escolha da pessoa (banco digitado) quando houver; senão, a regra
+export const withBank = (bank: string, chosen?: 'no' | 'na'): string =>
+  bank.trim() ? `${chosen ?? bankPreposition(bank)} ${bank.trim()}` : '';

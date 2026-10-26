@@ -62,6 +62,12 @@ describe('docToRows / rowsToDoc', () => {
     expect(rows.milestones).toEqual([10]);
   });
 
+  it('guarda a preposição escolhida para o banco digitado', () => {
+    const comNa = { ...doc, contract: { ...contract, bank: 'Credifoz', bankPreposition: 'na' } };
+    expect(roundTrip(comNa).contract).toEqual(comNa.contract);
+    expect(docToRows({ ...doc, contract: { ...contract, bankPreposition: 'xx' } }).contract.bank_preposition).toBeNull();
+  });
+
   it('contrato incompleto não é gravado', () => {
     expect(docToRows({ contract: { ...contract, financedAmount: 0 } }).contract).toBeNull();
   });

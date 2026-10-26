@@ -18,6 +18,7 @@ const SCHEMA = `
     id INTEGER PRIMARY KEY CHECK (id = 1),
     nickname TEXT NOT NULL,
     bank TEXT NOT NULL DEFAULT '',
+    bank_preposition TEXT CHECK (bank_preposition IS NULL OR bank_preposition IN ('no', 'na')),
     property_value REAL NOT NULL DEFAULT 0,
     financed_amount REAL NOT NULL CHECK (financed_amount > 0),
     annual_rate REAL NOT NULL CHECK (annual_rate > 0),
@@ -83,11 +84,24 @@ const SCHEMA = `
   );
 `;
 
+// Colunas acrescentadas depois da primeira versão: entram nos bancos já existentes sem recriar a tabela
+const ADDED_COLUMNS = [
+  { table: 'contract', name: 'bank_preposition', ddl: "TEXT CHECK (bank_preposition IS NULL OR bank_preposition IN ('no', 'na'))" },
+];
+
+function ensureColumns(db) {
+  for (const col of ADDED_COLUMNS) {
+    const existing = new Set(db.prepare(`PRAGMA table_info(${col.table})`).all().map((c) => c.name));
+    if (!existing.has(col.name)) db.exec(`ALTER TABLE ${col.table} ADD COLUMN ${col.name} ${col.ddl}`);
+  }
+}
+
 function openDatabase(Database, file, options = {}) {
   const db = new Database(file, options);
   if (!options.readonly) {
     db.pragma('journal_mode = WAL');
     db.exec(SCHEMA);
+    ensureColumns(db);
     db.prepare('INSERT OR IGNORE INTO app_meta (key, value) VALUES (?, ?)').run('schema_version', String(SCHEMA_VERSION));
   }
   return db;
@@ -127,10 +141,10 @@ function writeDoc(db, doc) {
     if (rows.contract) {
       db.prepare(`
         INSERT INTO contract (
-          id, nickname, bank, property_value, financed_amount, annual_rate, cet, term_months, system,
+          id, nickname, bank, bank_preposition, property_value, financed_amount, annual_rate, cet, term_months, system,
           first_due_month, due_day, tr_indexed, monthly_insurance, monthly_admin_fee, updated_at
         ) VALUES (
-          1, @nickname, @bank, @property_value, @financed_amount, @annual_rate, @cet, @term_months, @system,
+          1, @nickname, @bank, @bank_preposition, @property_value, @financed_amount, @annual_rate, @cet, @term_months, @system,
           @first_due_month, @due_day, @tr_indexed, @monthly_insurance, @monthly_admin_fee, CURRENT_TIMESTAMP
         )
       `).run(rows.contract);

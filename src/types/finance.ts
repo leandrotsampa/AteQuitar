@@ -7,6 +7,8 @@ export type ExtraSource = 'proprio' | 'fgts' | 'decimo';
 export interface Contract {
   nickname: string;
   bank: string;
+  // "no" ou "na" antes do nome do banco digitado (ex.: "na Credifoz"); vazio = regra automática
+  bankPreposition?: 'no' | 'na';
   propertyValue: number;
   financedAmount: number;
   // Taxa de juros efetiva anual do contrato (% a.a.)

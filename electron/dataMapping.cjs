@@ -20,6 +20,7 @@ function contractToRow(c) {
   return {
     nickname: str(c.nickname, 'Minha casa') || 'Minha casa',
     bank: str(c.bank),
+    bank_preposition: c.bankPreposition === 'no' || c.bankPreposition === 'na' ? c.bankPreposition : null,
     property_value: num(c.propertyValue),
     financed_amount: num(c.financedAmount),
     annual_rate: num(c.annualRate),
@@ -39,6 +40,7 @@ function rowToContract(r) {
   return {
     nickname: r.nickname,
     bank: r.bank,
+    ...(r.bank_preposition ? { bankPreposition: r.bank_preposition } : {}),
     propertyValue: r.property_value,
     financedAmount: r.financed_amount,
     annualRate: r.annual_rate,

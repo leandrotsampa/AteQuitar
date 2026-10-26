@@ -2,7 +2,17 @@ import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Check, Home, Sparkles, X } from 'lucide-react';
 import type { Contract } from '../types/finance';
-import { addMonths, annualToMonthly, currentYearMonth, formatBRL, formatDuration, monthLong, monthlyToAnnual } from '../lib/format';
+import {
+  addMonths,
+  annualToMonthly,
+  bankPreposition,
+  currentYearMonth,
+  formatBRL,
+  formatDuration,
+  monthLong,
+  monthlyToAnnual,
+  withBank,
+} from '../lib/format';
 import { EASE_OUT, instantIf } from '../lib/motion';
 import { playSound } from '../hooks/useSound';
 import { Field } from './ui/HelpTip';
@@ -249,7 +259,7 @@ export const ContractWizard: React.FC<{
                         <button
                           key={b}
                           type="button"
-                          onClick={() => set('bank', b)}
+                          onClick={() => setC((prev) => ({ ...prev, bank: b, bankPreposition: undefined }))}
                           aria-pressed={c.bank === b}
                           className={`h-9 px-4 rounded-full text-sm font-semibold transition-colors cursor-pointer ${
                             c.bank === b
@@ -264,10 +274,47 @@ export const ContractWizard: React.FC<{
                         className="h-9 w-44 px-4 rounded-full text-sm bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-anil-500 focus:ring-2 focus:ring-anil-500/25"
                         placeholder="Outro banco"
                         value={BANKS.includes(c.bank) ? '' : c.bank}
-                        onChange={(e) => set('bank', e.target.value)}
+                        // Nome novo: volta para a sugestão automática até a pessoa escolher de novo
+                        onChange={(e) => setC((prev) => ({ ...prev, bank: e.target.value, bankPreposition: undefined }))}
                         aria-label="Outro banco"
                       />
                     </div>
+                    {/* Banco digitado: a regra sugere "no" ou "na" e a pessoa corrige se precisar */}
+                    <AnimatePresence initial={false}>
+                      {c.bank.trim() && !BANKS.includes(c.bank) && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="overflow-hidden"
+                        >
+                          <div className="flex flex-wrap items-center gap-2 mt-3 text-sm text-slate-600 dark:text-slate-300">
+                            <span>Vai aparecer:</span>
+                            <span className="font-semibold text-slate-900 dark:text-white">
+                              {c.nickname.trim() || 'Minha casa'} {withBank(c.bank, c.bankPreposition)}
+                            </span>
+                            <span className="flex rounded-full bg-slate-100 dark:bg-slate-800 p-0.5 ml-1" role="group" aria-label="Preposição antes do banco">
+                              {(['no', 'na'] as const).map((p) => {
+                                const active = (c.bankPreposition ?? bankPreposition(c.bank)) === p;
+                                return (
+                                  <button
+                                    key={p}
+                                    type="button"
+                                    aria-pressed={active}
+                                    onClick={() => set('bankPreposition', p)}
+                                    className={`h-7 px-3 rounded-full text-xs font-bold cursor-pointer transition-colors ${
+                                      active ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500'
+                                    }`}
+                                  >
+                                    {p}
+                                  </button>
+                                );
+                              })}
+                            </span>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </Field>
                   <Field label="Valor do imóvel" htmlFor="f-prop" help={HELP.propertyValue} optional hint="Usado para mostrar quanto da casa já é seu, contando a entrada.">
                     <MoneyField id="f-prop" value={c.propertyValue} onChange={(v) => set('propertyValue', v)} />
@@ -491,7 +538,7 @@ export const ContractWizard: React.FC<{
           <div className="flex items-center gap-2 font-semibold text-slate-900 dark:text-white">
             <Home className="w-4 h-4 text-anil-600 dark:text-anil-300" />
             {c.nickname.trim() || 'Minha casa'}
-            {c.bank && <span className="font-normal text-slate-500 dark:text-slate-400">no {c.bank}</span>}
+            {c.bank.trim() && <span className="font-normal text-slate-500 dark:text-slate-400">{withBank(c.bank, c.bankPreposition)}</span>}
           </div>
           {c.financedAmount > 0 && (
             <div className="text-slate-600 dark:text-slate-300">
