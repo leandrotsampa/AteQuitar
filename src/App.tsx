@@ -234,6 +234,8 @@ export default function App() {
     update((prev) => ({ ...prev, ...demoData(), checkpoints: [], checkins: [], isDemo: true, celebrated: [] }));
     playSound('success');
   };
+  // Saiu do exemplo para cadastrar o seu: depois do cadastro, oferece rever o passo a passo com os seus números
+  const cameFromDemo = useRef(false);
   const leaveDemo = async () => {
     const ok = await confirm({
       title: 'Cadastrar o seu financiamento',
@@ -242,6 +244,7 @@ export default function App() {
     });
     if (!ok) return;
     update((prev) => ({ ...prev, contract: null, extras: [], checkpoints: [], checkins: [], celebrated: [], isDemo: false }));
+    cameFromDemo.current = true;
     setOnboardingStage('wizard');
   };
 
@@ -299,6 +302,17 @@ export default function App() {
                       update((prev) => ({ ...applyWizard(prev, r), celebrated: [] }));
                       celebrate();
                       playSound('celebrate');
+                      if (cameFromDemo.current) {
+                        cameFromDemo.current = false;
+                        window.setTimeout(() => {
+                          void confirm({
+                            title: 'Sua casa está cadastrada!',
+                            message: 'Quer rever o passo a passo da tela inicial, agora com os seus números?',
+                            confirmLabel: 'Rever o passo a passo',
+                            cancelLabel: 'Agora não',
+                          }).then((ok) => ok && startTour('home'));
+                        }, 1600);
+                      }
                     }}
                   />
                 </motion.div>

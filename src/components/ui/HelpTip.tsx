@@ -113,9 +113,11 @@ export const Field: React.FC<{
   optional?: boolean;
   children: React.ReactNode;
   className?: string;
-}> = ({ label, htmlFor, help, hint, optional, children, className = '' }) => (
+  // Marca a linha do rótulo (com o ?) para o tutorial destacar
+  tourId?: string;
+}> = ({ label, htmlFor, help, hint, optional, children, className = '', tourId }) => (
   <div className={className}>
-    <div className="flex items-center gap-1.5 mb-1.5">
+    <div data-tour={tourId} className="flex items-center gap-1.5 mb-1.5 w-fit">
       <label htmlFor={htmlFor} className="text-sm font-semibold text-slate-800 dark:text-slate-100">
         {label}
       </label>

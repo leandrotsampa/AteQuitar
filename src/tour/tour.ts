@@ -244,7 +244,41 @@ const LEARN_STEPS: TourStep[] = [
   },
 ];
 
-export type TourScreen = ScreenId;
+const WIZARD_STEPS: TourStep[] = [
+  {
+    id: 'cad-passos',
+    title: 'Cinco passos curtos',
+    description: () =>
+      'Imóvel, empréstimo, juros, datas e, por último, os dados que deixam tudo exato. Dá para voltar a qualquer passo clicando no nome dele.',
+    side: 'bottom',
+    align: 'start',
+  },
+  {
+    id: 'cad-ajuda',
+    title: 'Não sabe onde achar?',
+    description: () =>
+      'Todo campo tem um <b>?</b> que explica o que é e <b>onde encontrar</b>: no quadro-resumo do contrato, no boleto ou no app do banco.',
+    side: 'bottom',
+    align: 'start',
+  },
+  {
+    id: 'cad-previa',
+    title: 'A casa reage ao que você digita',
+    description: () => 'Aqui você confere o resumo do financiamento enquanto preenche.',
+    side: 'left',
+    align: 'start',
+  },
+  {
+    id: 'cad-avancar',
+    title: 'Sem pressa',
+    description: () =>
+      'Os campos marcados como <b>opcional</b> podem ficar para depois. Você completa quando quiser em <b>Meu financiamento</b>, no menu.',
+    side: 'top',
+    align: 'center',
+  },
+];
+
+export type TourScreen = ScreenId | 'wizard';
 
 const TOUR_SCREENS: Record<TourScreen, TourStep[]> = {
   home: HOME_STEPS,
@@ -255,6 +289,7 @@ const TOUR_SCREENS: Record<TourScreen, TourStep[]> = {
   rate: RATE_STEPS,
   market: MARKET_STEPS,
   learn: LEARN_STEPS,
+  wizard: WIZARD_STEPS,
 };
 
 export const screenStepIds = (screen: TourScreen) => TOUR_SCREENS[screen].map((s) => s.id);

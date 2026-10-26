@@ -34,6 +34,11 @@ export function completeTour(state: TourState, ids: string[]): TourState {
 // "Explorar sozinho": conta como visto, para só as novidades futuras aparecerem
 export const skipTour = completeTour;
 
+// Passos vistos fora das telas do app (ex.: o cadastro): não contam como as boas-vindas
+export function markSeen(state: TourState, ids: string[]): TourState {
+  return { welcomed: state.welcomed, seen: [...new Set([...state.seen, ...ids])] };
+}
+
 export function parseTourState(raw: string | null): TourState {
   if (!raw) return emptyTourState;
   try {

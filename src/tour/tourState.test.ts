@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { completeTour, emptyTourState, parseTourState, planScreenTour, planTour, skipTour } from './tourState';
+import { completeTour, emptyTourState, markSeen, parseTourState, planScreenTour, planTour, skipTour } from './tourState';
 
 const BASE = ['casa', 'falta', 'marcos'];
 
@@ -53,5 +53,20 @@ describe('mini-tutorial ao entrar numa tela', () => {
   it('quem escolheu explorar sozinho não recebe as apresentações das telas', () => {
     const pulou = skipTour(emptyTourState, [...BASE, ...HIST]);
     expect(planScreenTour(HIST, pulou)).toEqual({ kind: 'none' });
+  });
+});
+
+describe('tutorial do cadastro', () => {
+  const CAD = ['cad-passos', 'cad-ajuda'];
+
+  it('ver o tutorial do cadastro não pula as boas-vindas do app', () => {
+    const viuCadastro = markSeen(emptyTourState, CAD);
+    expect(viuCadastro.seen).toEqual(CAD);
+    expect(planTour(BASE, viuCadastro)).toEqual({ kind: 'welcome' });
+  });
+
+  it('quem já foi recebido continua recebido', () => {
+    const recebido = completeTour(emptyTourState, BASE);
+    expect(markSeen(recebido, CAD).welcomed).toBe(true);
   });
 });

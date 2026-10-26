@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { ArrowLeft, ArrowRight, Check, Home, Sparkles, X } from 'lucide-react';
 import type { Contract } from '../types/finance';
@@ -10,6 +10,8 @@ import { MoneyField, MonthField, NumberField } from './ui/Inputs';
 import { btnGhost, btnPrimary, inputBase } from './ui/card';
 import { HouseHero } from './HouseHero';
 import { HELP } from './help';
+import { isTourRunning, runTour, screenStepIds } from '../tour/tour';
+import { loadTourState, markSeen, saveTourState } from '../tour/tourState';
 
 const BANKS = ['Caixa', 'Banco do Brasil', 'Itaú', 'Bradesco', 'Santander', 'Inter', 'Cooperativa'];
 
@@ -97,6 +99,26 @@ export const ContractWizard: React.FC<{
 }> = ({ initial, initialBalance = 0, onCancel, onSave, dark }) => {
   const reduce = Boolean(useReducedMotion());
   const [c, setC] = useState<Contract>(() => initial ?? blankContract());
+
+  // Mini-tutorial na primeira vez que o cadastro abre (marca como visto sem contar como as
+  // boas-vindas do app, que vêm depois do cadastro)
+  useEffect(() => {
+    const ids = screenStepIds('wizard').filter((id) => !loadTourState().seen.includes(id));
+    if (ids.length === 0) return;
+    const t = window.setTimeout(() => {
+      if (isTourRunning()) return;
+      void runTour({
+        screen: 'wizard',
+        ids,
+        demo: false,
+        reduceMotion: reduce,
+        onDone: (shown) => saveTourState(markSeen(loadTourState(), shown)),
+      });
+    }, 900);
+    return () => window.clearTimeout(t);
+    // Só ao abrir o cadastro
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [balance, setBalance] = useState(initialBalance);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
@@ -158,7 +180,7 @@ export const ContractWizard: React.FC<{
     <div className="grid lg:grid-cols-[minmax(0,1fr)_380px] gap-6 items-start">
       <div className="min-w-0">
         {/* Trilho dos passos: a casinha anda até o passo atual */}
-        <div className="relative mb-7">
+        <div data-tour="cad-passos" className="relative mb-7">
           <div className="flex items-center justify-between gap-2">
             {STEPS.map((s, k) => (
               <button
@@ -211,7 +233,7 @@ export const ContractWizard: React.FC<{
 
               {step === 0 && (
                 <>
-                  <Field label="Como quer chamar este imóvel?" htmlFor="f-nick" help={HELP.nickname} optional>
+                  <Field label="Como quer chamar este imóvel?" htmlFor="f-nick" help={HELP.nickname} optional tourId="cad-ajuda">
                     <input
                       id="f-nick"
                       className={inputBase}
@@ -428,7 +450,7 @@ export const ContractWizard: React.FC<{
           </AnimatePresence>
         </div>
 
-        <div className="flex items-center justify-between gap-3 mt-6 pt-5 border-t border-slate-900/[0.06] dark:border-white/[0.06]">
+        <div data-tour="cad-avancar" className="flex items-center justify-between gap-3 mt-6 pt-5 border-t border-slate-900/[0.06] dark:border-white/[0.06]">
           <div className="flex gap-2">
             {onCancel && (
               <button type="button" onClick={onCancel} className={btnGhost}>
@@ -461,7 +483,7 @@ export const ContractWizard: React.FC<{
       </div>
 
       {/* Prévia viva: a casa reage ao que é digitado */}
-      <aside className="hidden lg:block sticky top-4">
+      <aside data-tour="cad-previa" className="hidden lg:block sticky top-4">
         <div className="rounded-[28px] overflow-hidden ring-1 ring-slate-900/[0.06] dark:ring-white/[0.07] shadow-[0_24px_60px_-30px_rgba(45,40,140,0.5)]">
           <HouseHero progress={Math.max(0, Math.min(1, previewProgress))} dark={dark} className="w-full block" />
         </div>
