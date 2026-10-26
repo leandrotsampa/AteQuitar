@@ -36,7 +36,8 @@ const SECTIONS = [
 
 const groups = new Map();
 for (const [hash, subject] of commits) {
-  if (/^chore\(release\)/.test(subject)) continue;
+  // O commit do próprio workflow e as trocas de número de versão não dizem nada a quem lê
+  if (/^chore\(release\)/.test(subject) || /^chore:\s*versão\b/i.test(subject)) continue;
   const match = subject.match(/^(\w+)(?:\([^)]*\))?!?:\s*(.+)$/);
   const type = match?.[1] ?? 'outros';
   const text = match?.[2] ?? subject;
