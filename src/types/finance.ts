@@ -13,6 +13,9 @@ export interface Contract {
   financedAmount: number;
   // Taxa de juros efetiva anual do contrato (% a.a.)
   annualRate: number;
+  // Como a pessoa informou a taxa (o valor guardado é sempre a efetiva ao ano): para o cadastro
+  // reabrir do mesmo jeito, ex.: a nominal do app da Caixa
+  rateInput?: 'efetiva' | 'nominal' | 'mes';
   // Custo efetivo total informado no contrato (% a.a.), opcional
   cet: number;
   termMonths: number;
@@ -50,6 +53,8 @@ export interface CheckIn {
   yearMonth: string;
   paidAmount: number;
   balanceAfter?: number;
+  // Amortização extra registrada junto neste check-in (para reabrir e editar sem duplicar)
+  extraId?: string;
   createdAt: string;
 }
 

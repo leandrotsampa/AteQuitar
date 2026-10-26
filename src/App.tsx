@@ -53,12 +53,13 @@ const THEME_KEY = 'atequitar_theme';
 // Aplica o resultado do assistente: contrato e, se veio, o saldo de hoje como ponto real
 function applyWizard(prev: AppData, r: WizardResult): AppData {
   const ym = currentYearMonth();
-  const checkpoints = r.currentBalance > 0
-    ? [
-        ...prev.checkpoints.filter((c) => !(c.yearMonth === ym && c.source === 'banco')),
-        { id: uid(), yearMonth: ym, balance: r.currentBalance, source: 'banco' as const },
-      ]
-    : prev.checkpoints;
+  const others = prev.checkpoints.filter((c) => !(c.yearMonth === ym && c.source === 'banco'));
+  const checkpoints =
+    r.currentBalance > 0
+      ? [...others, { id: uid(), yearMonth: ym, balance: r.currentBalance, source: 'banco' as const }]
+      : r.balanceCleared
+        ? others
+        : prev.checkpoints;
   return { ...prev, contract: r.contract, checkpoints, isDemo: false };
 }
 
@@ -177,6 +178,10 @@ export default function App() {
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [dataOpen, setDataOpen] = useState(false);
   const [contractOpen, setContractOpen] = useState(false);
+  // Saldos do banco informados: o deste mês (editável no cadastro) e o mais recente (referência)
+  const bankBalances = data.checkpoints.filter((c) => c.source === 'banco').sort((a, b) => a.yearMonth.localeCompare(b.yearMonth));
+  const bankBalanceNow = bankBalances.find((c) => c.yearMonth === currentYearMonth());
+  const lastBankBalance = bankBalances.at(-1);
   const [onboardingStage, setOnboardingStage] = useState<'welcome' | 'wizard'>('welcome');
 
   // Tutorial: boas-vindas quando o financiamento aparece pela primeira vez, apresentação de cada
@@ -396,6 +401,8 @@ export default function App() {
               <Suspense fallback={<div className="skeleton h-96 rounded-3xl" />}>
               <ContractWizard
                 initial={model.contract}
+                initialBalance={bankBalanceNow?.balance ?? 0}
+                lastBalance={lastBankBalance && lastBankBalance.yearMonth !== currentYearMonth() ? lastBankBalance : undefined}
                 dark={dark}
                 onCancel={() => setContractOpen(false)}
                 onSave={(r) => {

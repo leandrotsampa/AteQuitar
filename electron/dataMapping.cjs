@@ -24,6 +24,7 @@ function contractToRow(c) {
     property_value: num(c.propertyValue),
     financed_amount: num(c.financedAmount),
     annual_rate: num(c.annualRate),
+    rate_input: ['efetiva', 'nominal', 'mes'].includes(c.rateInput) ? c.rateInput : null,
     cet: num(c.cet),
     term_months: Math.round(num(c.termMonths)),
     system: SYSTEMS.includes(c.system) ? c.system : 'SAC',
@@ -44,6 +45,7 @@ function rowToContract(r) {
     propertyValue: r.property_value,
     financedAmount: r.financed_amount,
     annualRate: r.annual_rate,
+    ...(r.rate_input ? { rateInput: r.rate_input } : {}),
     cet: r.cet,
     termMonths: r.term_months,
     system: r.system,
@@ -70,6 +72,7 @@ function docToRows(doc) {
       year_month: month,
       paid_amount: num(c.paidAmount),
       balance_after: num(c.balanceAfter) > 0 ? num(c.balanceAfter) : null,
+      extra_id: typeof c.extraId === 'string' && c.extraId ? c.extraId : null,
       created_at: str(c.createdAt) || new Date().toISOString(),
     });
   }
@@ -139,6 +142,7 @@ function rowsToDoc(rows) {
       yearMonth: c.year_month,
       paidAmount: c.paid_amount,
       ...(c.balance_after != null ? { balanceAfter: c.balance_after } : {}),
+      ...(c.extra_id ? { extraId: c.extra_id } : {}),
       createdAt: c.created_at,
     })),
     extras: rows.extras.map((e) => ({

@@ -48,10 +48,19 @@ export const CheckinModal: React.FC<{
   const existing = data.checkins.find((c) => c.yearMonth === ym);
   const [paid, setPaid] = useState(existing?.paidAmount ?? row?.payment ?? 0);
   const [balance, setBalance] = useState(existing?.balanceAfter ?? 0);
-  const [hasExtra, setHasExtra] = useState(false);
-  const [extra, setExtra] = useState(0);
-  const [mode, setMode] = useState<ExtraMode>('prazo');
-  const [source, setSource] = useState<ExtraSource>('proprio');
+  // Amortização extra que este check-in já registrou: reabre preenchida e é alterada, não duplicada
+  const extraOf = (month: string) => {
+    const ci = data.checkins.find((c) => c.yearMonth === month);
+    return ci?.extraId ? data.extras.find((e) => e.id === ci.extraId) : undefined;
+  };
+  const initialExtra = extraOf(ym);
+  const [hasExtra, setHasExtra] = useState(Boolean(initialExtra));
+  const [extra, setExtra] = useState(initialExtra?.amount ?? 0);
+  const [mode, setMode] = useState<ExtraMode>(initialExtra?.mode ?? 'prazo');
+  const [source, setSource] = useState<ExtraSource>(initialExtra?.source ?? 'proprio');
+  const linkedExtra = extraOf(ym);
+  // As outras amortizações (sem a deste check-in), para as prévias não contarem duas vezes
+  const otherExtras = data.extras.filter((e) => e.id !== linkedExtra?.id);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
   const [done, setDone] = useState<{ before: number; after: number } | null>(null);
@@ -69,14 +78,19 @@ export const CheckinModal: React.FC<{
     const ex = data.checkins.find((c) => c.yearMonth === v);
     setPaid(ex?.paidAmount ?? r?.payment ?? 0);
     setBalance(ex?.balanceAfter ?? 0);
+    const e = extraOf(v);
+    setHasExtra(Boolean(e));
+    setExtra(e?.amount ?? 0);
+    setMode(e?.mode ?? 'prazo');
+    setSource(e?.source ?? 'proprio');
   };
 
   // Estimativa do saldo do mês já com a amortização extra que a pessoa disse ter feito
   const estimate = useMemo(() => {
     if (!(hasExtra && extra > 0)) return row?.closingBalance ?? model.summary.currentBalance;
-    const rows = buildSchedule(model.contract, { ...model.options, extras: [...data.extras, { id: 'x', yearMonth: ym, amount: extra, mode, source }] });
+    const rows = buildSchedule(model.contract, { ...model.options, extras: [...otherExtras, { id: 'x', yearMonth: ym, amount: extra, mode, source }] });
     return rows.find((r) => r.yearMonth === ym)?.closingBalance ?? model.summary.currentBalance;
-  }, [hasExtra, extra, row, model, data.extras, ym, mode, source]);
+  }, [hasExtra, extra, row, model, otherExtras, ym, mode, source]);
   const diff = balance > 0 ? balance - estimate : 0;
 
   const go = (d: number) => {
@@ -88,20 +102,33 @@ export const CheckinModal: React.FC<{
   // Progresso depois de salvar, para mostrar a casa subindo
   const afterProgress = useMemo(() => {
     const checkpoints = [...data.checkpoints, ...(balance > 0 ? [{ id: 'x', yearMonth: ym, balance, source: 'banco' as const }] : [])];
-    const extras = hasExtra && extra > 0 ? [...data.extras, { id: 'x', yearMonth: ym, amount: extra, mode, source }] : data.extras;
+    const extras = hasExtra && extra > 0 ? [...otherExtras, { id: 'x', yearMonth: ym, amount: extra, mode, source }] : otherExtras;
     const rows = buildSchedule(model.contract, { extras, checkpoints, trFor: model.trFor });
     return summarize(model.contract, rows).progress;
-  }, [data.checkpoints, data.extras, balance, ym, hasExtra, extra, mode, source, model.contract, model.trFor]);
+  }, [data.checkpoints, otherExtras, balance, ym, hasExtra, extra, mode, source, model.contract, model.trFor]);
 
   const save = () => {
     const before = model.summary.progress;
+    const keepExtra = hasExtra && extra > 0;
+    const extraId = keepExtra ? linkedExtra?.id ?? uid() : undefined;
     update((prev) => ({
       ...prev,
       checkins: [
         ...prev.checkins.filter((c) => c.yearMonth !== ym),
-        { id: existing?.id ?? uid(), yearMonth: ym, paidAmount: paid, balanceAfter: balance > 0 ? balance : undefined, createdAt: new Date().toISOString() },
+        {
+          id: existing?.id ?? uid(),
+          yearMonth: ym,
+          paidAmount: paid,
+          balanceAfter: balance > 0 ? balance : undefined,
+          ...(extraId ? { extraId } : {}),
+          createdAt: existing?.createdAt ?? new Date().toISOString(),
+        },
       ],
-      extras: hasExtra && extra > 0 ? [...prev.extras, { id: uid(), yearMonth: ym, amount: extra, mode, source }] : prev.extras,
+      // Troca (ou remove) a amortização deste check-in; as outras ficam como estão
+      extras: [
+        ...prev.extras.filter((e) => e.id !== linkedExtra?.id),
+        ...(keepExtra && extraId ? [{ id: extraId, yearMonth: ym, amount: extra, mode, source }] : []),
+      ],
     }));
     setDone({ before, after: afterProgress });
     playSound('celebrate');

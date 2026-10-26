@@ -23,7 +23,7 @@ const contract = {
 const doc = {
   version: 1,
   contract,
-  checkins: [{ id: 'a', yearMonth: '2026-10', paidAmount: 3971.78, balanceAfter: 329800, createdAt: '2026-10-26T00:00:00.000Z' }],
+  checkins: [{ id: 'a', yearMonth: '2026-10', paidAmount: 3971.78, balanceAfter: 329800, extraId: 'b', createdAt: '2026-10-26T00:00:00.000Z' }],
   extras: [{ id: 'b', yearMonth: '2026-10', amount: 10000, mode: 'prazo', source: 'fgts' }],
   checkpoints: [{ id: 'c', yearMonth: '2025-12', balance: 340000, source: 'ir' }],
   rates: {
@@ -66,6 +66,12 @@ describe('docToRows / rowsToDoc', () => {
     const comNa = { ...doc, contract: { ...contract, bank: 'Credifoz', bankPreposition: 'na' } };
     expect(roundTrip(comNa).contract).toEqual(comNa.contract);
     expect(docToRows({ ...doc, contract: { ...contract, bankPreposition: 'xx' } }).contract.bank_preposition).toBeNull();
+  });
+
+  it('guarda como a taxa foi informada', () => {
+    const nominal = { ...doc, contract: { ...contract, rateInput: 'nominal' } };
+    expect(roundTrip(nominal).contract).toEqual(nominal.contract);
+    expect(docToRows({ ...doc, contract: { ...contract, rateInput: 'anual' } }).contract.rate_input).toBeNull();
   });
 
   it('contrato incompleto não é gravado', () => {

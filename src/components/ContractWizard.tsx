@@ -54,8 +54,10 @@ const blankContract = (): Contract => ({
 
 export interface WizardResult {
   contract: Contract;
-  // Saldo de hoje informado no último passo (opcional)
+  // Saldo de hoje informado no último passo (opcional); 0 = não informado
   currentBalance: number;
+  // Havia saldo deste mês e a pessoa apagou o campo: remover
+  balanceCleared: boolean;
 }
 
 const STEPS = [
@@ -113,11 +115,14 @@ const SystemCard: React.FC<{
 
 export const ContractWizard: React.FC<{
   initial: Contract | null;
+  // Saldo do banco já informado neste mês (aparece no campo para editar)
   initialBalance?: number;
+  // Último saldo informado em outro mês (só como referência)
+  lastBalance?: { balance: number; yearMonth: string };
   onCancel?: () => void;
   onSave: (result: WizardResult) => void;
   dark: boolean;
-}> = ({ initial, initialBalance = 0, onCancel, onSave, dark }) => {
+}> = ({ initial, initialBalance = 0, lastBalance, onCancel, onSave, dark }) => {
   const reduce = Boolean(useReducedMotion());
   const [c, setC] = useState<Contract>(() => initial ?? blankContract());
 
@@ -143,7 +148,7 @@ export const ContractWizard: React.FC<{
   const [balance, setBalance] = useState(initialBalance);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
-  const [rateUnit, setRateUnit] = useState<RateUnit>('efetiva');
+  const [rateUnit, setRateUnit] = useState<RateUnit>(() => initial?.rateInput ?? 'efetiva');
   const [termUnit, setTermUnit] = useState<'meses' | 'anos'>('meses');
   const [tried, setTried] = useState(false);
   const set = <K extends keyof Contract>(k: K, v: Contract[K]) => setC((prev) => ({ ...prev, [k]: v }));
@@ -183,8 +188,9 @@ export const ContractWizard: React.FC<{
       return;
     }
     onSave({
-      contract: { ...c, nickname: c.nickname.trim() || 'Minha casa', bank: c.bank.trim() },
+      contract: { ...c, nickname: c.nickname.trim() || 'Minha casa', bank: c.bank.trim(), rateInput: rateUnit },
       currentBalance: balance,
+      balanceCleared: initialBalance > 0 && !(balance > 0),
     });
   };
 
@@ -477,7 +483,18 @@ export const ContractWizard: React.FC<{
                   <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                     Com estes dados o app sai da <b>estimativa</b> e passa a mostrar a sua situação <b>real</b>. Pode pular e completar depois.
                   </p>
-                  <Field label="Saldo devedor de hoje" help={HELP.currentBalance} optional>
+                  <Field
+                    label="Saldo devedor de hoje"
+                    help={HELP.currentBalance}
+                    optional
+                    hint={
+                      initialBalance > 0
+                        ? `Informado em ${monthLong(currentYearMonth())}. Se apagar, deixa de valer.`
+                        : lastBalance
+                          ? `Último saldo informado: ${formatBRL(lastBalance.balance)} em ${monthLong(lastBalance.yearMonth)}. Informe o de hoje para atualizar.`
+                          : undefined
+                    }
+                  >
                     <MoneyField value={balance} onChange={setBalance} />
                   </Field>
                   <div className="grid sm:grid-cols-2 gap-4 items-start">

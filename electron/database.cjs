@@ -22,6 +22,7 @@ const SCHEMA = `
     property_value REAL NOT NULL DEFAULT 0,
     financed_amount REAL NOT NULL CHECK (financed_amount > 0),
     annual_rate REAL NOT NULL CHECK (annual_rate > 0),
+    rate_input TEXT CHECK (rate_input IS NULL OR rate_input IN ('efetiva', 'nominal', 'mes')),
     cet REAL NOT NULL DEFAULT 0,
     term_months INTEGER NOT NULL CHECK (term_months > 0),
     system TEXT NOT NULL CHECK (system IN ('SAC', 'PRICE')),
@@ -39,6 +40,7 @@ const SCHEMA = `
     year_month TEXT NOT NULL UNIQUE,
     paid_amount REAL NOT NULL CHECK (paid_amount >= 0),
     balance_after REAL CHECK (balance_after IS NULL OR balance_after > 0),
+    extra_id TEXT,
     created_at TEXT NOT NULL
   );
 
@@ -87,6 +89,8 @@ const SCHEMA = `
 // Colunas acrescentadas depois da primeira versão: entram nos bancos já existentes sem recriar a tabela
 const ADDED_COLUMNS = [
   { table: 'contract', name: 'bank_preposition', ddl: "TEXT CHECK (bank_preposition IS NULL OR bank_preposition IN ('no', 'na'))" },
+  { table: 'checkins', name: 'extra_id', ddl: 'TEXT' },
+  { table: 'contract', name: 'rate_input', ddl: "TEXT CHECK (rate_input IS NULL OR rate_input IN ('efetiva', 'nominal', 'mes'))" },
 ];
 
 function ensureColumns(db) {
@@ -141,10 +145,10 @@ function writeDoc(db, doc) {
     if (rows.contract) {
       db.prepare(`
         INSERT INTO contract (
-          id, nickname, bank, bank_preposition, property_value, financed_amount, annual_rate, cet, term_months, system,
+          id, nickname, bank, bank_preposition, property_value, financed_amount, annual_rate, rate_input, cet, term_months, system,
           first_due_month, due_day, tr_indexed, monthly_insurance, monthly_admin_fee, updated_at
         ) VALUES (
-          1, @nickname, @bank, @bank_preposition, @property_value, @financed_amount, @annual_rate, @cet, @term_months, @system,
+          1, @nickname, @bank, @bank_preposition, @property_value, @financed_amount, @annual_rate, @rate_input, @cet, @term_months, @system,
           @first_due_month, @due_day, @tr_indexed, @monthly_insurance, @monthly_admin_fee, CURRENT_TIMESTAMP
         )
       `).run(rows.contract);
@@ -153,7 +157,7 @@ function writeDoc(db, doc) {
       const stmt = db.prepare(sql);
       for (const r of list) stmt.run(r);
     };
-    ins('INSERT INTO checkins (id, year_month, paid_amount, balance_after, created_at) VALUES (@id, @year_month, @paid_amount, @balance_after, @created_at)', rows.checkins);
+    ins('INSERT INTO checkins (id, year_month, paid_amount, balance_after, extra_id, created_at) VALUES (@id, @year_month, @paid_amount, @balance_after, @extra_id, @created_at)', rows.checkins);
     ins('INSERT OR REPLACE INTO extra_payments (id, year_month, amount, mode, source, note) VALUES (@id, @year_month, @amount, @mode, @source, @note)', rows.extras);
     ins('INSERT INTO balance_checkpoints (id, year_month, balance, source) VALUES (@id, @year_month, @balance, @source)', rows.checkpoints);
     ins('INSERT INTO milestones (percent) VALUES (@percent)', rows.milestones.map((percent) => ({ percent })));
