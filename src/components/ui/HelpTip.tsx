@@ -23,7 +23,7 @@ export const HelpTip: React.FC<{ help: HelpContent; className?: string }> = ({ h
     const r = btnRef.current?.getBoundingClientRect();
     if (!r) return;
     const above = r.bottom + 240 > window.innerHeight;
-    const x = Math.min(Math.max(12, r.left + r.width / 2 - 160), window.innerWidth - 332);
+    const x = Math.min(Math.max(12, r.left + r.width / 2 - 180), window.innerWidth - 372);
     setPos({ x, y: above ? window.innerHeight - r.top + 8 : r.bottom + 8, above });
   };
   const close = () => {
@@ -82,16 +82,16 @@ export const HelpTip: React.FC<{ help: HelpContent; className?: string }> = ({ h
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: pos.above ? 6 : -6 }}
               transition={{ duration: DURATION.base, ease: EASE_OUT }}
-              className="app-no-drag fixed z-[80] w-80 p-4 rounded-2xl bg-white dark:bg-slate-800 ring-1 ring-slate-900/10 dark:ring-white/10 shadow-[0_24px_48px_-16px_rgba(30,27,75,0.45)] text-sm"
+              className="app-no-drag fixed z-[80] w-[360px] p-4 rounded-2xl bg-white dark:bg-slate-800 ring-1 ring-slate-900/10 dark:ring-white/10 shadow-[0_24px_48px_-16px_rgba(30,27,75,0.45)] text-sm"
               style={pos.above ? { left: pos.x, bottom: pos.y } : { left: pos.x, top: pos.y }}
             >
               <div>
                 <div className="font-display font-semibold text-[15px] text-slate-900 dark:text-white">{help.title}</div>
-                <div className="mt-1 text-slate-600 dark:text-slate-300 leading-relaxed">{help.body}</div>
+                <div className="mt-1 text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">{help.body}</div>
                 {help.where && (
                   <div className="mt-3 flex gap-2 p-2.5 rounded-xl bg-sol-50 text-sol-900 dark:bg-sol-400/10 dark:text-sol-200 text-[13px] leading-snug">
                     <MapPin className="w-4 h-4 shrink-0 mt-0.5 text-sol-600 dark:text-sol-300" />
-                    <span>{help.where}</span>
+                    <span className="whitespace-pre-line">{help.where}</span>
                   </div>
                 )}
               </div>

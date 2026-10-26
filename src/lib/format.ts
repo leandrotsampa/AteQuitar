@@ -70,6 +70,11 @@ export function formatDuration(months: number): string {
 export const annualToMonthly = (pctYear: number): number => (Math.pow(1 + pctYear / 100, 1 / 12) - 1) * 100;
 export const monthlyToAnnual = (pctMonth: number): number => (Math.pow(1 + pctMonth / 100, 12) - 1) * 100;
 
+// Taxa nominal anual = taxa do mês × 12 (é a que o app da Caixa mostra como "Juros nominais").
+// A efetiva é o que esses juros mensais viram em 12 meses, com juros sobre juros
+export const nominalToEffective = (pctNominalYear: number): number => monthlyToAnnual(pctNominalYear / 12);
+export const effectiveToNominal = (pctEffectiveYear: number): number => annualToMonthly(pctEffectiveYear) * 12;
+
 export const uid = (): string => `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 // "no Itaú", "na Caixa": a preposição certa para o nome da instituição. Bancos são "o banco";

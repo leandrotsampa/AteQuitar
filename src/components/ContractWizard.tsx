@@ -7,10 +7,12 @@ import {
   annualToMonthly,
   bankPreposition,
   currentYearMonth,
+  effectiveToNominal,
   formatBRL,
   formatDuration,
   monthLong,
   monthlyToAnnual,
+  nominalToEffective,
   withBank,
 } from '../lib/format';
 import { EASE_OUT, instantIf } from '../lib/motion';
@@ -24,6 +26,15 @@ import { isTourRunning, runTour, screenStepIds } from '../tour/tour';
 import { loadTourState, markSeen, saveTourState } from '../tour/tourState';
 
 const BANKS = ['Caixa', 'Banco do Brasil', 'Itaú', 'Bradesco', 'Santander', 'Inter', 'Cooperativa'];
+
+// A mesma taxa escrita de três jeitos: o app guarda sempre a efetiva ao ano e converte
+type RateUnit = 'efetiva' | 'nominal' | 'mes';
+const RATE_UNITS: { value: RateUnit; label: string; where: string }[] = [
+  { value: 'efetiva', label: 'Efetiva ao ano', where: 'Como no contrato' },
+  { value: 'nominal', label: 'Nominal ao ano', where: 'Como no app da Caixa' },
+  { value: 'mes', label: 'Ao mês', where: 'Taxa mensal' },
+];
+const fmtRate = (n: number, digits: number) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: digits });
 
 const blankContract = (): Contract => ({
   nickname: '',
@@ -132,7 +143,7 @@ export const ContractWizard: React.FC<{
   const [balance, setBalance] = useState(initialBalance);
   const [step, setStep] = useState(0);
   const [dir, setDir] = useState(1);
-  const [rateUnit, setRateUnit] = useState<'ano' | 'mes'>('ano');
+  const [rateUnit, setRateUnit] = useState<RateUnit>('efetiva');
   const [termUnit, setTermUnit] = useState<'meses' | 'anos'>('meses');
   const [tried, setTried] = useState(false);
   const set = <K extends keyof Contract>(k: K, v: Contract[K]) => setC((prev) => ({ ...prev, [k]: v }));
@@ -144,7 +155,7 @@ export const ContractWizard: React.FC<{
       c.termMonths >= 12 && c.termMonths <= 600 ? '' : 'O prazo deve ficar entre 12 e 600 meses.',
       c.propertyValue > 0 && c.financedAmount > c.propertyValue ? 'O valor financiado está maior que o valor do imóvel.' : '',
     ].filter(Boolean),
-    [c.annualRate > 0 && c.annualRate < 40 ? '' : 'Informe a taxa de juros do contrato (ex.: 10,49% ao ano).'].filter(Boolean),
+    [c.annualRate > 0 && c.annualRate < 40 ? '' : 'Informe a taxa de juros do contrato (ex.: 9,79% efetiva ou 9,3764% nominal ao ano).'].filter(Boolean),
     [c.dueDay >= 1 && c.dueDay <= 31 ? '' : 'O dia do vencimento vai de 1 a 31.'].filter(Boolean),
     [],
   ];
@@ -370,40 +381,42 @@ export const ContractWizard: React.FC<{
               {step === 2 && (
                 <>
                   <Field
-                    label="Taxa de juros efetiva"
+                    label="Taxa de juros"
                     help={HELP.annualRate}
                     hint={
                       c.annualRate > 0
-                        ? rateUnit === 'ano'
-                          ? `Equivale a ${annualToMonthly(c.annualRate).toLocaleString('pt-BR', { maximumFractionDigits: 4 })}% ao mês`
-                          : `Equivale a ${c.annualRate.toLocaleString('pt-BR', { maximumFractionDigits: 2 })}% ao ano`
+                        ? `Equivale a ${fmtRate(c.annualRate, 2)}% efetiva ao ano, ${fmtRate(effectiveToNominal(c.annualRate), 4)}% nominal ao ano e ${fmtRate(annualToMonthly(c.annualRate), 4)}% ao mês.`
                         : undefined
                     }
                   >
-                    <div className="flex gap-2 items-center">
-                      <NumberField
-                        value={rateUnit === 'ano' ? c.annualRate : annualToMonthly(c.annualRate)}
-                        onChange={(v) => set('annualRate', rateUnit === 'ano' ? v : monthlyToAnnual(v))}
-                        digits={rateUnit === 'ano' ? 2 : 4}
-                        suffix="%"
-                        ariaLabel="Taxa de juros"
-                        className="flex-1"
-                      />
-                      <div className="flex rounded-full bg-slate-100 dark:bg-slate-800 p-1">
-                        {(['ano', 'mes'] as const).map((u) => (
-                          <button
-                            key={u}
-                            type="button"
-                            onClick={() => setRateUnit(u)}
-                            className={`h-8 px-3 rounded-full text-sm font-semibold cursor-pointer whitespace-nowrap ${
-                              rateUnit === u ? 'bg-white dark:bg-slate-950 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500'
-                            }`}
-                          >
-                            {u === 'ano' ? 'ao ano' : 'ao mês'}
-                          </button>
-                        ))}
-                      </div>
+                    {/* Qual taxa a pessoa tem em mãos: a efetiva do contrato, a nominal do app do banco ou a mensal */}
+                    <div className="grid grid-cols-3 gap-2 mb-2" role="group" aria-label="Tipo de taxa">
+                      {RATE_UNITS.map((u) => (
+                        <button
+                          key={u.value}
+                          type="button"
+                          aria-pressed={rateUnit === u.value}
+                          onClick={() => setRateUnit(u.value)}
+                          className={`text-left px-3 py-2 rounded-xl border-2 cursor-pointer transition-colors ${
+                            rateUnit === u.value
+                              ? 'border-anil-500 bg-anil-50 dark:bg-anil-500/10'
+                              : 'border-slate-200 dark:border-slate-700 hover:border-anil-300 dark:hover:border-anil-500/50'
+                          }`}
+                        >
+                          <span className="block text-sm font-bold text-slate-900 dark:text-white">{u.label}</span>
+                          <span className="block text-[11px] leading-snug text-slate-500 dark:text-slate-400">{u.where}</span>
+                        </button>
+                      ))}
                     </div>
+                    <NumberField
+                      value={rateUnit === 'efetiva' ? c.annualRate : rateUnit === 'nominal' ? effectiveToNominal(c.annualRate) : annualToMonthly(c.annualRate)}
+                      onChange={(v) =>
+                        set('annualRate', rateUnit === 'efetiva' ? v : rateUnit === 'nominal' ? nominalToEffective(v) : monthlyToAnnual(v))
+                      }
+                      digits={4}
+                      suffix={rateUnit === 'mes' ? '% a.m.' : '% a.a.'}
+                      ariaLabel="Taxa de juros"
+                    />
                   </Field>
                   <Field label="CET (custo efetivo total)" help={HELP.cet} optional>
                     <NumberField value={c.cet} onChange={(v) => set('cet', v)} suffix="% a.a." ariaLabel="CET" />

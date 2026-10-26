@@ -18,42 +18,42 @@ export const HELP = {
   financedAmount: {
     title: 'Valor financiado',
     body: 'Quanto o banco emprestou, sem contar a entrada que você pagou. É a sua dívida no começo.',
-    where: 'Quadro-resumo do contrato: "Valor do financiamento" ou "Valor total da dívida".',
+    where: 'No contrato: quadro-resumo, "Valor do financiamento".\nNo app da Caixa: Habitação → seu contrato → Detalhes do contrato → "Valor financiado".',
   },
   termMonths: {
     title: 'Prazo em meses',
     body: 'Em quantas parcelas o financiamento foi dividido. 30 anos são 360 meses; 35 anos, 420.',
-    where: 'Quadro-resumo: "Prazo de amortização" (em meses).',
+    where: 'No contrato: quadro-resumo, "Prazo de amortização" (em meses).\nNo app da Caixa: Detalhes do contrato → "Prazo contratado".',
   },
   system: {
     title: 'SAC ou Price?',
     body: 'No SAC a parcela começa mais alta e vai caindo todo mês. Na Price (Tabela Price) a parcela fica quase igual do começo ao fim. A maioria dos financiamentos da Caixa é SAC.',
-    where: 'Quadro-resumo: "Sistema de amortização". Dica: se a sua parcela cai um pouco todo mês, é SAC.',
+    where: 'No contrato: quadro-resumo, "Sistema de amortização".\nNo app da Caixa: Detalhes do contrato → "Sistema de amortização" (ex.: "SAC - Sist. Amortização Constante").\nDica: se a sua parcela cai um pouco todo mês, é SAC.',
   },
   annualRate: {
-    title: 'Taxa de juros efetiva',
-    body: 'Os juros que o banco cobra por ano. Use a taxa efetiva (ela é um pouco maior que a nominal). Se só tiver a taxa mensal, troque a unidade para "ao mês".',
-    where: 'Quadro-resumo: "Taxa de juros efetiva anual" (ex.: 10,49% a.a.).',
+    title: 'Qual taxa usar',
+    body: 'O banco escreve a mesma taxa de três jeitos e qualquer um serve, desde que você escolha a opção certa acima do campo:\n• Efetiva ao ano: os juros de 12 meses com juros sobre juros (ex.: 9,79%).\n• Nominal ao ano: a taxa do mês × 12 (ex.: 9,3764%).\n• Ao mês: a taxa de cada parcela (ex.: 0,7814%).\nSe o contrato traz duas taxas, "balcão" e "reduzida", use a que está valendo hoje (a reduzida, se você mantém os benefícios de relacionamento).',
+    where: 'No contrato: quadro-resumo, "Taxa de juros", com a nominal e a efetiva lado a lado.\nNo app da Caixa: Detalhes do contrato → "Juros nominais vigente" → escolha Nominal ao ano.',
   },
   cet: {
     title: 'CET: custo efetivo total',
     body: 'A taxa que inclui tudo: juros, seguros e tarifas. É o número certo para comparar bancos. Opcional, mas ajuda no "Minha taxa é justa?".',
-    where: 'Quadro-resumo: "CET - Custo Efetivo Total" (% a.a.).',
+    where: 'No contrato: quadro-resumo, "Custo Efetivo Total (CET)", em % ao ano.\nO app da Caixa não mostra o CET; ele só aparece no contrato.',
   },
   trIndexed: {
     title: 'O saldo é corrigido pela TR?',
     body: 'Na Caixa e na maioria dos contratos do SFH, sim: todo mês a TR aumenta um pouco o saldo antes de calcular os juros. Contratos com taxa fixa não têm correção. Se o seu for corrigido pelo IPCA, informe o saldo real todo mês para manter os números certos.',
-    where: 'Cláusula "Atualização monetária" ou "Índice de atualização do saldo devedor".',
+    where: 'No contrato: cláusula "Atualização monetária" ou "Índice de atualização do saldo devedor".\nNo app da Caixa: Detalhes do contrato → "Indexador" (TR = Sim).',
   },
   firstDueMonth: {
     title: 'Mês da primeira parcela',
     body: 'O mês em que você pagou a parcela número 1. É a partir dele que contamos quantas já foram pagas.',
-    where: 'Quadro-resumo: "Data de vencimento do primeiro encargo".',
+    where: 'No contrato: quadro-resumo, "Data de vencimento do primeiro encargo".\nSem o contrato: prazo − meses restantes = parcelas já pagas. No app da Caixa, com 420 de prazo e 362 restantes, foram 58; conte 58 meses para trás a partir da próxima parcela.',
   },
   dueDay: {
     title: 'Dia do vencimento',
     body: 'O dia do mês em que a parcela vence. Depois dele, consideramos a parcela do mês como paga.',
-    where: 'No boleto ou no app do banco, ao lado da próxima parcela.',
+    where: 'No app da Caixa: Minhas prestações → "Vencimento" (ex.: 05 NOV = dia 5).\nNo contrato: quadro-resumo, junto da data do primeiro encargo.',
   },
   monthlyInsurance: {
     title: 'Seguros obrigatórios',
@@ -68,7 +68,7 @@ export const HELP = {
   currentBalance: {
     title: 'Saldo devedor de hoje',
     body: 'Quanto você ainda deve, segundo o banco. Com ele os números do app ficam exatos em vez de estimados.',
-    where: 'App do banco → Habitação (ou Financiamento) → "Saldo devedor". Não use o "valor para quitação", que pode vir com desconto.',
+    where: 'No app da Caixa: Habitação → seu contrato → "Saldo devedor".\nNos outros bancos: Habitação (ou Financiamento) → "Saldo devedor". Não use o "valor para quitação", que pode vir com desconto.',
   },
   irBalance: {
     title: 'Saldo do extrato do IR',

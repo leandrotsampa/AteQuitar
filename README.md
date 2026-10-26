@@ -182,7 +182,7 @@ O **Até Quitar** responde essas perguntas com os números do seu contrato. Voc�
 
 | Etapa | Regra |
 |---|---|
-| **Taxa mensal** | Equivalente à taxa efetiva anual do contrato: `(1 + a)^(1/12) − 1` |
+| **Taxa mensal** | Equivalente à taxa efetiva anual do contrato: `(1 + a)^(1/12) − 1`. O cadastro aceita a taxa de três jeitos: **efetiva ao ano** (como no contrato), **nominal ao ano** (como o app da Caixa mostra em "Juros nominais vigente", que é a taxa do mês × 12) ou **ao mês**. Exemplo: 9,3764% nominal = 0,7814% ao mês = 9,79% efetiva |
 | **Correção pela TR** | Nos contratos com TR, o saldo é corrigido antes dos juros: `saldo × TR do mês`. Os meses passados usam a **TR oficial** de cada mês; os futuros, a média dos últimos 12 meses |
 | **Juros** | `saldo corrigido × taxa mensal` |
 | **Amortização no SAC** | `saldo ÷ parcelas restantes`: a parcela cai todo mês |
