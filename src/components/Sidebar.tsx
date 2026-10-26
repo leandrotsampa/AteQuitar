@@ -5,6 +5,7 @@ import {
   Calculator,
   Gauge,
   Home,
+  LifeBuoy,
   LineChart,
   ListOrdered,
   Moon,
@@ -79,7 +80,8 @@ export const Sidebar: React.FC<{
   toggleTheme: (origin?: HTMLElement | null) => void;
   onOpenContract: () => void;
   onOpenData: () => void;
-}> = ({ active, onSelect, nickname, progress, theme, toggleTheme, onOpenContract, onOpenData }) => {
+  onOpenTutorial: () => void;
+}> = ({ active, onSelect, nickname, progress, theme, toggleTheme, onOpenContract, onOpenData, onOpenTutorial }) => {
   const [prefs, setPrefs] = useUiPrefs();
   const expanded = prefs.sidebar !== 'collapsed';
   const collapsed = !expanded;
@@ -216,7 +218,7 @@ export const Sidebar: React.FC<{
             }`}
           />
           {GROUPS.map((g) => (
-            <div key={g.title} className="mt-3 first:mt-1">
+            <div key={g.title} data-tour={g.title === 'Decidir' ? 'nav-decidir' : undefined} className="mt-3 first:mt-1">
               {expanded ? (
                 <Reveal show className="px-3 pb-1.5 text-xs font-semibold text-slate-400 dark:text-slate-500">
                   {g.title}
@@ -277,6 +279,15 @@ export const Sidebar: React.FC<{
                 <Settings2 className="w-4 h-4 text-anil-600 dark:text-anil-300" />
                 {expanded && <span className="whitespace-nowrap font-semibold">Meu financiamento</span>}
               </span>
+            </button>
+          </RailTooltip>
+          <RailTooltip enabled={collapsed} label="Como usar" detail="Rever o passo a passo desta tela">
+            <button onClick={onOpenTutorial} data-tour="como-usar" className={footerBtn} aria-label={collapsed ? 'Como usar' : undefined}>
+              <span className="flex items-center gap-2.5">
+                <LifeBuoy className="w-4 h-4 text-sky-600 dark:text-sky-400" />
+                {expanded && <span className="whitespace-nowrap">Como usar</span>}
+              </span>
+              {expanded && <span className="text-xs text-slate-500 dark:text-slate-400">1 min</span>}
             </button>
           </RailTooltip>
           <RailTooltip enabled={collapsed} label="Tema" detail={theme === 'dark' ? 'Noite (clique para dia)' : 'Dia (clique para noite)'}>

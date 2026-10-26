@@ -74,7 +74,7 @@ export const RateScreen: React.FC<ScreenProps> = ({ model, data, refreshRates, r
         }
       />
 
-      <section className={`${card} p-6 lg:p-8`}>
+      <section data-tour="rate-termometro" className={`${card} p-6 lg:p-8`}>
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
             <div className="text-sm text-slate-500 dark:text-slate-400">Sua taxa</div>
@@ -131,7 +131,7 @@ export const RateScreen: React.FC<ScreenProps> = ({ model, data, refreshRates, r
         <p className="text-[15px] text-slate-600 dark:text-slate-300 leading-relaxed max-w-3xl">{verdict.text}</p>
       </section>
 
-      <section className="grid md:grid-cols-3 gap-4">
+      <section data-tour="rate-impacto" className="grid md:grid-cols-3 gap-4">
         <div className={`${card} p-5`}>
           <div className="text-sm text-slate-500 dark:text-slate-400">
             {impact >= 0 ? 'Se sua taxa fosse a média, você pagaria' : 'Comparado com a média, você economiza'}
@@ -158,7 +158,7 @@ export const RateScreen: React.FC<ScreenProps> = ({ model, data, refreshRates, r
       </section>
 
       <section className="grid md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-4">
-        <div className={`${card} p-5 lg:p-6`}>
+        <div data-tour="rate-portabilidade" className={`${card} p-5 lg:p-6`}>
           <h2 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
             <ArrowRightLeft className="w-5 h-5 text-anil-500" /> Como fazer a portabilidade
           </h2>

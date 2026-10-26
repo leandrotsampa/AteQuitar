@@ -44,6 +44,7 @@ export const MarketScreen: React.FC<ScreenProps> = ({ model, data, refreshRates,
         actions={
           <button
             type="button"
+            data-tour="mkt-atualizar"
             onClick={refreshRates}
             className="inline-flex items-center gap-2 h-10 px-4 rounded-full bg-anil-600 hover:bg-anil-500 text-white text-sm font-semibold cursor-pointer"
           >
@@ -53,7 +54,7 @@ export const MarketScreen: React.FC<ScreenProps> = ({ model, data, refreshRates,
       />
 
       {/* O que mexe com você este mês */}
-      <section className="relative overflow-hidden rounded-[22px] p-6 lg:p-7 bg-gradient-to-br from-anil-800 via-anil-700 to-anil-600 text-white">
+      <section data-tour="mkt-voce" className="relative overflow-hidden rounded-[22px] p-6 lg:p-7 bg-gradient-to-br from-anil-800 via-anil-700 to-anil-600 text-white">
         <div className="absolute -right-16 -top-20 w-72 h-72 rounded-full bg-sol-400/20 blur-2xl" aria-hidden="true" />
         <h2 className="relative font-display text-xl font-bold">O que isso muda para você</h2>
         <div className="relative grid md:grid-cols-3 gap-4 mt-4">
@@ -81,7 +82,7 @@ export const MarketScreen: React.FC<ScreenProps> = ({ model, data, refreshRates,
         </div>
       </section>
 
-      <section className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
+      <section data-tour="mkt-cards" className="grid sm:grid-cols-2 xl:grid-cols-3 gap-4">
         {ORDER.map(({ key, tone, digits }, k) => {
           const info = RATE_INFO[key];
           const point = rates.latest[key];

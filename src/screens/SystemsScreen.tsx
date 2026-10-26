@@ -104,7 +104,7 @@ export const SystemsScreen: React.FC<ScreenProps> = ({ model }) => {
         description={`Os dois sistemas com os mesmos dados do seu contrato: ${formatBRL0(contract.financedAmount)} em ${contract.termMonths} meses a ${contract.annualRate.toLocaleString('pt-BR')}% ao ano.`}
       />
 
-      <section className={`${card} p-5 lg:p-6`}>
+      <section data-tour="sys-resumo" className={`${card} p-5 lg:p-6`}>
         <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-6 items-center">
           <div>
             <div className="text-sm text-slate-500 dark:text-slate-400">No total, a Price custa</div>
@@ -140,7 +140,7 @@ export const SystemsScreen: React.FC<ScreenProps> = ({ model }) => {
         </div>
       </section>
 
-      <section className="grid md:grid-cols-2 gap-4 pt-2">
+      <section data-tour="sys-cards" className="grid md:grid-cols-2 gap-4 pt-2">
         <Col name="SAC" t={sac} />
         <Col name="PRICE" t={price} />
       </section>

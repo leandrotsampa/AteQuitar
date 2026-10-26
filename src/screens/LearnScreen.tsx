@@ -183,11 +183,12 @@ export const LearnScreen: React.FC<ScreenProps> = ({ go }) => {
     <div className="space-y-6 page-stagger">
       <PageHeader context="Entender" title="Aprender sem economês" description="O essencial sobre financiamento imobiliário, em linguagem de gente." />
 
-      <div className="relative max-w-md">
+      <div data-tour="learn-busca" className="relative max-w-md">
         <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
         <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Procure: FGTS, TR, portabilidade…" className={`${inputBase} pl-10 rounded-full`} aria-label="Procurar" />
       </div>
 
+      <div data-tour="learn-lista" className="space-y-6">
       {groups.map((g) => {
         const items = filtered.filter((t) => t.group === g);
         if (items.length === 0) return null;
@@ -245,6 +246,7 @@ export const LearnScreen: React.FC<ScreenProps> = ({ go }) => {
           </section>
         );
       })}
+      </div>
       {filtered.length === 0 && <p className="text-slate-500">Nada encontrado para "{query}". Tente outra palavra.</p>}
     </div>
   );

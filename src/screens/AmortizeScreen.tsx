@@ -88,7 +88,7 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
 
       <section className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.15fr)] gap-4">
         {/* Controles */}
-        <div className={`${card} p-5 lg:p-6 space-y-6`}>
+        <div data-tour="amo-valor" className={`${card} p-5 lg:p-6 space-y-6`}>
           <Field label="Quanto você quer amortizar?">
             <MoneyField value={amount} onChange={setAmount} size="lg" />
             <input
@@ -169,7 +169,7 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
 
         {/* Resultado */}
         <div className="space-y-4">
-          <div className="relative overflow-hidden rounded-[22px] p-6 lg:p-7 bg-gradient-to-br from-emerald-600 to-emerald-500 dark:from-emerald-700 dark:to-emerald-600 text-white shadow-[0_24px_50px_-24px_rgba(5,150,105,0.8)]">
+          <div data-tour="amo-resultado" className="relative overflow-hidden rounded-[22px] p-6 lg:p-7 bg-gradient-to-br from-emerald-600 to-emerald-500 dark:from-emerald-700 dark:to-emerald-600 text-white shadow-[0_24px_50px_-24px_rgba(5,150,105,0.8)]">
             <div className="absolute -right-12 -bottom-16 w-64 h-64 rounded-full bg-white/10" aria-hidden="true" />
             <div className="relative flex items-center gap-2 text-sm font-semibold text-white/85">
               <TrendingDown className="w-4 h-4" /> Você deixa de pagar
@@ -214,7 +214,7 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
           </div>
 
           {/* Prazo × parcela lado a lado */}
-          <div className={`${card} p-5`}>
+          <div data-tour="amo-comparar" className={`${card} p-5`}>
             <div className="text-sm font-semibold text-slate-900 dark:text-white mb-3">E se escolhesse a outra opção?</div>
             <div className="grid grid-cols-2 gap-3">
               {(['prazo', 'parcela'] as const).map((m) => {
@@ -294,7 +294,7 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
             ))}
           </ul>
         </div>
-        <div className={`${card} p-5 lg:p-6 flex flex-col`}>
+        <div data-tour="amo-registrar" className={`${card} p-5 lg:p-6 flex flex-col`}>
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">Já fez essa amortização?</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
             Registre para os números da sua casa refletirem o pagamento. Funciona para uma amortização única num mês que já chegou.

@@ -112,6 +112,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
         title="Parcelas mês a mês"
         description="A tabela completa do seu financiamento e tudo o que você já registrou."
         actions={
+          <div data-tour="hist-abas">
           <SegmentedControl
             ariaLabel="Ver"
             layoutId="hist-tab"
@@ -123,12 +124,13 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
               { value: 'records', label: `Registros (${records.length})` },
             ]}
           />
+          </div>
         }
       />
 
       {tab === 'table' ? (
         <>
-          <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+          <div data-tour="hist-anos" className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
             {years.map((y) => (
               <button
                 key={y}
@@ -160,7 +162,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
             ))}
           </div>
 
-          <div className={`${card} overflow-hidden`}>
+          <div data-tour="hist-tabela" className={`${card} overflow-hidden`}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>

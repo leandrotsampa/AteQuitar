@@ -19,6 +19,8 @@ import { playSound } from './hooks/useSound';
 import { getUiPrefs, setUiPrefs } from './hooks/useUiPrefs';
 import { HomeScreen } from './screens/HomeScreen';
 import type { ScreenId, ScreenProps } from './screens/types';
+import { ALL_TOUR_STEP_IDS, isTourRunning, runTour, screenStepIds } from './tour/tour';
+import { completeTour, loadTourState, planScreenTour, planTour, saveTourState, skipTour } from './tour/tourState';
 
 const loadHistory = () => import('./screens/HistoryScreen');
 const loadAmortize = () => import('./screens/AmortizeScreen');
@@ -173,6 +175,57 @@ export default function App() {
   const [contractOpen, setContractOpen] = useState(false);
   const [onboardingStage, setOnboardingStage] = useState<'welcome' | 'wizard'>('welcome');
 
+  // Tutorial: boas-vindas quando o financiamento aparece pela primeira vez, apresentação de cada
+  // tela na primeira visita e o "Como usar" para rever. Nunca por cima de um modal aberto
+  const startTour = (target: ScreenId, ids?: string[], news = false) => {
+    if (isTourRunning()) return;
+    setScreen(target);
+    // Espera a tela montar e a entrada animada assentar antes de destacar
+    window.setTimeout(() => {
+      void runTour({
+        screen: target,
+        ids,
+        news,
+        demo: dataRef.current.isDemo,
+        reduceMotion: reduce,
+        onDone: (shown) => saveTourState(completeTour(loadTourState(), shown)),
+      });
+    }, 700);
+  };
+  const overlayOpen = checkinOpen || dataOpen || contractOpen;
+  const hasModel = Boolean(model);
+  const tourChecked = useRef(false);
+  useEffect(() => {
+    if (!loaded || !hasModel || tourChecked.current) return;
+    tourChecked.current = true;
+    const plan = planTour(screenStepIds('home'), loadTourState());
+    if (plan.kind === 'news') {
+      startTour('home', plan.ids, true);
+    } else if (plan.kind === 'welcome') {
+      // Depois do confete do cadastro (ou da entrada no exemplo)
+      window.setTimeout(() => {
+        void confirm({
+          title: dataRef.current.isDemo ? 'Bem-vindo ao exemplo' : 'Tudo pronto!',
+          message:
+            'Em 1 minuto você vê onde fica cada coisa: quanto falta, o check-in do mês e as simulações para quitar mais cedo.',
+          confirmLabel: 'Mostrar como funciona',
+          cancelLabel: 'Explorar sozinho',
+        }).then((ok) => {
+          if (ok) startTour('home');
+          // Explorar sozinho: nenhuma tela se apresenta; só novidades futuras e o "Como usar"
+          else saveTourState(skipTour(loadTourState(), ALL_TOUR_STEP_IDS));
+        });
+      }, 1600);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded, hasModel]);
+  useEffect(() => {
+    if (!hasModel || !tourChecked.current || screen === 'home' || overlayOpen || isTourRunning()) return;
+    const plan = planScreenTour(screenStepIds(screen), loadTourState());
+    if (plan.kind !== 'none') startTour(screen, plan.ids, plan.kind === 'news');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen, hasModel, overlayOpen]);
+
   const startDemo = () => {
     update((prev) => ({ ...prev, ...demoData(), checkpoints: [], checkins: [], isDemo: true, celebrated: [] }));
     playSound('success');
@@ -259,6 +312,7 @@ export default function App() {
             toggleTheme={toggleTheme}
             onOpenContract={() => setContractOpen(true)}
             onOpenData={() => setDataOpen(true)}
+            onOpenTutorial={() => startTour(screen)}
           />
           <div className="flex-1 flex flex-col min-w-0 h-screen">
             <TopBar

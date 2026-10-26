@@ -108,7 +108,7 @@ export const InvestScreen: React.FC<ScreenProps> = ({ model, data }) => {
             />
           </Field>
           <Field label="Comparar com">
-            <div className="space-y-2">
+            <div data-tour="inv-produtos" className="space-y-2">
               {products.map((p) => (
                 <button
                   key={p.key}
@@ -161,6 +161,7 @@ export const InvestScreen: React.FC<ScreenProps> = ({ model, data }) => {
           <AnimatePresence mode="wait">
             <motion.div
               key={result.verdict}
+              data-tour="inv-veredito"
               initial={reduce ? false : { opacity: 0, y: 12, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -8 }}
@@ -177,7 +178,7 @@ export const InvestScreen: React.FC<ScreenProps> = ({ model, data }) => {
           </AnimatePresence>
 
           {/* Corrida: quanto o dinheiro vira em cada caminho */}
-          <div className={`${card} p-5 lg:p-6`}>
+          <div data-tour="inv-corrida" className={`${card} p-5 lg:p-6`}>
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Em {formatDuration(months)}, seus {formatBRL0(amount)} valeriam</h3>
             <div className="mt-5 space-y-5">
               {[

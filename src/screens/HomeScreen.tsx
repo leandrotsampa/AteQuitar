@@ -103,7 +103,7 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
 
       {/* Hero: a casa + quanto falta */}
       <section className={`${card} p-3 grid md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-2 overflow-hidden`}>
-        <div className="relative rounded-[18px] overflow-hidden min-h-[300px]">
+        <div data-tour="casa" className="relative rounded-[18px] overflow-hidden min-h-[300px]">
           <HouseHero progress={summary.progress} dark={dark} cover className="absolute inset-0 w-full h-full block" />
           {equity !== null && (
             <div className="absolute left-4 top-4 px-3 py-2 rounded-2xl bg-white/85 dark:bg-slate-950/70 backdrop-blur text-xs">
@@ -115,7 +115,7 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
           )}
         </div>
 
-        <div className="p-4 lg:p-6 flex flex-col">
+        <div data-tour="falta" className="p-4 lg:p-6 flex flex-col">
           <div className="flex items-center gap-1.5 text-sm text-slate-500 dark:text-slate-400">
             Ainda falta pagar
             <HelpTip
@@ -144,7 +144,7 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
           </div>
 
           {/* Régua dos marcos: cada 10% é uma conquista */}
-          <div className="mt-6">
+          <div data-tour="marcos" className="mt-6">
             <div className="relative h-4 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
               <motion.div
                 className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-anil-600 via-anil-500 to-sol-400"
@@ -199,7 +199,7 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
             exit={{ opacity: 0, height: 0 }}
             className="overflow-hidden"
           >
-            <div className="relative overflow-hidden rounded-[22px] p-5 lg:p-6 bg-gradient-to-br from-anil-700 via-anil-600 to-anil-500 text-white flex flex-col md:flex-row md:items-center gap-4 shadow-[0_24px_50px_-24px_rgba(65,57,201,0.8)]">
+            <div data-tour="checkin" className="relative overflow-hidden rounded-[22px] p-5 lg:p-6 bg-gradient-to-br from-anil-700 via-anil-600 to-anil-500 text-white flex flex-col md:flex-row md:items-center gap-4 shadow-[0_24px_50px_-24px_rgba(65,57,201,0.8)]">
               <div className="absolute -right-10 -top-12 w-56 h-56 rounded-full bg-sol-400/25 blur-2xl" aria-hidden="true" />
               <span className="relative w-12 h-12 shrink-0 rounded-2xl bg-white/15 flex items-center justify-center">
                 <CalendarCheck2 className="w-6 h-6" />
@@ -228,7 +228,7 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
       </AnimatePresence>
 
       {/* Indicadores rápidos */}
-      <section className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+      <section data-tour="indicadores" className="grid grid-cols-2 xl:grid-cols-4 gap-4">
         <Stat
           icon={CalendarClock}
           label="Próxima parcela"
@@ -309,7 +309,7 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
         </div>
 
         {/* Para onde vai a parcela */}
-        <div className={`${card} p-5 lg:p-6 flex flex-col`}>
+        <div data-tour="parcela" className={`${card} p-5 lg:p-6 flex flex-col`}>
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">Para onde vai sua parcela</h2>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {next ? `Parcela de ${monthName(next.yearMonth)}: ${formatBRL(next.payment)}` : 'Sem parcelas futuras'}
