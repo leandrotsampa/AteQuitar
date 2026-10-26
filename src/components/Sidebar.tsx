@@ -97,30 +97,39 @@ export const Sidebar: React.FC<{
       animate={{ width: (expanded ? WIDTH_EXPANDED : WIDTH_COLLAPSED) + GUTTER }}
       transition={instantIf(reduce, widthSpring)}
     >
-      {/* Recolher/expandir: botão redondo apoiado na borda do menu, na altura do logo; a seta gira */}
-      <button
-        type="button"
-        onClick={() => {
-          playSound('tick');
-          setPrefs({ sidebar: expanded ? 'collapsed' : 'expanded' });
-        }}
-        title={expanded ? 'Recolher menu (Ctrl+B)' : 'Expandir menu (Ctrl+B)'}
-        aria-label={expanded ? 'Recolher menu' : 'Expandir menu'}
-        aria-expanded={expanded}
-        className={`app-no-drag group absolute -right-3.5 z-10 w-7 h-7 rounded-full flex items-center justify-center bg-white text-slate-500 ring-1 ring-slate-900/10 shadow-[0_4px_12px_-4px_rgba(45,40,140,0.45)] outline-4 outline-[var(--canvas)] hover:bg-anil-600 hover:text-white hover:ring-anil-600 dark:bg-slate-800 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-anil-500 dark:hover:text-white transition-colors cursor-pointer ${
-          window.electronAPI?.platform === 'darwin' ? 'top-[70px]' : 'top-[34px]'
-        }`}
-        style={{ outlineStyle: 'solid' }}
-      >
-        <motion.span
-          className="flex"
-          initial={false}
-          animate={{ rotate: expanded ? 0 : 180 }}
-          transition={instantIf(reduce, { type: 'spring', stiffness: 380, damping: 26 } as const)}
+      {/* Recolher/expandir: botão redondo em anil apoiado na borda do menu, na altura do logo.
+          O anel da cor do fundo "encaixa" o botão na borda; a seta gira e a dica aparece ao lado */}
+      <div className={`app-no-drag group absolute -right-4 z-10 ${window.electronAPI?.platform === 'darwin' ? 'top-[66px]' : 'top-[30px]'}`}>
+        <motion.button
+          type="button"
+          onClick={() => {
+            playSound('tick');
+            setPrefs({ sidebar: expanded ? 'collapsed' : 'expanded' });
+          }}
+          aria-label={expanded ? 'Recolher menu' : 'Expandir menu'}
+          aria-expanded={expanded}
+          whileHover={reduce ? undefined : { scale: 1.1 }}
+          whileTap={reduce ? undefined : { scale: 0.9 }}
+          transition={{ type: 'spring', stiffness: 500, damping: 22 }}
+          className="relative w-8 h-8 rounded-full flex items-center justify-center text-white bg-gradient-to-br from-anil-500 to-anil-700 dark:from-anil-400 dark:to-anil-600 shadow-[0_0_0_4px_var(--canvas),0_8px_18px_-6px_rgba(77,72,228,0.75)] group-hover:shadow-[0_0_0_4px_var(--canvas),0_0_0_7px_rgba(255,181,36,0.55),0_10px_22px_-6px_rgba(77,72,228,0.85)] transition-shadow duration-[var(--duration-base)] cursor-pointer"
         >
-          <ChevronLeft className="w-4 h-4" strokeWidth={2.5} />
-        </motion.span>
-      </button>
+          <motion.span
+            className="flex"
+            initial={false}
+            animate={{ rotate: expanded ? 0 : 180 }}
+            transition={instantIf(reduce, { type: 'spring', stiffness: 380, damping: 24 } as const)}
+          >
+            <ChevronLeft className="w-[18px] h-[18px]" strokeWidth={2.75} />
+          </motion.span>
+        </motion.button>
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute left-full top-1/2 ml-3 -translate-y-1/2 -translate-x-1 opacity-0 group-hover:opacity-100 group-hover:translate-x-0 group-focus-within:opacity-100 group-focus-within:translate-x-0 transition-[opacity,translate] duration-[var(--duration-micro)] whitespace-nowrap flex items-center gap-2 px-2.5 py-1.5 rounded-lg bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 text-xs font-semibold shadow-lg"
+        >
+          {expanded ? 'Recolher menu' : 'Expandir menu'}
+          <kbd className="px-1.5 py-0.5 rounded-md bg-white/15 dark:bg-slate-900/10 font-num text-[10px]">Ctrl B</kbd>
+        </span>
+      </div>
 
       <motion.aside
         className="absolute top-3 bottom-3 left-3 rounded-[26px] bg-white dark:bg-slate-900 ring-1 ring-slate-900/[0.05] dark:ring-white/[0.07] shadow-[0_1px_2px_rgba(30,34,80,0.05),0_20px_44px_-22px_rgba(45,40,140,0.35)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_24px_48px_-24px_rgba(0,0,0,0.9)] flex flex-col select-none overflow-hidden"
