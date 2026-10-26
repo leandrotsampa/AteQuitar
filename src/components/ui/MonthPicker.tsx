@@ -208,7 +208,7 @@ export const MonthField: React.FC<
     <>
       <div
         ref={blockRef}
-        className={`flex items-stretch gap-1 p-1 h-14 rounded-xl bg-slate-50 dark:bg-slate-950/60 ring-1 ring-slate-900/[0.08] dark:ring-white/[0.08] ${className}`}
+        className={`flex items-stretch gap-1 p-1 h-12 rounded-xl bg-slate-50 dark:bg-slate-950/60 ring-1 ring-slate-900/[0.08] dark:ring-white/[0.08] ${className}`}
       >
         <button type="button" onClick={() => go(prev, true)} disabled={isOutside(prev, min, max)} className={stepBtn} aria-label="Mês anterior">
           <ChevronLeft className="w-4 h-4" />

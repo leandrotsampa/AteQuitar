@@ -181,7 +181,6 @@ export const CheckinModal: React.FC<{
                           max={currentYearMonth()}
                           marked={checkedMonths}
                           markedLabel="check-in feito"
-                          className="max-w-[260px]"
                         />
                       </Field>
                       <Field
@@ -189,7 +188,7 @@ export const CheckinModal: React.FC<{
                         hint="Já preenchemos com o valor previsto. Se o boleto veio diferente, corrija."
                         help={{ title: 'Valor pago', body: 'O valor total do boleto ou do débito em conta, com seguros e taxas.', where: 'No comprovante de pagamento ou no extrato da conta.' }}
                       >
-                        <MoneyField value={paid} onChange={setPaid} size="lg" className="max-w-sm" />
+                        <MoneyField value={paid} onChange={setPaid} />
                       </Field>
                       {row && (
                         <div className={`${tile} p-4 grid grid-cols-3 gap-2 text-sm`}>
@@ -218,7 +217,7 @@ export const CheckinModal: React.FC<{
                         {hasExtra && extra > 0 ? ', que já inclui a amortização extra' : ''}.
                       </p>
                       <Field label="Saldo devedor" help={HELP.currentBalance} optional>
-                        <MoneyField value={balance} onChange={setBalance} size="lg" className="max-w-sm" />
+                        <MoneyField value={balance} onChange={setBalance} />
                       </Field>
                       <div className={`${tile} p-4 text-sm`}>
                         <div className="flex justify-between">
@@ -272,7 +271,7 @@ export const CheckinModal: React.FC<{
                         {hasExtra && (
                           <motion.div className="space-y-4" initial={{ opacity: 0, y: -6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }}>
                             <Field label="Valor amortizado">
-                              <MoneyField value={extra} onChange={setExtra} className="max-w-sm" />
+                              <MoneyField value={extra} onChange={setExtra} />
                             </Field>
                             <Field
                               label="O que você escolheu reduzir?"

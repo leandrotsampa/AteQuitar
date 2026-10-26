@@ -132,7 +132,7 @@ export const Sidebar: React.FC<{
                 Até Quitar
               </div>
               <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                {nickname} <span className="text-sol-600 dark:text-sol-300 font-bold font-num">{pct}%</span>
+                <span className="text-sol-600 dark:text-sol-300 font-bold font-num">{pct}%</span> da dívida quitada
               </div>
             </Reveal>
             <button

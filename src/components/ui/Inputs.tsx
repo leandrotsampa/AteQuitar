@@ -68,7 +68,7 @@ export const NumberField: React.FC<NumberFieldProps> = ({
           onChange(parseBrNumber(e.target.value));
         }}
         onBlur={() => setDraft(null)}
-        className={`${inputBase} font-num font-semibold text-right ${size === 'lg' ? 'h-14 text-xl' : ''} ${prefix ? 'pl-11' : ''} ${
+        className={`${inputBase} font-num font-semibold text-right ${size === 'lg' ? 'h-14 text-xl' : 'text-base'} ${prefix ? 'pl-11' : ''} ${
           suffix ? (suffix.length > 4 ? 'pr-16' : 'pr-11') : ''
         }`}
       />

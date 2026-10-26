@@ -163,7 +163,6 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
               max={summary.endYearMonth}
               marked={extraMonths}
               markedLabel="já amortizou"
-              className="max-w-[260px]"
             />
           </Field>
         </div>
@@ -279,22 +278,20 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
         <div className={`${card} p-5 lg:p-6`}>
           <h2 className="text-lg font-bold text-slate-900 dark:text-white">Antes de amortizar</h2>
           <ul className="mt-3 space-y-2.5 text-[15px] text-slate-600 dark:text-slate-300 leading-relaxed">
-            <li className="flex gap-2.5">
-              <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-              Tenha uma reserva de emergência (uns 6 meses de gastos). Dinheiro amortizado não volta.
-            </li>
-            <li className="flex gap-2.5">
-              <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-              Peça ao banco para reduzir o <b>prazo</b>, a não ser que precise de folga no orçamento.
-            </li>
-            <li className="flex gap-2.5">
-              <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-              Compare com investir: na tela "Amortizar ou investir?" usamos as taxas de hoje.
-            </li>
-            <li className="flex gap-2.5">
-              <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
-              Amortizar não tem multa: é um direito seu pelo Código de Defesa do Consumidor.
-            </li>
+            {[
+              <>Tenha uma reserva de emergência (uns 6 meses de gastos). Dinheiro amortizado não volta.</>,
+              <>
+                Peça ao banco para reduzir o <b className="text-slate-900 dark:text-white">prazo</b>, a não ser que precise de folga no orçamento.
+              </>,
+              <>Compare com investir: na tela "Amortizar ou investir?" usamos as taxas de hoje.</>,
+              <>Amortizar não tem multa: é um direito seu pelo Código de Defesa do Consumidor.</>,
+            ].map((text, k) => (
+              <li key={k} className="flex gap-2.5">
+                <Check className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                {/* O texto fica num bloco só: dentro do flex, o negrito viraria uma coluna separada */}
+                <span>{text}</span>
+              </li>
+            ))}
           </ul>
         </div>
         <div className={`${card} p-5 lg:p-6 flex flex-col`}>
@@ -302,14 +299,14 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, update }) => {
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 leading-relaxed">
             Registre para os números da sua casa refletirem o pagamento. Funciona para uma amortização única num mês que já chegou.
           </p>
-          <button type="button" onClick={register} disabled={!canRegister || saved} className={`${btnPrimary} mt-auto self-start`}>
+          <button type="button" onClick={register} disabled={!canRegister || saved} className={`${btnPrimary} mt-5 self-start whitespace-nowrap`}>
             {saved ? (
               <motion.span className="inline-flex items-center gap-2" initial={reduce ? false : { scale: 0.8 }} animate={{ scale: 1 }} transition={{ ease: EASE_OUT }}>
                 <Check className="w-4 h-4" /> Registrada
               </motion.span>
             ) : (
               <>
-                <Plus className="w-4 h-4" /> Registrar amortização de {formatBRL0(amount)}
+                <Plus className="w-4 h-4" /> Registrar {formatBRL0(amount)}
               </>
             )}
           </button>

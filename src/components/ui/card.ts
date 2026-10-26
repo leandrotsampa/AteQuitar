@@ -13,4 +13,4 @@ export const btnGhost =
   'inline-flex items-center justify-center gap-2 h-10 px-4 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-800 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-100 text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50';
 
 export const inputBase =
-  'w-full h-11 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-anil-500 focus:ring-2 focus:ring-anil-500/25 transition-shadow';
+  'w-full h-12 px-3 bg-white dark:bg-slate-950 border border-slate-300 dark:border-slate-700 rounded-xl text-[15px] text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-600 focus:outline-none focus:border-anil-500 focus:ring-2 focus:ring-anil-500/25 transition-shadow';

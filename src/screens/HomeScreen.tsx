@@ -104,8 +104,8 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
 
       {/* Hero: a casa + quanto falta */}
       <section className={`${card} p-3 grid md:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] gap-2 overflow-hidden`}>
-        <div className="relative rounded-[18px] overflow-hidden">
-          <HouseHero progress={summary.progress} dark={dark} className="w-full h-full block" />
+        <div className="relative rounded-[18px] overflow-hidden min-h-[300px]">
+          <HouseHero progress={summary.progress} dark={dark} cover className="absolute inset-0 w-full h-full block" />
           {equity !== null && (
             <div className="absolute left-4 top-4 px-3 py-2 rounded-2xl bg-white/85 dark:bg-slate-950/70 backdrop-blur text-xs">
               <div className="text-slate-500 dark:text-slate-400">Contando a entrada, já é seu</div>

@@ -139,17 +139,17 @@ export const InvestScreen: React.FC<ScreenProps> = ({ model, data }) => {
               <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
                 {productKey === 'cdb' && (
                   <Field label="Quanto do CDI o CDB paga?">
-                    <NumberField value={cdbPct} onChange={setCdbPct} digits={0} suffix="% CDI" className="max-w-[200px]" />
+                    <NumberField value={cdbPct} onChange={setCdbPct} digits={0} suffix="% CDI" />
                   </Field>
                 )}
                 {productKey === 'lci' && (
                   <Field label="Quanto do CDI a LCI/LCA paga?">
-                    <NumberField value={lciPct} onChange={setLciPct} digits={0} suffix="% CDI" className="max-w-[200px]" />
+                    <NumberField value={lciPct} onChange={setLciPct} digits={0} suffix="% CDI" />
                   </Field>
                 )}
                 {productKey === 'tesouroIpca' && (
                   <Field label="Taxa acima do IPCA" help={{ title: 'IPCA + taxa', body: 'O Tesouro IPCA+ paga a inflação mais uma taxa fixa, que aparece no site do Tesouro Direto (ex.: IPCA + 6,5%).' }}>
-                    <NumberField value={ipcaPlus} onChange={setIpcaPlus} suffix="%" className="max-w-[200px]" />
+                    <NumberField value={ipcaPlus} onChange={setIpcaPlus} suffix="%" />
                   </Field>
                 )}
               </motion.div>

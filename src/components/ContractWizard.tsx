@@ -202,7 +202,7 @@ export const ContractWizard: React.FC<{
               animate={{ x: 0, opacity: 1, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
               exit={reduce ? { opacity: 0 } : { x: dir * -60, opacity: 0, filter: 'blur(4px)' }}
               transition={{ duration: 0.38, ease: EASE_OUT }}
-              className="space-y-5"
+              className="w-full max-w-xl space-y-5"
             >
               <div>
                 <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{STEPS[step].title}</h2>
@@ -248,7 +248,7 @@ export const ContractWizard: React.FC<{
                     </div>
                   </Field>
                   <Field label="Valor do imóvel" htmlFor="f-prop" help={HELP.propertyValue} optional hint="Usado para mostrar quanto da casa já é seu, contando a entrada.">
-                    <MoneyField id="f-prop" value={c.propertyValue} onChange={(v) => set('propertyValue', v)} className="max-w-xs" />
+                    <MoneyField id="f-prop" value={c.propertyValue} onChange={(v) => set('propertyValue', v)} />
                   </Field>
                 </>
               )}
@@ -256,7 +256,7 @@ export const ContractWizard: React.FC<{
               {step === 1 && (
                 <>
                   <Field label="Valor financiado" htmlFor="f-fin" help={HELP.financedAmount}>
-                    <MoneyField id="f-fin" value={c.financedAmount} onChange={(v) => set('financedAmount', v)} size="lg" className="max-w-sm" />
+                    <MoneyField id="f-fin" value={c.financedAmount} onChange={(v) => set('financedAmount', v)} />
                   </Field>
                   {c.propertyValue > 0 && c.financedAmount > 0 && c.financedAmount < c.propertyValue && (
                     <div className="text-sm text-slate-600 dark:text-slate-400 -mt-2">
@@ -265,7 +265,7 @@ export const ContractWizard: React.FC<{
                     </div>
                   )}
                   <Field label="Prazo" help={HELP.termMonths} hint={c.termMonths > 0 ? formatDuration(c.termMonths) : undefined}>
-                    <div className="flex gap-2 items-center max-w-sm">
+                    <div className="flex gap-2 items-center">
                       <NumberField
                         value={termUnit === 'meses' ? c.termMonths : c.termMonths / 12}
                         onChange={(v) => set('termMonths', Math.round(termUnit === 'meses' ? v : v * 12))}
@@ -290,7 +290,7 @@ export const ContractWizard: React.FC<{
                     </div>
                   </Field>
                   <Field label="Sistema de amortização" help={HELP.system}>
-                    <div className="grid grid-cols-2 gap-3 max-w-lg">
+                    <div className="grid grid-cols-2 gap-3">
                       <SystemCard value="SAC" selected={c.system === 'SAC'} onSelect={() => set('system', 'SAC')} />
                       <SystemCard value="PRICE" selected={c.system === 'PRICE'} onSelect={() => set('system', 'PRICE')} />
                     </div>
@@ -311,7 +311,7 @@ export const ContractWizard: React.FC<{
                         : undefined
                     }
                   >
-                    <div className="flex gap-2 items-center max-w-sm">
+                    <div className="flex gap-2 items-center">
                       <NumberField
                         value={rateUnit === 'ano' ? c.annualRate : annualToMonthly(c.annualRate)}
                         onChange={(v) => set('annualRate', rateUnit === 'ano' ? v : monthlyToAnnual(v))}
@@ -319,7 +319,6 @@ export const ContractWizard: React.FC<{
                         suffix="%"
                         ariaLabel="Taxa de juros"
                         className="flex-1"
-                        size="lg"
                       />
                       <div className="flex rounded-full bg-slate-100 dark:bg-slate-800 p-1">
                         {(['ano', 'mes'] as const).map((u) => (
@@ -338,7 +337,7 @@ export const ContractWizard: React.FC<{
                     </div>
                   </Field>
                   <Field label="CET (custo efetivo total)" help={HELP.cet} optional>
-                    <NumberField value={c.cet} onChange={(v) => set('cet', v)} suffix="% a.a." ariaLabel="CET" className="max-w-[200px]" />
+                    <NumberField value={c.cet} onChange={(v) => set('cet', v)} suffix="% a.a." ariaLabel="CET" />
                   </Field>
                   <Field label="O saldo é corrigido pela TR?" help={HELP.trIndexed}>
                     <div className="flex gap-2">
@@ -368,21 +367,22 @@ export const ContractWizard: React.FC<{
 
               {step === 3 && (
                 <>
-                  <Field label="Mês da primeira parcela" help={HELP.firstDueMonth}>
-                    <MonthField
-                      value={c.firstDueMonth}
-                      onChange={(v) => set('firstDueMonth', v)}
-                      ariaLabel="Mês da primeira parcela"
-                      min="1990-01"
-                      max={addMonths(currentYearMonth(), 12)}
-                      className="max-w-[260px]"
-                    />
-                  </Field>
-                  <Field label="Dia do vencimento" help={HELP.dueDay}>
-                    <NumberField value={c.dueDay} onChange={(v) => set('dueDay', Math.round(v))} digits={0} ariaLabel="Dia do vencimento" className="max-w-[120px]" />
-                  </Field>
+                  <div className="grid sm:grid-cols-2 gap-4 items-start">
+                    <Field label="Mês da primeira parcela" help={HELP.firstDueMonth}>
+                      <MonthField
+                        value={c.firstDueMonth}
+                        onChange={(v) => set('firstDueMonth', v)}
+                        ariaLabel="Mês da primeira parcela"
+                        min="1990-01"
+                        max={addMonths(currentYearMonth(), 12)}
+                      />
+                    </Field>
+                    <Field label="Dia do vencimento" help={HELP.dueDay} hint="De 1 a 31">
+                      <NumberField value={c.dueDay} onChange={(v) => set('dueDay', Math.round(v))} digits={0} ariaLabel="Dia do vencimento" />
+                    </Field>
+                  </div>
                   {c.termMonths > 0 && (
-                    <div className="p-4 rounded-2xl bg-anil-50 dark:bg-anil-500/10 text-sm text-anil-900 dark:text-anil-100 max-w-lg leading-relaxed">
+                    <div className="p-4 rounded-2xl bg-anil-50 dark:bg-anil-500/10 text-sm text-anil-900 dark:text-anil-100 leading-relaxed">
                       Pelas datas, você já pagou cerca de <b>{paidSoFar} parcelas</b> e a última está prevista para{' '}
                       <b>{monthLong(addMonths(c.firstDueMonth, c.termMonths - 1))}</b>.
                     </div>
@@ -392,17 +392,17 @@ export const ContractWizard: React.FC<{
 
               {step === 4 && (
                 <>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 max-w-xl leading-relaxed">
+                  <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
                     Com estes dados o app sai da <b>estimativa</b> e passa a mostrar a sua situação <b>real</b>. Pode pular e completar depois.
                   </p>
                   <Field label="Saldo devedor de hoje" help={HELP.currentBalance} optional>
-                    <MoneyField value={balance} onChange={setBalance} className="max-w-sm" size="lg" />
+                    <MoneyField value={balance} onChange={setBalance} />
                   </Field>
-                  <div className="grid sm:grid-cols-2 gap-4 max-w-lg">
-                    <Field label="Seguros (MIP + DFI) por mês" help={HELP.monthlyInsurance} optional>
+                  <div className="grid sm:grid-cols-2 gap-4 items-start">
+                    <Field label="Seguros (MIP + DFI)" help={HELP.monthlyInsurance} optional hint="Valor por mês">
                       <MoneyField value={c.monthlyInsurance} onChange={(v) => set('monthlyInsurance', v)} />
                     </Field>
-                    <Field label="Taxa de administração" help={HELP.monthlyAdminFee} optional>
+                    <Field label="Taxa de administração" help={HELP.monthlyAdminFee} optional hint="Valor por mês">
                       <MoneyField value={c.monthlyAdminFee} onChange={(v) => set('monthlyAdminFee', v)} />
                     </Field>
                   </div>
@@ -415,7 +415,7 @@ export const ContractWizard: React.FC<{
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0, x: [0, -6, 6, -4, 4, 0] }}
                     exit={{ opacity: 0 }}
-                    className="p-3 rounded-xl bg-rose-50 text-rose-800 dark:bg-rose-500/10 dark:text-rose-200 text-sm max-w-lg"
+                    className="p-3 rounded-xl bg-rose-50 text-rose-800 dark:bg-rose-500/10 dark:text-rose-200 text-sm"
                     role="alert"
                   >
                     {stepProblems.map((p) => (

@@ -270,6 +270,7 @@ export default function App() {
               onRefreshRates={() => void refreshRates(true)}
               isDemo={data.isDemo}
               onLeaveDemo={leaveDemo}
+              onEditContract={() => setContractOpen(true)}
             />
             <div ref={scrollRef} className="flex-1 overflow-y-auto">
               <main className="relative px-4 sm:px-6 lg:px-8 pb-10 pt-2 max-w-[1240px] w-full mx-auto">

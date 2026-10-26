@@ -37,7 +37,13 @@ const wavePath = (amp: number, len: number) => {
   return `${d} L 800 400 L 0 400 Z`;
 };
 
-export const HouseHero: React.FC<{ progress: number; dark: boolean; className?: string }> = ({ progress, dark, className }) => {
+// cover: preenche o quadro inteiro (corta as bordas do céu) em vez de deixar faixas vazias
+export const HouseHero: React.FC<{ progress: number; dark: boolean; className?: string; cover?: boolean }> = ({
+  progress,
+  dark,
+  className,
+  cover = false,
+}) => {
   const reduce = Boolean(useReducedMotion());
   const uid = useId().replace(/:/g, '');
   const p = Math.min(1, Math.max(0, progress));
@@ -46,7 +52,13 @@ export const HouseHero: React.FC<{ progress: number; dark: boolean; className?: 
   const fill = { type: 'spring', stiffness: 40, damping: 14, mass: 1.2 } as const;
 
   return (
-    <svg viewBox="0 0 400 320" className={className} role="img" aria-label={`Casa ${Math.round(p * 100)}% quitada`}>
+    <svg
+      viewBox="0 0 400 320"
+      preserveAspectRatio={cover ? 'xMidYMid slice' : 'xMidYMid meet'}
+      className={className}
+      role="img"
+      aria-label={`Casa ${Math.round(p * 100)}% quitada`}
+    >
       <defs>
         <linearGradient id={`${uid}-sky`} x1="0" y1="0" x2="0" y2="1">
           {dark ? (
