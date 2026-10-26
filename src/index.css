@@ -1,0 +1,233 @@
+@import "tailwindcss";
+
+/* Fontes empacotadas (funcionam offline no .exe) */
+@import "@fontsource-variable/bricolage-grotesque";
+@import "@fontsource-variable/manrope";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: 'Manrope Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
+  --font-display: 'Bricolage Grotesque Variable', 'Manrope Variable', system-ui, sans-serif;
+  --font-num: 'Manrope Variable', system-ui, 'Segoe UI', Roboto, sans-serif;
+
+  /* Anil: a cor da marca (céu ao entardecer) */
+  --color-anil-50: #eef1ff;
+  --color-anil-100: #e0e5ff;
+  --color-anil-200: #c7cffe;
+  --color-anil-300: #a4affc;
+  --color-anil-400: #7f86f8;
+  --color-anil-500: #6164f1;
+  --color-anil-600: #4d48e4;
+  --color-anil-700: #4139c9;
+  --color-anil-800: #3631a2;
+  --color-anil-900: #302e80;
+  --color-anil-950: #1d1b4b;
+
+  /* Sol: a luz das janelas, marcos e conquistas */
+  --color-sol-50: #fffaeb;
+  --color-sol-100: #fff0c6;
+  --color-sol-200: #ffe08a;
+  --color-sol-300: #ffca4d;
+  --color-sol-400: #ffb524;
+  --color-sol-500: #f9930b;
+  --color-sol-600: #dd6c06;
+  --color-sol-700: #b74a09;
+  --color-sol-800: #94390e;
+  --color-sol-900: #7a300f;
+
+  --duration-micro: 150ms;
+  --duration-base: 250ms;
+  --ease-out: cubic-bezier(.22, 1, .36, 1);
+}
+
+:root {
+  --canvas: #eef1f8;
+  --canvas-glow: rgb(97 100 241 / 0.14);
+  --canvas-warm: rgb(255 181 36 / 0.08);
+}
+
+/* Escuro: noite azulada, nunca preto puro. A escala slate inteira ganha um tom de anil */
+.dark {
+  color-scheme: dark;
+  --canvas: #0a0d1c;
+  --canvas-glow: rgb(97 100 241 / 0.16);
+  --canvas-warm: rgb(255 181 36 / 0.05);
+  --color-slate-50: #f2f4fb;
+  --color-slate-100: #e5e8f4;
+  --color-slate-200: #cdd2e6;
+  --color-slate-300: #a9b0cc;
+  --color-slate-400: #8189a8;
+  --color-slate-500: #636a88;
+  --color-slate-600: #4a5070;
+  --color-slate-700: #333957;
+  --color-slate-800: #22273f;
+  --color-slate-900: #161a2e;
+  --color-slate-950: #0e1122;
+}
+
+.app-canvas {
+  background:
+    radial-gradient(1000px 560px at 8% -10%, var(--canvas-glow), transparent 62%),
+    radial-gradient(900px 600px at 105% 108%, var(--canvas-warm), transparent 60%),
+    var(--canvas);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0s !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+@layer base {
+  :root {
+    font-family: var(--font-sans);
+  }
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+    font-optical-sizing: auto;
+  }
+  button:focus-visible,
+  a:focus-visible,
+  summary:focus-visible,
+  [role='switch']:focus-visible,
+  [tabindex]:focus-visible {
+    outline: 2px solid var(--color-anil-500);
+    outline-offset: 2px;
+  }
+  button:not(:disabled):active {
+    transform: scale(0.98);
+  }
+  .font-num, .tabular-nums {
+    font-family: var(--font-num);
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum' 1;
+  }
+  input[type='number']::-webkit-inner-spin-button,
+  input[type='number']::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+}
+
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+.app-drag {
+  -webkit-app-region: drag;
+}
+.app-no-drag,
+.app-drag button,
+.app-drag input,
+.app-drag a {
+  -webkit-app-region: no-drag;
+}
+
+/* Entrada das telas: blocos sobem em sequência */
+@keyframes page-rise {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.page-stagger > * {
+  animation: page-rise 480ms var(--ease-out) both;
+}
+.page-stagger > :nth-child(2) { animation-delay: 60ms; }
+.page-stagger > :nth-child(3) { animation-delay: 120ms; }
+.page-stagger > :nth-child(4) { animation-delay: 180ms; }
+.page-stagger > :nth-child(5) { animation-delay: 240ms; }
+.page-stagger > :nth-child(n + 6) { animation-delay: 300ms; }
+
+/* A água dentro da casa: duas ondas em velocidades diferentes */
+@keyframes wave-x {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.wave-a { animation: wave-x 7s linear infinite; }
+.wave-b { animation: wave-x 11s linear infinite reverse; }
+
+@keyframes twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+.twinkle { animation: twinkle 3.2s ease-in-out infinite; }
+
+@keyframes drift {
+  from { transform: translateX(-30px); }
+  to { transform: translateX(30px); }
+}
+.drift { animation: drift 14s ease-in-out infinite alternate; }
+
+@keyframes window-glow {
+  0%, 100% { opacity: 0.85; }
+  50% { opacity: 1; }
+}
+.window-glow { animation: window-glow 4s ease-in-out infinite; }
+
+@keyframes smoke {
+  0% { transform: translate(0, 0) scale(0.6); opacity: 0; }
+  20% { opacity: 0.55; }
+  100% { transform: translate(14px, -46px) scale(1.6); opacity: 0; }
+}
+.smoke { animation: smoke 4.5s ease-out infinite; transform-box: fill-box; transform-origin: center; }
+
+/* Botão de ação que pede atenção: um anel que respira em volta */
+@keyframes ring-breathe {
+  0% { box-shadow: 0 0 0 0 rgb(255 181 36 / 0.55); }
+  70% { box-shadow: 0 0 0 12px rgb(255 181 36 / 0); }
+  100% { box-shadow: 0 0 0 0 rgb(255 181 36 / 0); }
+}
+.ring-breathe { animation: ring-breathe 2.4s var(--ease-out) infinite; }
+
+@keyframes shimmer-x {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+.skeleton {
+  background: linear-gradient(90deg, rgb(148 163 184 / 0.16) 25%, rgb(148 163 184 / 0.3) 50%, rgb(148 163 184 / 0.16) 75%);
+  background-size: 200% 100%;
+  animation: shimmer-x 1.4s linear infinite;
+}
+/* Faixa de progresso com brilho correndo */
+.bar-shine {
+  background-image: linear-gradient(110deg, transparent 30%, rgb(255 255 255 / 0.35) 50%, transparent 70%);
+  background-size: 200% 100%;
+  animation: shimmer-x 2.8s linear infinite;
+}
+
+@keyframes row-flash {
+  0%, 35% { background-color: rgb(255 181 36 / 0.22); }
+}
+.row-flash { animation: row-flash 1.4s var(--ease-out); }
+
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(99 106 136 / 0.35); border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: rgb(129 137 168 / 0.6); }
+
+input[type='range'].range {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 999px;
+  background: linear-gradient(to right, var(--color-anil-500) var(--fill, 50%), rgb(148 163 184 / 0.25) var(--fill, 50%));
+  cursor: pointer;
+}
+input[type='range'].range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid var(--color-anil-500);
+  box-shadow: 0 4px 10px -2px rgb(77 72 228 / 0.5);
+  transition: transform var(--duration-micro);
+}
+input[type='range'].range:active::-webkit-slider-thumb {
+  transform: scale(1.15);
+}

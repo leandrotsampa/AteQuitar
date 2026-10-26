@@ -1,0 +1,109 @@
+{
+  "name": "ate-quitar",
+  "productName": "Até Quitar",
+  "version": "1.0.0",
+  "description": "Acompanhe seu financiamento imobiliário até a quitação: saldo, parcelas, amortização, SAC × Price, amortizar ou investir e taxas do mercado atualizadas.",
+  "author": "Leandro Tavares de Melo",
+  "license": "MIT",
+  "private": true,
+  "main": "electron/main.cjs",
+  "type": "module",
+  "keywords": [
+    "financiamento-imobiliario",
+    "amortizacao",
+    "sac",
+    "price",
+    "tr",
+    "selic",
+    "electron"
+  ],
+  "scripts": {
+    "dev": "vite --port=3100 --host=0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "electron:dev": "electron electron/main.cjs",
+    "start": "vite build && electron electron/main.cjs",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "icons": "node scripts/build-icons.mjs",
+    "dist:portable": "vite build && node scripts/prepare-electron-dist.mjs && electron-builder --win portable -c.electronDist=.electron-dist",
+    "dist:win": "vite build && node scripts/prepare-electron-dist.mjs && electron-builder --win -c.electronDist=.electron-dist",
+    "dist:mac": "vite build && electron-builder --mac",
+    "dist:linux": "vite build && electron-builder --linux"
+  },
+  "devDependencies": {
+    "@fontsource-variable/bricolage-grotesque": "^5.2.0",
+    "@fontsource-variable/manrope": "^5.2.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.1",
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
+    "lucide-react": "^0.546.0",
+    "motion": "^12.43.0",
+    "png-to-ico": "^2.1.8",
+    "react": "^19.0.1",
+    "react-dom": "^19.0.1",
+    "sharp": "^0.34.0",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^7.0.2",
+    "vite": "^8.3.0",
+    "vitest": "^3.2.7"
+  },
+  "build": {
+    "appId": "br.com.atequitar.app",
+    "productName": "Até Quitar",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json",
+      "!electron/**/*.test.ts",
+      "!**/*.{md,map,ts}"
+    ],
+    "electronLanguages": [
+      "pt-BR",
+      "en-US"
+    ],
+    "win": {
+      "target": [
+        { "target": "portable", "arch": ["x64"] },
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "portable": {
+      "artifactName": "AteQuitar-${version}-portable.exe"
+    },
+    "nsis": {
+      "artifactName": "AteQuitar-${version}-setup.exe",
+      "oneClick": true,
+      "perMachine": false,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Até Quitar",
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "uninstallDisplayName": "Até Quitar"
+    },
+    "mac": {
+      "category": "public.app-category.finance",
+      "icon": "build/icon.png",
+      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+      "artifactName": "AteQuitar-${version}-mac-${arch}.${ext}"
+    },
+    "linux": {
+      "category": "Office",
+      "icon": "build/icon.png",
+      "synopsis": "Acompanhe seu financiamento imobiliário",
+      "target": [{ "target": "AppImage", "arch": ["x64"] }],
+      "artifactName": "AteQuitar-${version}-linux-${arch}.${ext}"
+    }
+  }
+}

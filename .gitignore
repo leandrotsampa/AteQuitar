@@ -1,0 +1,19 @@
+# Dependências e saídas de build
+node_modules/
+dist/
+release/
+.electron-dist/
+coverage/
+*.log
+
+# Ambiente e ferramentas locais
+.env*
+.DS_Store
+Thumbs.db
+.claude/
+.vscode/
+
+# Dados reais do usuário
+atequitar-dados.json
+atequitar-backup-*.json
+.impeccable/
