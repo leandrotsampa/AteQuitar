@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { AlertTriangle, Database, Download, FolderOpen, RotateCcw, Upload, X } from 'lucide-react';
 import { ModalShell } from './ui/ModalShell';
 import { btnGhost, tile } from './ui/card';
-import { exportBackup, normalizeData, type AppData, type DataInfo } from '../lib/store';
+import { exportJson, normalizeData, type AppData, type DataInfo } from '../lib/store';
 import { playSound } from '../hooks/useSound';
 
 type ConfirmFn = (req: { title: string; message: React.ReactNode; confirmLabel?: string; tone?: 'danger' | 'neutral' }) => Promise<boolean>;
@@ -26,59 +26,60 @@ export const DataModal: React.FC<{
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  // Confere o conteúdo do backup e, com o "sim" da pessoa, troca os dados atuais
-  const applyBackup = async (raw: unknown) => {
+  // Confere o conteúdo importado e, com o "sim" da pessoa, troca os dados atuais
+  const applyImport = async (raw: unknown) => {
     try {
       const parsed = normalizeData(raw);
       if (!parsed.contract) throw new Error('O arquivo não tem um financiamento cadastrado.');
       const ok = await confirm({
-        title: 'Restaurar backup',
-        message: `Trocar os dados atuais pelos do arquivo (${parsed.contract.nickname}, ${parsed.checkins.length} check-ins)?`,
-        confirmLabel: 'Restaurar',
+        title: 'Importar dados',
+        message: `Trocar os dados atuais pelos do arquivo (${parsed.contract.nickname}, ${parsed.checkins.length} check-ins, ${parsed.extras.length} amortizações)?`,
+        confirmLabel: 'Importar',
       });
       if (!ok) return;
-      update(() => parsed);
+      // As taxas do mercado continuam as que o app já tem
+      update((prev) => ({ ...parsed, rates: prev.rates }));
       playSound('success');
       onClose();
     } catch (e) {
-      void notify({ title: 'Não deu para restaurar', message: e instanceof Error ? e.message : 'Arquivo inválido.' });
+      void notify({ title: 'Não deu para importar', message: e instanceof Error ? e.message : 'Arquivo inválido.' });
     }
   };
 
   const importFile = async (file: File) => {
     try {
-      await applyBackup(JSON.parse(await file.text()));
+      await applyImport(JSON.parse(await file.text()));
     } catch {
-      void notify({ title: 'Não deu para restaurar', message: 'O arquivo não é um backup válido.' });
+      void notify({ title: 'Não deu para importar', message: 'O arquivo não é um JSON válido.' });
     }
   };
 
-  const backup = async () => {
-    if (!api?.backupData) {
-      exportBackup(data);
+  const exportData = async () => {
+    if (!api?.exportData) {
+      exportJson(data);
       return;
     }
-    const r = await api.backupData();
+    const r = await api.exportData();
     if (r.ok) {
       playSound('success');
-      void notify({ title: 'Backup salvo', message: r.path ?? '' });
+      void notify({ title: 'Dados exportados', message: r.path ?? '' });
     }
   };
 
-  const restore = async () => {
-    if (!api?.restoreData) {
+  const importData = async () => {
+    if (!api?.importData) {
       fileRef.current?.click();
       return;
     }
-    const r = await api.restoreData();
-    if (r.ok) await applyBackup(r.doc);
-    else if (r.error) void notify({ title: 'Não deu para restaurar', message: r.error });
+    const r = await api.importData();
+    if (r.ok) await applyImport(r.doc);
+    else if (r.error) void notify({ title: 'Não deu para importar', message: r.error });
   };
 
   const reset = async () => {
     const ok = await confirm({
       title: 'Apagar tudo e recomeçar',
-      message: 'O contrato, os check-ins e as amortizações registradas serão apagados deste computador. Faça um backup antes, se quiser guardar.',
+      message: 'O contrato, os check-ins e as amortizações registradas serão apagados deste computador. Exporte os dados antes, se quiser guardar.',
       confirmLabel: 'Apagar tudo',
       tone: 'danger',
     });
@@ -127,11 +128,11 @@ export const DataModal: React.FC<{
       </div>
 
       <div className="grid sm:grid-cols-2 gap-2 mt-4">
-        <button type="button" onClick={backup} className={btnGhost} disabled={!data.contract}>
-          <Download className="w-4 h-4" /> Salvar backup
+        <button type="button" onClick={exportData} className={btnGhost} disabled={!data.contract}>
+          <Download className="w-4 h-4" /> Exportar (JSON)
         </button>
-        <button type="button" onClick={restore} className={btnGhost}>
-          <Upload className="w-4 h-4" /> Restaurar backup
+        <button type="button" onClick={importData} className={btnGhost}>
+          <Upload className="w-4 h-4" /> Importar (JSON)
         </button>
         <input
           ref={fileRef}

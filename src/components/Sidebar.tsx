@@ -7,8 +7,7 @@ import {
   LineChart,
   ListOrdered,
   Moon,
-  PanelLeftClose,
-  PanelLeftOpen,
+  ChevronLeft,
   PiggyBank,
   Scale,
   Settings2,
@@ -98,6 +97,31 @@ export const Sidebar: React.FC<{
       animate={{ width: (expanded ? WIDTH_EXPANDED : WIDTH_COLLAPSED) + GUTTER }}
       transition={instantIf(reduce, widthSpring)}
     >
+      {/* Recolher/expandir: botão redondo apoiado na borda do menu, na altura do logo; a seta gira */}
+      <button
+        type="button"
+        onClick={() => {
+          playSound('tick');
+          setPrefs({ sidebar: expanded ? 'collapsed' : 'expanded' });
+        }}
+        title={expanded ? 'Recolher menu (Ctrl+B)' : 'Expandir menu (Ctrl+B)'}
+        aria-label={expanded ? 'Recolher menu' : 'Expandir menu'}
+        aria-expanded={expanded}
+        className={`app-no-drag group absolute -right-3.5 z-10 w-7 h-7 rounded-full flex items-center justify-center bg-white text-slate-500 ring-1 ring-slate-900/10 shadow-[0_4px_12px_-4px_rgba(45,40,140,0.45)] outline-4 outline-[var(--canvas)] hover:bg-anil-600 hover:text-white hover:ring-anil-600 dark:bg-slate-800 dark:text-slate-300 dark:ring-white/10 dark:hover:bg-anil-500 dark:hover:text-white transition-colors cursor-pointer ${
+          window.electronAPI?.platform === 'darwin' ? 'top-[70px]' : 'top-[34px]'
+        }`}
+        style={{ outlineStyle: 'solid' }}
+      >
+        <motion.span
+          className="flex"
+          initial={false}
+          animate={{ rotate: expanded ? 0 : 180 }}
+          transition={instantIf(reduce, { type: 'spring', stiffness: 380, damping: 26 } as const)}
+        >
+          <ChevronLeft className="w-4 h-4" strokeWidth={2.5} />
+        </motion.span>
+      </button>
+
       <motion.aside
         className="absolute top-3 bottom-3 left-3 rounded-[26px] bg-white dark:bg-slate-900 ring-1 ring-slate-900/[0.05] dark:ring-white/[0.07] shadow-[0_1px_2px_rgba(30,34,80,0.05),0_20px_44px_-22px_rgba(45,40,140,0.35)] dark:shadow-[inset_0_1px_0_rgba(255,255,255,0.05),0_24px_48px_-24px_rgba(0,0,0,0.9)] flex flex-col select-none overflow-hidden"
         initial={false}
@@ -135,17 +159,6 @@ export const Sidebar: React.FC<{
                 <span className="text-sol-600 dark:text-sol-300 font-bold font-num">{pct}%</span> da dívida quitada
               </div>
             </Reveal>
-            <button
-              onClick={() => {
-                playSound('tick');
-                setPrefs({ sidebar: expanded ? 'collapsed' : 'expanded' });
-              }}
-              className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 dark:text-slate-400 dark:hover:text-white dark:hover:bg-slate-800 transition-colors cursor-pointer shrink-0"
-              title={expanded ? 'Recolher menu (Ctrl+B)' : 'Expandir menu (Ctrl+B)'}
-              aria-label={expanded ? 'Recolher menu' : 'Expandir menu'}
-            >
-              {expanded ? <PanelLeftClose className="w-4 h-4" /> : <PanelLeftOpen className="w-4 h-4" />}
-            </button>
           </div>
         </div>
 

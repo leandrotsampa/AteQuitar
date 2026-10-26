@@ -8,7 +8,8 @@ const path = require('path');
 const fs = require('fs');
 const { windowChromeOptions, windowControlFor, shortcutFor } = require('./windowChrome.cjs');
 const { portableDirectoryFor } = require('./dataDirectory.cjs');
-const { openDatabase, readDoc, writeDoc, importLegacyJson, readBackupFile } = require('./database.cjs');
+const { openDatabase, readDoc, writeDoc, importLegacyJson } = require('./database.cjs');
+const { exportDocument, parseImport } = require('./dataTransfer.cjs');
 
 const DB_FILE = 'atequitar.sqlite';
 // Arquivo das primeiras versões; também é o modo de reserva se o SQLite não carregar
@@ -161,41 +162,37 @@ function setupIpcHandlers() {
   ipcMain.handle('data:save', (event, doc) => writeData(doc));
   ipcMain.handle('data:info', () => ({ path: dataPath, mode: storageMode, engine: db ? 'sqlite' : 'json' }));
 
-  // Backup: cópia consistente do banco (mesmo com o app aberto) no lugar que a pessoa escolher
-  ipcMain.handle('data:backup', async (event) => {
+  // Exportar: os dados em JSON legível (sem as taxas do mercado, que o app busca de novo)
+  ipcMain.handle('data:export', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    const sqlite = Boolean(db);
+    const doc = readData();
+    if (!doc) return { ok: false };
     const { canceled, filePath } = await dialog.showSaveDialog(win, {
-      title: 'Salvar backup do Até Quitar',
-      defaultPath: path.join(app.getPath('documents'), `atequitar-backup-${today()}.${sqlite ? 'sqlite' : 'json'}`),
-      filters: sqlite ? [{ name: 'Backup do Até Quitar', extensions: ['sqlite'] }] : [{ name: 'Backup do Até Quitar', extensions: ['json'] }],
+      title: 'Exportar dados do Até Quitar',
+      defaultPath: path.join(app.getPath('documents'), `atequitar-dados-${today()}.json`),
+      filters: [{ name: 'Dados do Até Quitar (JSON)', extensions: ['json'] }],
     });
     if (canceled || !filePath) return { ok: false };
-    if (sqlite) await db.backup(filePath);
-    else fs.copyFileSync(dataPath, filePath);
+    fs.writeFileSync(filePath, JSON.stringify(exportDocument(doc), null, 2), 'utf-8');
     return { ok: true, path: filePath };
   });
 
-  // Restaurar: lê o arquivo escolhido e devolve os dados para a interface confirmar e aplicar
-  ipcMain.handle('data:restore', async (event) => {
+  // Importar: lê o JSON escolhido e devolve os dados para a interface confirmar e aplicar
+  ipcMain.handle('data:import', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
     const { canceled, filePaths } = await dialog.showOpenDialog(win, {
-      title: 'Restaurar backup do Até Quitar',
+      title: 'Importar dados do Até Quitar',
       properties: ['openFile'],
-      filters: [{ name: 'Backup do Até Quitar', extensions: ['sqlite', 'json'] }],
+      filters: [{ name: 'Dados do Até Quitar (JSON)', extensions: ['json'] }],
     });
     if (canceled || !filePaths[0]) return { ok: false };
-    const file = filePaths[0];
     try {
-      if (file.toLowerCase().endsWith('.json')) return { ok: true, doc: JSON.parse(fs.readFileSync(file, 'utf-8')) };
-      if (!Database) throw new Error('O SQLite não está disponível neste computador.');
-      return { ok: true, doc: readBackupFile(Database, file) };
+      return { ok: true, doc: parseImport(fs.readFileSync(filePaths[0], 'utf-8')) };
     } catch (err) {
-      // Mensagens técnicas do SQLite (ex.: "file is not a database") viram um aviso simples
-      const own = err instanceof Error && /Até Quitar|SQLite não está/.test(err.message);
-      return { ok: false, error: own ? err.message : 'O arquivo não é um backup do Até Quitar.' };
+      return { ok: false, error: err instanceof Error ? err.message : 'Arquivo inválido.' };
     }
   });
+
   ipcMain.handle('data:open-folder', () => {
     if (fs.existsSync(dataPath)) shell.showItemInFolder(dataPath);
     else shell.openPath(path.dirname(dataPath));

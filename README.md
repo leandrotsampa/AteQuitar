@@ -40,7 +40,7 @@ Tudo fica num banco SQLite local, `atequitar.sqlite`:
 
 Tabelas: `contract`, `checkins`, `extra_payments`, `balance_checkpoints`, `milestones`, `rate_latest`, `rate_points`, `tr_monthly` e `app_meta`. Cada gravação troca os dados numa única transação, e as restrições do esquema (valores positivos, sistema SAC/PRICE, um check-in por mês) barram registros inválidos.
 
-Em **Dados e backup** dá para abrir a pasta, salvar um backup (`.sqlite`, cópia consistente mesmo com o app aberto) e restaurar um backup.
+Em **Dados e backup** dá para abrir a pasta e **exportar ou importar os dados em JSON** (contrato, check-ins, amortizações e saldos; as taxas do mercado ficam de fora porque o app as busca de novo). O arquivo exportado tem `"formato": "ate-quitar"` e um número de versão.
 
 Quem usou a primeira versão, que guardava em `atequitar-dados.json`, tem os dados importados para o SQLite na primeira abertura; o arquivo antigo fica renomeado para `.importado`. Se o módulo nativo do SQLite não carregar, o app continua funcionando com esse arquivo JSON como reserva e avisa na tela de dados.
 

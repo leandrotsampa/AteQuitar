@@ -48,8 +48,8 @@ export interface ElectronAPI {
   saveData: (doc: AppData) => Promise<boolean>;
   dataInfo: () => Promise<DataInfo>;
   openDataFolder: () => Promise<boolean>;
-  backupData: () => Promise<{ ok: boolean; path?: string }>;
-  restoreData: () => Promise<{ ok: boolean; doc?: unknown; error?: string }>;
+  exportData: () => Promise<{ ok: boolean; path?: string }>;
+  importData: () => Promise<{ ok: boolean; doc?: unknown; error?: string }>;
 }
 
 declare global {
@@ -141,13 +141,15 @@ export function useAppData(): {
   return { data, loaded, update };
 }
 
-// Backup no navegador: o documento inteiro em JSON (no Electron, cópia do banco .sqlite)
-export function exportBackup(data: AppData): void {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+// Exportar no navegador: o mesmo formato do app desktop (sem as taxas do mercado)
+export function exportJson(data: AppData): void {
+  const { rates: _rates, version: _version, ...rest } = data;
+  const doc = { formato: 'ate-quitar', versao: 1, exportadoEm: new Date().toISOString(), ...rest };
+  const blob = new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `atequitar-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `atequitar-dados-${new Date().toISOString().slice(0, 10)}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }

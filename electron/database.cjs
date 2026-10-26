@@ -1,6 +1,6 @@
 /**
  * Banco SQLite do app: esquema, leitura e gravação do documento inteiro numa transação,
- * importação do arquivo JSON das primeiras versões e backup.
+ * e importação do arquivo JSON das primeiras versões.
  */
 
 const fs = require('fs');
@@ -82,8 +82,6 @@ const SCHEMA = `
     value REAL NOT NULL
   );
 `;
-
-const TABLES = ['contract', 'checkins', 'extra_payments', 'balance_checkpoints', 'milestones', 'rate_latest', 'rate_points', 'tr_monthly', 'app_meta'];
 
 function openDatabase(Database, file, options = {}) {
   const db = new Database(file, options);
@@ -169,16 +167,4 @@ function importLegacyJson(db, jsonPath) {
   }
 }
 
-// Lê um arquivo de backup (.sqlite deste app) sem alterá-lo
-function readBackupFile(Database, file) {
-  const db = openDatabase(Database, file, { readonly: true, fileMustExist: true });
-  try {
-    const names = new Set(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all().map((r) => r.name));
-    if (!TABLES.every((t) => names.has(t))) throw new Error('O arquivo não é um backup do Até Quitar.');
-    return readDoc(db);
-  } finally {
-    db.close();
-  }
-}
-
-module.exports = { SCHEMA_VERSION, openDatabase, readDoc, writeDoc, importLegacyJson, readBackupFile };
+module.exports = { SCHEMA_VERSION, openDatabase, readDoc, writeDoc, importLegacyJson };
