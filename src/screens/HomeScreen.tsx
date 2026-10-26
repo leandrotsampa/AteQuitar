@@ -24,7 +24,6 @@ import {
   formatBRL0,
   formatBRLShort,
   formatDuration,
-  formatInt,
   monthLong,
   monthName,
   monthShort,
@@ -98,7 +97,7 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
           {hello}! {streak >= 2 ? `${streak} meses seguidos acompanhando.` : 'Veja como está a sua casa.'}
         </div>
         <h1 className="text-[2.2rem] leading-[1.1] font-bold tracking-tight text-slate-900 dark:text-white mt-1">
-          {summary.remainingCount === 0 ? 'Sua casa está quitada.' : `${formatInt(pct)}% da dívida já foi paga`}
+          {summary.remainingCount === 0 ? 'Sua casa está quitada.' : `${Math.floor(pct)}% da dívida já foi paga`}
         </h1>
       </header>
 

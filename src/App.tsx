@@ -14,7 +14,7 @@ import { fetchMarketRates, shouldRefresh } from './lib/rates';
 import { runThemeWipe } from './lib/themeTransition';
 import { EASE_OUT, instantIf } from './lib/motion';
 import { currentYearMonth, uid } from './lib/format';
-import { demoContract } from './lib/demo';
+import { demoData } from './lib/demo';
 import { playSound } from './hooks/useSound';
 import { getUiPrefs, setUiPrefs } from './hooks/useUiPrefs';
 import { HomeScreen } from './screens/HomeScreen';
@@ -174,7 +174,7 @@ export default function App() {
   const [onboardingStage, setOnboardingStage] = useState<'welcome' | 'wizard'>('welcome');
 
   const startDemo = () => {
-    update((prev) => ({ ...prev, contract: demoContract(), isDemo: true, celebrated: [] }));
+    update((prev) => ({ ...prev, ...demoData(), checkpoints: [], checkins: [], isDemo: true, celebrated: [] }));
     playSound('success');
   };
   const leaveDemo = async () => {

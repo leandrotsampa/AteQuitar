@@ -91,7 +91,8 @@ export const Sidebar: React.FC<{
   const [tipHidden, setTipHidden] = useState(false);
   const showTip = (tipHover || tipFocus) && !tipHidden;
   const navRef = useRef<HTMLElement>(null);
-  const pct = Math.round(progress * 100);
+  // Para baixo, como os marcos: 29,9% ainda não é 30%
+  const pct = Math.floor(progress * 100 + 1e-9);
 
   const footerBtn = `w-full flex items-center rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer text-[13px] ${
     collapsed ? 'justify-center h-10' : 'justify-between px-3 py-2'
