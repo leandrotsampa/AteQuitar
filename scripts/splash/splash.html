@@ -1,0 +1,153 @@
+<!doctype html>
+<!--
+  Fonte da tela de carregamento do portátil do Windows (build/splash.bmp).
+  O portátil mostra a imagem numa janela retangular opaca enquanto se descompacta (plugin BgImage do NSIS):
+  só BMP, sem animação e sem transparência. Por isso a imagem ocupa a janela inteira.
+  Para regerar: npm run splash (abre esta página em 480×300 e grava o BMP de 24 bits).
+-->
+<html lang="pt-BR">
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      @font-face {
+        font-family: 'Bricolage Grotesque';
+        font-weight: 200 800;
+        src: url('../../node_modules/@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2') format('woff2');
+      }
+      @font-face {
+        font-family: 'Manrope';
+        font-weight: 200 800;
+        src: url('../../node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2') format('woff2');
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+      }
+      html,
+      body {
+        width: 480px;
+        height: 300px;
+        overflow: hidden;
+      }
+      /* Céu de fim de tarde no anil do app, com a luz amarela das janelas no canto */
+      body {
+        position: relative;
+        font-family: 'Manrope', sans-serif;
+        color: #ffffff;
+        background:
+          radial-gradient(260px 200px at 100% 110%, rgb(255 181 36 / 0.3), transparent 70%),
+          radial-gradient(340px 240px at 10% -10%, rgb(127 134 248 / 0.45), transparent 70%),
+          linear-gradient(150deg, #302e80 0%, #1d1b4b 60%, #141238 100%);
+        border: 1px solid #141238;
+      }
+      .stars i {
+        position: absolute;
+        width: 2px;
+        height: 2px;
+        border-radius: 50%;
+        background: #ffffff;
+      }
+      /* Casinha com as janelas acesas, no canto direito */
+      .house {
+        position: absolute;
+        right: 30px;
+        top: 34px;
+        width: 150px;
+        height: 130px;
+      }
+      .content {
+        position: absolute;
+        inset: 0;
+        padding: 34px 36px 28px;
+        display: flex;
+        flex-direction: column;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+      }
+      .brand img {
+        width: 72px;
+        height: 72px;
+        border-radius: 20px;
+        box-shadow: 0 12px 28px -10px rgb(0 0 0 / 0.7);
+      }
+      h1 {
+        font-family: 'Bricolage Grotesque', sans-serif;
+        font-size: 34px;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        line-height: 1.05;
+      }
+      .sub {
+        margin-top: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        color: #c7cffe;
+      }
+      .footer {
+        margin-top: auto;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding-top: 18px;
+        border-top: 1px solid rgb(255 255 255 / 0.16);
+        font-size: 13px;
+        font-weight: 500;
+        color: #eef1ff;
+      }
+      .dots {
+        display: flex;
+        gap: 5px;
+      }
+      .dots i {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: #ffb524;
+      }
+      .dots i:nth-child(2) {
+        opacity: 0.6;
+      }
+      .dots i:nth-child(3) {
+        opacity: 0.3;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="stars">
+      <i style="left: 300px; top: 22px"></i>
+      <i style="left: 250px; top: 70px; opacity: 0.5"></i>
+      <i style="left: 452px; top: 190px; opacity: 0.6"></i>
+      <i style="left: 210px; top: 30px; opacity: 0.35"></i>
+    </div>
+    <svg class="house" viewBox="0 0 150 130" aria-hidden="true">
+      <circle cx="128" cy="16" r="9" fill="#fff6dc" />
+      <circle cx="132" cy="12" r="8" fill="#22205a" />
+      <path d="M22 62 L75 18 L128 62" fill="none" stroke="#a4affc" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" />
+      <rect x="32" y="56" width="86" height="64" rx="3" fill="#262b52" stroke="#a4affc" stroke-width="4" />
+      <rect x="34" y="92" width="82" height="26" fill="#4d48e4" />
+      <rect x="66" y="92" width="18" height="28" rx="6" fill="#ffca4d" stroke="#a4affc" stroke-width="3" />
+      <rect x="42" y="96" width="16" height="12" rx="2" fill="#ffca4d" stroke="#a4affc" stroke-width="2.5" />
+      <rect x="92" y="96" width="16" height="12" rx="2" fill="#ffca4d" stroke="#a4affc" stroke-width="2.5" />
+      <rect x="42" y="66" width="16" height="12" rx="2" fill="#1a1d3d" stroke="#a4affc" stroke-width="2.5" />
+      <rect x="67" y="66" width="16" height="12" rx="2" fill="#1a1d3d" stroke="#a4affc" stroke-width="2.5" />
+      <rect x="92" y="66" width="16" height="12" rx="2" fill="#1a1d3d" stroke="#a4affc" stroke-width="2.5" />
+      <circle cx="75" cy="42" r="7" fill="#1a1d3d" stroke="#a4affc" stroke-width="3" />
+    </svg>
+    <div class="content">
+      <div class="brand">
+        <img src="../../build/icon.png" alt="" />
+        <div>
+          <h1>Até Quitar</h1>
+          <p class="sub">Financiamento imobiliário</p>
+        </div>
+      </div>
+      <div class="footer">
+        <span class="dots"><i></i><i></i><i></i></span>
+        Preparando o app… isso leva alguns segundos
+      </div>
+    </div>
+  </body>
+</html>

@@ -118,6 +118,7 @@ O **Até Quitar** responde essas perguntas com os números do seu contrato. Voc�
 - Cadastro em 5 passos com prévia ao vivo e um **?** em cada campo explicando o que é e onde encontrar
 - Tema **claro** e **escuro**, com a troca animada a partir do botão
 - Menu lateral recolhível (botão na borda ou **Ctrl+B**), animações suaves e sons sutis que podem ser desligados
+- **Tutorial guiado** na primeira abertura, cada tela se apresenta na primeira visita e o botão **Como usar** revê o passo a passo
 - **Modo exemplo** para explorar tudo antes de cadastrar o seu
 
 </td>
@@ -252,7 +253,7 @@ Baixe o arquivo do seu sistema em [**Releases**](https://github.com/leandrotsamp
 2. Para atualizar, rode o instalador da versão nova. Ele instala por cima e mantém os seus dados
 3. Os dados ficam em `%APPDATA%\Até Quitar` e continuam lá mesmo se você desinstalar o app
 
-**Portátil.** Não instala nada, mas demora mais para abrir, porque descompacta o app a cada abertura.
+**Portátil.** Não instala nada, mas demora mais para abrir, porque descompacta o app a cada abertura. Enquanto isso, aparece a tela de carregamento do Até Quitar.
 
 1. Coloque o `.exe` numa pasta sua, por exemplo `Documentos\Até Quitar`, e abra
 2. Para atualizar, troque só o `.exe` e mantenha o `atequitar.sqlite` ao lado
@@ -380,6 +381,7 @@ npm run dev
 | `npm test` | Testes automatizados (Vitest) do cálculo, da comparação com investimentos, do seletor de mês e da conversão dos dados |
 | `npm run build` | Build de produção da interface em `dist/` |
 | `npm run icons` | Gera os ícones (`.png` e `.ico`) a partir de `build/icon.svg` |
+| `npm run splash` | Gera a tela de carregamento do portátil (`build/splash.bmp`) a partir de `scripts/splash/splash.html` |
 | `npm run dist:win` | Gera o instalador `release/AteQuitar-<versão>-setup.exe` e o portátil (Windows) |
 | `npm run dist:portable` | Gera só o portátil `release/AteQuitar-<versão>-portable.exe` (Windows) |
 | `npm run dist:mac` | Gera os `.dmg` para Mac com chip Apple e Intel (macOS) |
@@ -414,7 +416,7 @@ atequitar/
 │   │   ├── insights.ts    # dicas do momento e check-in pendente
 │   │   └── store.ts       # estado do app e gravação (SQLite no desktop, localStorage no navegador)
 │   └── types/             # tipos do financiamento
-├── scripts/               # ícones, empacotamento e notas de release
+├── scripts/               # ícones, tela de carregamento do portátil, empacotamento e notas de release
 ├── build/                 # ícones do app (Windows, macOS e Linux)
 └── docs/                  # banner e capturas do README
 ```

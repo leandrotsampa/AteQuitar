@@ -27,6 +27,7 @@
     "test": "vitest run",
     "postinstall": "electron-builder install-app-deps",
     "icons": "node scripts/build-icons.mjs",
+    "splash": "electron scripts/splash/render.cjs",
     "dist:portable": "vite build && node scripts/prepare-electron-dist.mjs && electron-builder --win portable -c.electronDist=.electron-dist",
     "dist:win": "vite build && node scripts/prepare-electron-dist.mjs && electron-builder --win -c.electronDist=.electron-dist",
     "dist:mac": "vite build && electron-builder --mac",
@@ -91,7 +92,8 @@
       "icon": "build/icon.ico"
     },
     "portable": {
-      "artifactName": "AteQuitar-${version}-portable.exe"
+      "artifactName": "AteQuitar-${version}-portable.exe",
+      "splashImage": "build/splash.bmp"
     },
     "nsis": {
       "artifactName": "AteQuitar-${version}-setup.exe",
