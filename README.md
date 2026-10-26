@@ -23,6 +23,7 @@ Quanto já é seu, quanto falta, se vale amortizar ou investir e se a sua taxa �
 ![SQLite](https://img.shields.io/badge/SQLite-local-003B57?style=flat-square&logo=sqlite&logoColor=white)
 
 [**Baixar para Windows, macOS ou Linux**](https://github.com/leandrotsampa/AteQuitar/releases/latest) ·
+[Veja em ação](#-veja-em-ação) ·
 [Funcionalidades](#-funcionalidades) ·
 [Telas](#-telas) ·
 [Como o cálculo funciona](#-como-o-cálculo-funciona) ·
@@ -31,6 +32,16 @@ Quanto já é seu, quanto falta, se vale amortizar ou investir e se a sua taxa �
 </div>
 
 ---
+
+## 🎬 Veja em ação
+
+<div align="center">
+
+<img src="docs/demo.webp" alt="Demonstração: a casa enchendo, o check-in do mês com comemoração, o simulador de amortização, amortizar ou investir e o tema escuro" width="100%" />
+
+<sub>A casa enchendo, o check-in do mês, o simulador de amortização, amortizar ou investir e o tema escuro, no financiamento de exemplo do app.</sub>
+
+</div>
 
 ## 💡 Por que existe
 
