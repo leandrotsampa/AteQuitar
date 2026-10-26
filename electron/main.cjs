@@ -1,19 +1,24 @@
 /**
  * Processo principal do Electron: janela sem moldura nativa, dados do usuário
- * num arquivo JSON local (gravação atômica) e os comandos da janela.
+ * num banco SQLite local (atequitar.sqlite) e os comandos da janela.
  */
 
-const { app, BrowserWindow, ipcMain, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, shell, Menu, dialog } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { windowChromeOptions, windowControlFor, shortcutFor } = require('./windowChrome.cjs');
 const { portableDirectoryFor } = require('./dataDirectory.cjs');
+const { openDatabase, readDoc, writeDoc, importLegacyJson, readBackupFile } = require('./database.cjs');
 
-const DATA_FILE = 'atequitar-dados.json';
+const DB_FILE = 'atequitar.sqlite';
+// Arquivo das primeiras versões; também é o modo de reserva se o SQLite não carregar
+const JSON_FILE = 'atequitar-dados.json';
 
 let mainWindow = null;
+let Database = null;
+let db = null;
 let dataPath = '';
-// 'portable' = arquivo ao lado do app; 'system' = pasta de dados do sistema (userData)
+// 'portable' = banco ao lado do app; 'system' = pasta de dados do sistema (userData)
 let storageMode = 'portable';
 
 function getDataDirectory() {
@@ -39,26 +44,42 @@ function getDataDirectory() {
   return userDataDir;
 }
 
-function readData() {
+function initDatabase() {
+  const dir = getDataDirectory();
+  const jsonPath = path.join(dir, JSON_FILE);
   try {
-    if (!fs.existsSync(dataPath)) return null;
-    return JSON.parse(fs.readFileSync(dataPath, 'utf-8'));
+    Database = require('better-sqlite3');
+    dataPath = path.join(dir, DB_FILE);
+    db = openDatabase(Database, dataPath);
+    if (importLegacyJson(db, jsonPath)) console.log('[Até Quitar] Dados do arquivo JSON antigo importados para o SQLite.');
   } catch (err) {
-    console.error('[Até Quitar] Arquivo de dados ilegível; mantendo uma cópia e começando do zero.', err);
-    try {
-      fs.copyFileSync(dataPath, `${dataPath}.corrompido-${Date.now()}`);
-    } catch (e) {}
+    // Driver nativo indisponível: segue gravando no arquivo JSON para não perder nada
+    console.error('[Até Quitar] SQLite indisponível; usando o arquivo JSON de reserva.', err);
+    db = null;
+    dataPath = jsonPath;
+  }
+  console.log(`[Até Quitar] Dados (${db ? 'sqlite' : 'json'}, ${storageMode}): ${dataPath}`);
+}
+
+function readData() {
+  if (db) return readDoc(db);
+  try {
+    return fs.existsSync(dataPath) ? JSON.parse(fs.readFileSync(dataPath, 'utf-8')) : null;
+  } catch (err) {
     return null;
   }
 }
 
-// Grava num arquivo temporário e troca de nome: nunca deixa o arquivo pela metade
 function writeData(doc) {
+  if (db) return writeDoc(db, doc);
+  // Reserva: arquivo temporário e troca de nome, para nunca ficar pela metade
   const tmp = `${dataPath}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(doc, null, 2), 'utf-8');
   fs.renameSync(tmp, dataPath);
   return true;
 }
+
+const today = () => new Date().toISOString().slice(0, 10);
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -138,7 +159,43 @@ function setupIpcHandlers() {
 
   ipcMain.handle('data:load', () => readData());
   ipcMain.handle('data:save', (event, doc) => writeData(doc));
-  ipcMain.handle('data:info', () => ({ path: dataPath, mode: storageMode }));
+  ipcMain.handle('data:info', () => ({ path: dataPath, mode: storageMode, engine: db ? 'sqlite' : 'json' }));
+
+  // Backup: cópia consistente do banco (mesmo com o app aberto) no lugar que a pessoa escolher
+  ipcMain.handle('data:backup', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const sqlite = Boolean(db);
+    const { canceled, filePath } = await dialog.showSaveDialog(win, {
+      title: 'Salvar backup do Até Quitar',
+      defaultPath: path.join(app.getPath('documents'), `atequitar-backup-${today()}.${sqlite ? 'sqlite' : 'json'}`),
+      filters: sqlite ? [{ name: 'Backup do Até Quitar', extensions: ['sqlite'] }] : [{ name: 'Backup do Até Quitar', extensions: ['json'] }],
+    });
+    if (canceled || !filePath) return { ok: false };
+    if (sqlite) await db.backup(filePath);
+    else fs.copyFileSync(dataPath, filePath);
+    return { ok: true, path: filePath };
+  });
+
+  // Restaurar: lê o arquivo escolhido e devolve os dados para a interface confirmar e aplicar
+  ipcMain.handle('data:restore', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const { canceled, filePaths } = await dialog.showOpenDialog(win, {
+      title: 'Restaurar backup do Até Quitar',
+      properties: ['openFile'],
+      filters: [{ name: 'Backup do Até Quitar', extensions: ['sqlite', 'json'] }],
+    });
+    if (canceled || !filePaths[0]) return { ok: false };
+    const file = filePaths[0];
+    try {
+      if (file.toLowerCase().endsWith('.json')) return { ok: true, doc: JSON.parse(fs.readFileSync(file, 'utf-8')) };
+      if (!Database) throw new Error('O SQLite não está disponível neste computador.');
+      return { ok: true, doc: readBackupFile(Database, file) };
+    } catch (err) {
+      // Mensagens técnicas do SQLite (ex.: "file is not a database") viram um aviso simples
+      const own = err instanceof Error && /Até Quitar|SQLite não está/.test(err.message);
+      return { ok: false, error: own ? err.message : 'O arquivo não é um backup do Até Quitar.' };
+    }
+  });
   ipcMain.handle('data:open-folder', () => {
     if (fs.existsSync(dataPath)) shell.showItemInFolder(dataPath);
     else shell.openPath(path.dirname(dataPath));
@@ -155,8 +212,7 @@ function setupApplicationMenu() {
 }
 
 app.whenReady().then(() => {
-  dataPath = path.join(getDataDirectory(), DATA_FILE);
-  console.log(`[Até Quitar] Dados (${storageMode}): ${dataPath}`);
+  initDatabase();
   setupIpcHandlers();
   setupApplicationMenu();
   createWindow();
@@ -167,4 +223,10 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit();
+});
+
+app.on('will-quit', () => {
+  try {
+    db?.close();
+  } catch (e) {}
 });

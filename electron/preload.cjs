@@ -14,4 +14,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveData: (doc) => ipcRenderer.invoke('data:save', doc),
   dataInfo: () => ipcRenderer.invoke('data:info'),
   openDataFolder: () => ipcRenderer.invoke('data:open-folder'),
+  backupData: () => ipcRenderer.invoke('data:backup'),
+  restoreData: () => ipcRenderer.invoke('data:restore'),
 });

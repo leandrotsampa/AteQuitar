@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Download, FolderOpen, HardDrive, RotateCcw, Upload, X } from 'lucide-react';
+import { AlertTriangle, Database, Download, FolderOpen, RotateCcw, Upload, X } from 'lucide-react';
 import { ModalShell } from './ui/ModalShell';
 import { btnGhost, tile } from './ui/card';
-import { exportBackup, normalizeData, type AppData } from '../lib/store';
+import { exportBackup, normalizeData, type AppData, type DataInfo } from '../lib/store';
 import { playSound } from '../hooks/useSound';
 
 type ConfirmFn = (req: { title: string; message: React.ReactNode; confirmLabel?: string; tone?: 'danger' | 'neutral' }) => Promise<boolean>;
@@ -16,7 +16,8 @@ export const DataModal: React.FC<{
   onClose: () => void;
   onReset: () => void;
 }> = ({ data, update, confirm, notify, onClose, onReset }) => {
-  const [info, setInfo] = useState<{ path: string; mode: 'portable' | 'system' } | null>(null);
+  const [info, setInfo] = useState<DataInfo | null>(null);
+  const api = window.electronAPI;
   const fileRef = useRef<HTMLInputElement>(null);
   useEffect(() => {
     window.electronAPI?.dataInfo?.().then(setInfo);
@@ -25,9 +26,10 @@ export const DataModal: React.FC<{
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose]);
 
-  const importFile = async (file: File) => {
+  // Confere o conteúdo do backup e, com o "sim" da pessoa, troca os dados atuais
+  const applyBackup = async (raw: unknown) => {
     try {
-      const parsed = normalizeData(JSON.parse(await file.text()));
+      const parsed = normalizeData(raw);
       if (!parsed.contract) throw new Error('O arquivo não tem um financiamento cadastrado.');
       const ok = await confirm({
         title: 'Restaurar backup',
@@ -41,6 +43,36 @@ export const DataModal: React.FC<{
     } catch (e) {
       void notify({ title: 'Não deu para restaurar', message: e instanceof Error ? e.message : 'Arquivo inválido.' });
     }
+  };
+
+  const importFile = async (file: File) => {
+    try {
+      await applyBackup(JSON.parse(await file.text()));
+    } catch {
+      void notify({ title: 'Não deu para restaurar', message: 'O arquivo não é um backup válido.' });
+    }
+  };
+
+  const backup = async () => {
+    if (!api?.backupData) {
+      exportBackup(data);
+      return;
+    }
+    const r = await api.backupData();
+    if (r.ok) {
+      playSound('success');
+      void notify({ title: 'Backup salvo', message: r.path ?? '' });
+    }
+  };
+
+  const restore = async () => {
+    if (!api?.restoreData) {
+      fileRef.current?.click();
+      return;
+    }
+    const r = await api.restoreData();
+    if (r.ok) await applyBackup(r.doc);
+    else if (r.error) void notify({ title: 'Não deu para restaurar', message: r.error });
   };
 
   const reset = async () => {
@@ -72,11 +104,19 @@ export const DataModal: React.FC<{
       </div>
 
       <div className={`${tile} p-4 mt-5 flex gap-3`}>
-        <HardDrive className="w-5 h-5 text-anil-600 dark:text-anil-300 shrink-0 mt-0.5" />
+        <Database className="w-5 h-5 text-anil-600 dark:text-anil-300 shrink-0 mt-0.5" />
         <div className="min-w-0 text-sm">
           <div className="font-semibold text-slate-900 dark:text-white">
-            {info ? (info.mode === 'portable' ? 'Arquivo ao lado do app' : 'Pasta de dados do sistema') : 'Guardado no navegador'}
+            {info
+              ? `${info.engine === 'sqlite' ? 'Banco SQLite' : 'Arquivo de dados'} ${info.mode === 'portable' ? 'ao lado do app' : 'na pasta de dados do sistema'}`
+              : 'Guardado no navegador'}
           </div>
+          {info?.engine === 'json' && (
+            <div className="mt-1.5 flex items-start gap-1.5 text-xs text-sol-800 dark:text-sol-200">
+              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+              O banco SQLite não pôde ser aberto neste computador. Os dados estão sendo guardados num arquivo de reserva.
+            </div>
+          )}
           <div className="text-slate-500 dark:text-slate-400 break-all font-num text-xs mt-0.5">{info?.path ?? 'localStorage'}</div>
           {info && (
             <button type="button" onClick={() => window.electronAPI?.openDataFolder()} className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-anil-700 dark:text-anil-300 cursor-pointer">
@@ -87,10 +127,10 @@ export const DataModal: React.FC<{
       </div>
 
       <div className="grid sm:grid-cols-2 gap-2 mt-4">
-        <button type="button" onClick={() => exportBackup(data)} className={btnGhost} disabled={!data.contract}>
+        <button type="button" onClick={backup} className={btnGhost} disabled={!data.contract}>
           <Download className="w-4 h-4" /> Salvar backup
         </button>
-        <button type="button" onClick={() => fileRef.current?.click()} className={btnGhost}>
+        <button type="button" onClick={restore} className={btnGhost}>
           <Upload className="w-4 h-4" /> Restaurar backup
         </button>
         <input

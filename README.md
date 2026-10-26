@@ -33,16 +33,20 @@ O app consulta ao abrir (no máximo a cada 12 horas) e guarda os últimos valore
 
 ## Seus dados
 
-Tudo fica num arquivo local, `atequitar-dados.json`:
+Tudo fica num banco SQLite local, `atequitar.sqlite`:
 
 - versão portátil (`.exe` portátil ou AppImage): na mesma pasta do aplicativo;
 - versão instalada: na pasta de dados do usuário do sistema.
 
-Em **Dados e backup** dá para abrir a pasta, salvar e restaurar um backup.
+Tabelas: `contract`, `checkins`, `extra_payments`, `balance_checkpoints`, `milestones`, `rate_latest`, `rate_points`, `tr_monthly` e `app_meta`. Cada gravação troca os dados numa única transação, e as restrições do esquema (valores positivos, sistema SAC/PRICE, um check-in por mês) barram registros inválidos.
+
+Em **Dados e backup** dá para abrir a pasta, salvar um backup (`.sqlite`, cópia consistente mesmo com o app aberto) e restaurar um backup.
+
+Quem usou a primeira versão, que guardava em `atequitar-dados.json`, tem os dados importados para o SQLite na primeira abertura; o arquivo antigo fica renomeado para `.importado`. Se o módulo nativo do SQLite não carregar, o app continua funcionando com esse arquivo JSON como reserva e avisa na tela de dados.
 
 ## Desenvolvimento
 
-Requisitos: Node.js 20 ou mais novo.
+Requisitos: Node.js 20 ou mais novo. O `npm install` recompila o `better-sqlite3` para a versão do Electron (`postinstall`).
 
 ```bash
 npm install

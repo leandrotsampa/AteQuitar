@@ -1,4 +1,5 @@
-// Dados do app num único documento: no Electron, arquivo JSON local; no navegador, localStorage
+// Dados do app num único documento: no Electron, banco SQLite local (o processo principal
+// converte o documento em tabelas); no navegador, localStorage
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { BalanceCheckpoint, CheckIn, Contract, ExtraPayment } from '../types/finance';
 import { FALLBACK_RATES, type MarketRates } from './rates';
@@ -30,6 +31,13 @@ export const emptyData = (): AppData => ({
 
 const LS_KEY = 'atequitar_data_v1';
 
+// Onde e como os dados estão guardados ('json' só se o SQLite não carregar)
+export interface DataInfo {
+  path: string;
+  mode: 'portable' | 'system';
+  engine: 'sqlite' | 'json';
+}
+
 export interface ElectronAPI {
   isElectron: boolean;
   platform?: string;
@@ -38,8 +46,10 @@ export interface ElectronAPI {
   onWindowMaximized?: (cb: (maximized: boolean) => void) => () => void;
   loadData: () => Promise<unknown>;
   saveData: (doc: AppData) => Promise<boolean>;
-  dataInfo: () => Promise<{ path: string; mode: 'portable' | 'system' }>;
+  dataInfo: () => Promise<DataInfo>;
   openDataFolder: () => Promise<boolean>;
+  backupData: () => Promise<{ ok: boolean; path?: string }>;
+  restoreData: () => Promise<{ ok: boolean; doc?: unknown; error?: string }>;
 }
 
 declare global {
@@ -131,7 +141,7 @@ export function useAppData(): {
   return { data, loaded, update };
 }
 
-// Backup: o documento inteiro em JSON
+// Backup no navegador: o documento inteiro em JSON (no Electron, cópia do banco .sqlite)
 export function exportBackup(data: AppData): void {
   const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);

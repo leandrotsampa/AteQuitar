@@ -13,7 +13,11 @@ Thumbs.db
 .claude/
 .vscode/
 
-# Dados reais do usuário
-atequitar-dados.json
-atequitar-backup-*.json
+# Dados reais do usuário (banco local, backups e o JSON das primeiras versões)
+*.sqlite
+*.sqlite-journal
+*.sqlite-shm
+*.sqlite-wal
+atequitar-dados.json*
+atequitar-backup-*
 .impeccable/

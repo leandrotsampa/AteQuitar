@@ -25,6 +25,7 @@
     "start": "vite build && electron electron/main.cjs",
     "lint": "tsc --noEmit",
     "test": "vitest run",
+    "postinstall": "electron-builder install-app-deps",
     "icons": "node scripts/build-icons.mjs",
     "dist:portable": "vite build && node scripts/prepare-electron-dist.mjs && electron-builder --win portable -c.electronDist=.electron-dist",
     "dist:win": "vite build && node scripts/prepare-electron-dist.mjs && electron-builder --win -c.electronDist=.electron-dist",
@@ -63,7 +64,9 @@
       "electron/**/*",
       "package.json",
       "!electron/**/*.test.ts",
-      "!**/*.{md,map,ts}"
+      "!node_modules/better-sqlite3/{src,deps,docs,benchmark}/**",
+      "!node_modules/better-sqlite3/build/{Release/obj,Release/.deps,deps}/**",
+      "!**/*.{md,map,ts,cc,h,gyp,gypi}"
     ],
     "electronLanguages": [
       "pt-BR",
@@ -71,8 +74,18 @@
     ],
     "win": {
       "target": [
-        { "target": "portable", "arch": ["x64"] },
-        { "target": "nsis", "arch": ["x64"] }
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "build/icon.ico"
     },
@@ -95,15 +108,33 @@
     "mac": {
       "category": "public.app-category.finance",
       "icon": "build/icon.png",
-      "target": [{ "target": "dmg", "arch": ["arm64", "x64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
       "artifactName": "AteQuitar-${version}-mac-${arch}.${ext}"
     },
     "linux": {
       "category": "Office",
       "icon": "build/icon.png",
       "synopsis": "Acompanhe seu financiamento imobiliário",
-      "target": [{ "target": "AppImage", "arch": ["x64"] }],
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "artifactName": "AteQuitar-${version}-linux-${arch}.${ext}"
     }
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3"
   }
 }
