@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Contract } from '../types/finance';
-import { migrateCheckpoints, migrateContract } from './store';
+import { migrateCheckpoints, migrateContract, normalizeData } from './store';
 
 const contract: Contract = {
   nickname: 'Casa',
@@ -47,5 +47,12 @@ describe('migrateCheckpoints', () => {
       ['a', 'banco'],
       ['c', 'banco'],
     ]);
+  });
+});
+
+describe('normalizeData', () => {
+  it('recupera a marca de exemplo perdida ao editar o contrato do exemplo', () => {
+    expect(normalizeData({ isDemo: false, extras: [{ id: 'demo-fgts', yearMonth: '2024-04', amount: 25000 }] }).isDemo).toBe(true);
+    expect(normalizeData({ isDemo: false, extras: [{ id: 'abc', yearMonth: '2024-04', amount: 25000 }] }).isDemo).toBe(false);
   });
 });

@@ -67,14 +67,20 @@ type AudioContextCtor = new () => AudioContext;
 export function createSoundPlayer(
   getPrefs: () => UiPrefs,
   env: { AudioContext?: AudioContextCtor; now?: () => number } = {}
-): { play(name: SoundName): void } {
+): { play(name: SoundName): void; playedWithin(ms: number): boolean } {
   let ctx: AudioContext | null = null;
   let unavailable = false;
   const lastPlayed = new Map<SoundName, number>();
+  let lastAny = -Infinity;
   const now = env.now ?? (() => performance.now());
 
   return {
+    // Algum som tocou há pouco (mesmo com o som desligado): o clique já tem o seu
+    playedWithin(ms) {
+      return now() - lastAny < ms;
+    },
     play(name) {
+      lastAny = now();
       const prefs = getPrefs();
       if (!prefs.soundEnabled || prefs.soundVolume <= 0 || unavailable) return;
 

@@ -15,7 +15,7 @@ import { runThemeWipe } from './lib/themeTransition';
 import { EASE_OUT, instantIf } from './lib/motion';
 import { currentYearMonth, uid, withBank } from './lib/format';
 import { demoData } from './lib/demo';
-import { playSound } from './hooks/useSound';
+import { installClickSounds, playSound } from './hooks/useSound';
 import { getUiPrefs, setUiPrefs } from './hooks/useUiPrefs';
 import { HomeScreen } from './screens/HomeScreen';
 import type { ScreenId, ScreenProps } from './screens/types';
@@ -58,7 +58,8 @@ const paidMonthsOf = (d: AppData) => new Set(d.checkins.filter((c) => !c.schedul
 // de hoje é o de depois da última parcela paga: antes do vencimento, a do mês anterior
 function applyWizard(prev: AppData, r: WizardResult): AppData {
   const ym = lastPaidMonth(r.contract, paidMonthsOf(prev));
-  if (!ym) return { ...prev, contract: r.contract, isDemo: false };
+  // Editar o exemplo não o transforma no seu financiamento: o "Usar o meu" continua para sair dele
+  if (!ym) return { ...prev, contract: r.contract };
   const current = prev.checkpoints.find((c) => c.yearMonth === ym && c.source === 'banco');
   const others = prev.checkpoints.filter((c) => c !== current);
   // Mesmo saldo de antes: continua o mesmo registro (e a mesma data em que foi informado)
@@ -80,7 +81,7 @@ function applyWizard(prev: AppData, r: WizardResult): AppData {
       : r.balanceCleared
         ? others
         : prev.checkpoints;
-  return { ...prev, contract: r.contract, checkpoints, isDemo: false };
+  return { ...prev, contract: r.contract, checkpoints };
 }
 
 export default function App() {
@@ -107,6 +108,8 @@ export default function App() {
     });
   };
   const dark = theme === 'dark';
+
+  useEffect(() => installClickSounds(), []);
 
   const [screen, setScreen] = useState<ScreenId>('home');
   const scrollRef = useRef<HTMLDivElement>(null);

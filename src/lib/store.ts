@@ -100,7 +100,8 @@ export function normalizeData(raw: unknown): AppData {
         ? { ...FALLBACK_RATES, ...r.rates, latest: { ...FALLBACK_RATES.latest, ...r.rates.latest } }
         : FALLBACK_RATES,
     celebrated: arr<number>(r.celebrated),
-    isDemo: Boolean(r.isDemo),
+    // Versões antigas perdiam a marca de exemplo ao editar o contrato; as amortizações dele a recuperam
+    isDemo: Boolean(r.isDemo) || arr<ExtraPayment>(r.extras).some((e) => typeof e?.id === 'string' && e.id.startsWith('demo-')),
     createdAt: typeof r.createdAt === 'string' ? r.createdAt : base.createdAt,
   };
 }
