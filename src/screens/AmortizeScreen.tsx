@@ -307,6 +307,11 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) =
                 Peça ao banco para reduzir o <b className="text-slate-900 dark:text-white">prazo</b>, a não ser que precise de folga no orçamento.
               </>,
               <>Compare com investir: na tela "Amortizar ou investir?" usamos as taxas de hoje.</>,
+              <>
+                <b className="text-slate-900 dark:text-white">Não existe dia melhor no mês.</b> O banco cobra juros dos dias desde o último
+                vencimento sobre o valor amortizado, mas o mesmo valor deixa de pagar o mês cheio de juros e TR na parcela seguinte: no
+                saldo, dá na mesma. Amortize assim que o dinheiro estiver livre; esperar só vale se ele render mais que a dívida enquanto isso.
+              </>,
               <>Amortizar não tem multa: é um direito seu pelo Código de Defesa do Consumidor.</>,
             ].map((text, k) => (
               <li key={k} className="flex gap-2.5">

@@ -35,6 +35,10 @@ describe('compareInvestment', () => {
     expect(r.verdict).toBe('investir');
     expect(r.gap).toBeGreaterThan(0);
   });
+  it('o seguro MIP entra no custo da dívida', () => {
+    const r = compareInvestment({ amount: 10000, months: 60, contractAnnual: 11, trAnnual: 1, insuranceAnnual: 0.2, ipca12: 4, product: cdb });
+    expect(r.debtAnnual).toBeCloseTo((1.11 * 1.01 * 1.002 - 1) * 100, 6);
+  });
   it('dívida cara pede amortização', () => {
     const r = compareInvestment({ amount: 10000, months: 120, contractAnnual: 14, trAnnual: 2, ipca12: 4, product: cdb });
     expect(r.verdict).toBe('amortizar');

@@ -30,7 +30,7 @@ export function netAnnual(product: Product, months: number): number {
 }
 
 export interface InvestComparison {
-  debtAnnual: number; // custo da dívida (juros + TR), % a.a.
+  debtAnnual: number; // custo da dívida (juros + TR + seguro MIP), % a.a.
   investNetAnnual: number;
   futureIfAmortize: number; // valor equivalente do dinheiro "aplicado" na dívida
   futureIfInvest: number;
@@ -45,12 +45,14 @@ export function compareInvestment(params: {
   months: number;
   contractAnnual: number;
   trAnnual: number;
+  // Seguro MIP ao ano (% do saldo): ele acompanha o saldo, então amortizar também o corta
+  insuranceAnnual?: number;
   product: Product;
   ipca12: number;
 }): InvestComparison {
-  const { amount, months, contractAnnual, trAnnual, product, ipca12 } = params;
+  const { amount, months, contractAnnual, trAnnual, insuranceAnnual = 0, product, ipca12 } = params;
   const years = Math.max(months, 1) / 12;
-  const debtAnnual = ((1 + contractAnnual / 100) * (1 + trAnnual / 100) - 1) * 100;
+  const debtAnnual = ((1 + contractAnnual / 100) * (1 + trAnnual / 100) * (1 + insuranceAnnual / 100) - 1) * 100;
   const investNetAnnual = netAnnual(product, months);
   const futureIfAmortize = amount * Math.pow(1 + debtAnnual / 100, years);
   const futureIfInvest = amount * Math.pow(1 + investNetAnnual / 100, years);

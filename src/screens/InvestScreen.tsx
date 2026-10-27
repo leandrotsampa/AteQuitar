@@ -21,6 +21,13 @@ export const InvestScreen: React.FC<ScreenProps> = ({ model, data }) => {
   const selic = rates.latest.selic.value;
   const ipca = rates.latest.ipca12.value;
   const tr = contract.trIndexed ? trAnnual(rates) : 0;
+  // Seguro MIP: uma porcentagem do saldo por mês (a da próxima parcela), que amortizar também corta
+  const nextRow = summary.next;
+  const corrected = nextRow ? nextRow.openingBalance + nextRow.correction : 0;
+  const mipMonthly = nextRow?.mip && corrected > 0 ? nextRow.mip / corrected : 0;
+  const mipAnnual = (Math.pow(1 + mipMonthly, 12) - 1) * 100;
+  // DFI e taxa de cada parcela: não dependem do saldo; somem só com as parcelas cortadas do fim
+  const fixedPerInstallment = nextRow && nextRow.mip !== undefined ? nextRow.fees - nextRow.mip : 0;
 
   const [amount, setAmount] = useState(10000);
   const [months, setMonths] = useState(Math.min(summary.remainingCount || 60, 120));
@@ -45,8 +52,8 @@ export const InvestScreen: React.FC<ScreenProps> = ({ model, data }) => {
   const product = products.find((p) => p.key === productKey)!;
 
   const result = useMemo(
-    () => compareInvestment({ amount, months, contractAnnual: contract.annualRate, trAnnual: tr, product, ipca12: ipca }),
-    [amount, months, contract.annualRate, tr, product, ipca]
+    () => compareInvestment({ amount, months, contractAnnual: contract.annualRate, trAnnual: tr, insuranceAnnual: mipAnnual, product, ipca12: ipca }),
+    [amount, months, contract.annualRate, tr, mipAnnual, product, ipca]
   );
   const ranking = useMemo(
     () => products.map((p) => ({ p, net: netAnnual(p, months) })).sort((a, b) => b.net - a.net),
@@ -182,7 +189,7 @@ export const InvestScreen: React.FC<ScreenProps> = ({ model, data }) => {
             <h3 className="text-lg font-bold text-slate-900 dark:text-white">Em {formatDuration(months)}, seus {formatBRL0(amount)} valeriam</h3>
             <div className="mt-5 space-y-5">
               {[
-                { key: 'a', label: 'Amortizando', sub: `${formatPct(contract.annualRate)} de juros${tr > 0 ? ` + ${formatPct(tr)} de TR` : ''}`, value: result.futureIfAmortize, color: 'bg-emerald-500', icon: Home },
+                { key: 'a', label: 'Amortizando', sub: `${formatPct(contract.annualRate)} de juros${tr > 0 ? ` + ${formatPct(tr)} de TR` : ''}${mipAnnual > 0 ? ` + ${formatPct(mipAnnual)} de seguro MIP` : ''}`, value: result.futureIfAmortize, color: 'bg-emerald-500', icon: Home },
                 { key: 'i', label: 'Investindo', sub: `${product.label}, líquido de IR`, value: result.futureIfInvest, color: 'bg-anil-500', icon: PiggyBank },
               ].map((b) => (
                 <div key={b.key}>
@@ -271,6 +278,12 @@ export const InvestScreen: React.FC<ScreenProps> = ({ model, data }) => {
             </li>
             <li>
               <b className="text-slate-900 dark:text-white">FGTS rende pouco.</b> O FGTS rende cerca de 3% + TR ao ano: usá-lo para amortizar quase sempre compensa.
+            </li>
+            <li>
+              <b className="text-slate-900 dark:text-white">Reduzir o prazo tira parcelas inteiras.</b>{' '}
+              {fixedPerInstallment > 0
+                ? `Cada parcela cortada do fim leva junto ${formatBRL(fixedPerInstallment)} de DFI e taxa, que não entram nesta conta. Reduzindo a prestação, eles continuam todo mês.`
+                : 'Cada parcela cortada do fim leva junto o DFI e a taxa daquele mês, que não entram nesta conta. Reduzindo a prestação, eles continuam todo mês.'}
             </li>
             <li>
               <b className="text-slate-900 dark:text-white">Paz de espírito conta.</b> Ter a casa quitada mais cedo também é um retorno.
