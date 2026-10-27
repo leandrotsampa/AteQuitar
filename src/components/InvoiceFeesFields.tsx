@@ -27,12 +27,12 @@ export function draftFromFees(f: InvoiceFees | undefined, split = false): FeesDr
   return { split: hasSplit, mip: f.mip ?? 0, dfi: f.dfi ?? 0, insurance: f.insurance, adminFee: f.adminFee };
 }
 
-// Valores previstos para o mês, já corrigidos a partir da fatura anterior. Abre no formato da
-// última fatura informada (`split`); com a previsão separada, o detalhe já vem pronto se abrir
-export function draftFromRow(row: ScheduleRow | undefined, split = false): FeesDraft {
-  if (!row || !(row.fees > 0)) return emptyFeesDraft(split);
+// Valores previstos para o mês, já corrigidos a partir da fatura anterior. Abre com MIP e DFI
+// separados, como a fatura paga mostra; só o total quando a previsão não tem o detalhe
+export function draftFromRow(row: ScheduleRow | undefined): FeesDraft {
+  if (!row || !(row.fees > 0)) return emptyFeesDraft(true);
   const hasSplit = row.mip !== undefined && row.dfi !== undefined;
-  return { split: hasSplit && split, mip: row.mip ?? 0, dfi: row.dfi ?? 0, insurance: row.insurance, adminFee: row.adminFee };
+  return { split: hasSplit, mip: row.mip ?? 0, dfi: row.dfi ?? 0, insurance: row.insurance, adminFee: row.adminFee };
 }
 
 export const draftInsurance = (d: FeesDraft) => cents(d.split ? d.mip + d.dfi : d.insurance);

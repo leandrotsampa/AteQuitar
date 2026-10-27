@@ -7,7 +7,7 @@ import { HelpTip } from '../components/ui/HelpTip';
 import { card, tile } from '../components/ui/card';
 import { interestWithRate } from '../lib/finance';
 import { formatBRL0, formatPct } from '../lib/format';
-import { EASE_OUT, instantIf } from '../lib/motion';
+import { instantIf } from '../lib/motion';
 
 const MIN = 6;
 const MAX = 18;

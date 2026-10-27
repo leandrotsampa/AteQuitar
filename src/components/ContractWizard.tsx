@@ -15,7 +15,7 @@ import {
   nominalToEffective,
   withBank,
 } from '../lib/format';
-import { EASE_OUT, instantIf } from '../lib/motion';
+import { EASE_OUT } from '../lib/motion';
 import { playSound } from '../hooks/useSound';
 import { Field } from './ui/HelpTip';
 import { MoneyField, MonthField, NumberField } from './ui/Inputs';

@@ -6,7 +6,7 @@ import { PageHeader } from '../components/ui/PageHeader';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
 import { Field } from '../components/ui/HelpTip';
 import { MoneyField, MonthField, NumberField } from '../components/ui/Inputs';
-import { btnGhost, btnPrimary, card, tile } from '../components/ui/card';
+import { btnGhost, btnPrimary, card } from '../components/ui/card';
 import { HELP } from '../components/help';
 import { currentYearMonth, formatBRL, monthLong, monthName, monthShort, uid } from '../lib/format';
 import { EASE_OUT } from '../lib/motion';

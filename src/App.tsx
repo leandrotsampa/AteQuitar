@@ -13,7 +13,7 @@ import { lastPaidMonth } from './lib/finance';
 import { fetchMarketRates, missingTrMonths, shouldRefresh } from './lib/rates';
 import { runThemeWipe } from './lib/themeTransition';
 import { EASE_OUT, instantIf } from './lib/motion';
-import { currentYearMonth, uid, withBank } from './lib/format';
+import { uid, withBank } from './lib/format';
 import { demoData } from './lib/demo';
 import { installClickSounds, playSound } from './hooks/useSound';
 import { getUiPrefs, setUiPrefs } from './hooks/useUiPrefs';
