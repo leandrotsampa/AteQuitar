@@ -469,6 +469,20 @@ export function balanceOnDate(
   return Math.round(balance * trSinceDue(contract, yearMonth, date, trFor) * 100) / 100;
 }
 
+// Saldo que o banco mostrou num dia, levado a outro dia do mesmo período (só a TR entre os dois)
+export function bankBalanceOnDate(
+  contract: Contract,
+  cp: { yearMonth: string; balance: number; createdAt: string },
+  date: Date,
+  trFor: (yearMonth: string) => number
+): number {
+  if (!contract.trIndexed) return cp.balance;
+  const seen = new Date(cp.createdAt);
+  if (Number.isNaN(seen.getTime())) return cp.balance;
+  const factor = trSinceDue(contract, cp.yearMonth, date, trFor) / trSinceDue(contract, cp.yearMonth, seen, trFor);
+  return Math.round(cp.balance * factor * 100) / 100;
+}
+
 // Fator da TR acumulada do vencimento de yearMonth até o dia: 1 fora do período até o próximo
 function trSinceDue(contract: Contract, yearMonth: string, date: Date, trFor: (yearMonth: string) => number): number {
   const dueOf = (ym: string) => {

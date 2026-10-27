@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Contract } from '../types/finance';
 import { migrateCheckpoints } from './store';
-import { balanceAtDue, balanceOnDate, balanceFromInvoice, remainingFromInvoice, buildSchedule, effectiveExtra, lastDueBefore, lastPaidMonth, summarize, simulateExtra, compareSystems } from './finance';
+import { balanceAtDue, balanceOnDate, bankBalanceOnDate, balanceFromInvoice, remainingFromInvoice, buildSchedule, effectiveExtra, lastDueBefore, lastPaidMonth, summarize, simulateExtra, compareSystems } from './finance';
 
 const base: Contract = {
   nickname: 'Teste',
@@ -370,6 +370,13 @@ describe('saldo do banco num dia qualquer', () => {
     const afterDue = balanceAtDue(c, seen, trFor);
     expect(afterDue).toBeLessThan(seen.balance);
     expect(balanceOnDate(c, afterDue, '2026-10', new Date(2026, 9, 26, 21), trFor)).toBeCloseTo(seen.balance, 2);
+  });
+  it('o saldo do banco fica igual no mesmo dia e só ganha a TR nos dias seguintes', () => {
+    const seen = { yearMonth: '2026-10', balance: 380511.89, createdAt: new Date(2026, 9, 26, 21).toISOString() };
+    expect(bankBalanceOnDate(c, seen, new Date(2026, 9, 26, 23), trFor)).toBe(380511.89);
+    const later = bankBalanceOnDate(c, seen, new Date(2026, 10, 2), trFor);
+    expect(later).toBeGreaterThan(380511.89);
+    expect(later - 380511.89).toBeLessThan(200);
   });
   it('no dia do vencimento não há TR a somar', () => {
     expect(balanceOnDate(c, 1000, '2026-10', new Date(2026, 9, 5), trFor)).toBe(1000);

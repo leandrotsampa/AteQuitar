@@ -28,7 +28,7 @@ import {
   monthName,
   monthShort,
 } from '../lib/format';
-import { balanceOnDate } from '../lib/finance';
+import { balanceOnDate, bankBalanceOnDate } from '../lib/finance';
 import { buildTips, checkinStreak, pendingCheckinMonth } from '../lib/insights';
 import { EASE_OUT, instantIf } from '../lib/motion';
 import { playSound } from '../hooks/useSound';
@@ -60,9 +60,26 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
   const real = model.lastRealBalance;
   // Saldo de hoje como o banco mostra: o de depois da última parcela, com a TR dos dias desde então
   const lastPaid = summary.paidCount > 0 ? model.rows[summary.paidCount - 1] : null;
-  const balanceToday = lastPaid
-    ? balanceOnDate(model.contract, summary.currentBalance, lastPaid.yearMonth, new Date(), model.trFor)
-    : summary.currentBalance;
+  // Se o banco informou o saldo neste mesmo período, vale o dele: a fatura acerta as próximas
+  // parcelas, mas o saldo calculado por ela pode ficar alguns reais longe do que o banco mostra
+  const bankNow = lastPaid
+    ? data.checkpoints
+        .flatMap((c) =>
+          c.source === 'banco' && c.yearMonth === lastPaid.yearMonth && c.createdAt && !c.createdAt.startsWith('9999')
+            ? [{ ...c, createdAt: c.createdAt }]
+            : []
+        )
+        .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0]
+    : undefined;
+  const bankStillValid =
+    bankNow !== undefined &&
+    !data.extras.some((e) => (e.createdAt ?? '') > bankNow.createdAt) &&
+    Math.abs(bankNow.balance - summary.currentBalance) < summary.currentBalance * 0.01;
+  const balanceToday = !lastPaid
+    ? summary.currentBalance
+    : bankStillValid
+      ? bankBalanceOnDate(model.contract, bankNow, new Date(), model.trFor)
+      : balanceOnDate(model.contract, summary.currentBalance, lastPaid.yearMonth, new Date(), model.trFor);
   const trToday = balanceToday - summary.currentBalance;
   const realIndex = real ? model.rows.findIndex((r) => r.yearMonth === real.yearMonth) : -1;
   const sinceReal = real && realIndex >= 0 ? summary.paidCount - 1 - realIndex : 0;
@@ -147,9 +164,11 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
                   (real
                     ? `Parte do último saldo real: ${formatBRL(real.balance)} depois da parcela de ${monthLong(real.yearMonth)} (${realLabel}). Desde então o app aplica a TR, os juros e cada parcela paga.`
                     : 'Estimado a partir do contrato. Para ficar exato, faça o check-in com a fatura do mês: o app calcula o saldo pelos juros e pela amortização.') +
-                  (trToday >= 0.01
-                    ? `\nÉ o saldo de hoje, como no app do banco: ${formatBRL(summary.currentBalance)} logo depois da última parcela, mais ${formatBRL(trToday)} da TR dos dias desde o vencimento.`
-                    : ''),
+                  (bankStillValid
+                    ? `\nÉ o saldo de hoje: o que o banco mostrou em ${new Date(bankNow.createdAt).toLocaleDateString('pt-BR')} (${formatBRL(bankNow.balance)}), com a TR dos dias desde então.`
+                    : trToday >= 0.01
+                      ? `\nÉ o saldo de hoje, como no app do banco: ${formatBRL(summary.currentBalance)} logo depois da última parcela, mais ${formatBRL(trToday)} da TR dos dias desde o vencimento.`
+                      : ''),
               }}
             />
           </div>
@@ -171,9 +190,11 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
           </div>
           {real && (
             <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              {sinceReal > 0
-                ? `Saldo real ${realLabel} em ${monthLong(real.yearMonth)}, atualizado com ${sinceReal} ${sinceReal === 1 ? 'parcela' : 'parcelas'} desde então`
-                : `Saldo real ${realLabel}`}
+              {bankStillValid
+                ? `Saldo do banco em ${new Date(bankNow.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}, com a TR dos dias desde então`
+                : sinceReal > 0
+                  ? `Saldo real ${realLabel} em ${monthLong(real.yearMonth)}, atualizado com ${sinceReal} ${sinceReal === 1 ? 'parcela' : 'parcelas'} desde então`
+                  : `Saldo real ${realLabel}`}
             </div>
           )}
 
