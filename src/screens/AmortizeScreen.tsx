@@ -9,11 +9,9 @@ import { AreaChart } from '../components/charts/AreaChart';
 import { Field } from '../components/ui/HelpTip';
 import { MoneyField, MonthField } from '../components/ui/Inputs';
 import { btnPrimary, card, chip, tile } from '../components/ui/card';
-import { effectiveExtra, simulateExtra, type ExtraFrequency } from '../lib/finance';
+import { effectiveExtra, lastDueBefore, simulateExtra, type ExtraFrequency } from '../lib/finance';
 import type { ExtraMode } from '../types/finance';
 import {
-  addMonths,
-  currentYearMonth,
   formatBRL,
   formatBRL0,
   formatBRLShort,
@@ -33,11 +31,15 @@ const installments = (n: number) => `${n} ${n === 1 ? 'parcela' : 'parcelas'}`;
 export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) => {
   const reduce = Boolean(useReducedMotion());
   const { contract, summary } = model;
-  const now = currentYearMonth();
+  // Pagando hoje, o banco desconta os juros desde o último vencimento: só o resto abate o saldo
+  const today = new Date().toLocaleDateString('sv-SE');
+  // A amortização entra depois da última parcela vencida: feita entre 05/10 e 04/11, conta como de
+  // outubro, e a primeira parcela que muda é a de novembro
+  const now = lastDueBefore(contract, today).yearMonth;
   const [amount, setAmount] = useState(5000);
   const [frequency, setFrequency] = useState<ExtraFrequency>('once');
   const [mode, setMode] = useState<ExtraMode>('prazo');
-  const [startYm, setStartYm] = useState(summary.next?.yearMonth ?? addMonths(now, 1));
+  const [startYm, setStartYm] = useState(now);
   const extraMonths = useMemo(() => new Set((model.options.extras ?? []).map((e) => e.yearMonth)), [model.options.extras]);
 
   const maxSlider = Math.max(10000, Math.min(summary.currentBalance, frequency === 'monthly' ? 10000 : frequency === 'yearly' ? 60000 : 200000));
@@ -46,8 +48,6 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) =
   // A mesma amortização (mês, valor e tipo) já registrada: não deixa lançar de novo, só desfazer
   const registered =
     frequency === 'once' ? data.extras.find((e) => e.yearMonth === startYm && Math.abs((e.paid ?? e.amount) - amount) < 0.005 && e.mode === mode) : undefined;
-  // Pagando hoje, o banco desconta os juros desde o último vencimento: só o resto abate o saldo
-  const today = new Date().toLocaleDateString('sv-SE');
   const payingNow = frequency === 'once' && startYm === now;
   const effectiveNow = payingNow ? effectiveExtra(contract, amount, today) : amount;
   // Depois de registrar, a simulação continua mostrando quanto essa amortização economiza
@@ -206,7 +206,7 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) =
             />
             <div className="relative text-sm text-white/85 mt-2">
               em juros e seguros
-              {sim.totalExtra > 0 && <> amortizando {formatBRL0(sim.totalExtra)} no total</>}
+              {sim.totalExtra > 0 && <> amortizando {formatBRL(sim.totalExtra)} no total</>}
             </div>
             {perReal > 0 && (
               <div className="relative mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/15 text-sm font-semibold">
@@ -262,9 +262,15 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) =
                       </span>
                     )}
                     <div className="text-xs text-slate-500 dark:text-slate-400">{m === 'prazo' ? 'Reduzindo o prazo' : 'Reduzindo a parcela'}</div>
-                    <div className="font-num font-bold text-lg text-slate-900 dark:text-white mt-1">{formatBRL0(Math.max(0, r.interestSaved))}</div>
+                    <div className="font-num font-bold text-lg text-slate-900 dark:text-white mt-1">{formatBRL(Math.max(0, r.interestSaved))}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      {m === 'prazo' ? `${installments(r.monthsSaved)} a menos · ${formatDuration(r.monthsSaved)} antes` : `parcela ${formatBRL0(r.paymentBefore - r.paymentAfter)} menor`}
+                      {m === 'prazo'
+                        ? r.monthsSaved > 0
+                          ? `${installments(r.monthsSaved)} a menos · ${formatDuration(r.monthsSaved)} antes`
+                          : 'mesma data'
+                        : r.paymentBefore - r.paymentAfter >= 0.5
+                          ? `parcela ${formatBRL(r.paymentBefore - r.paymentAfter)} menor`
+                          : 'mesma parcela'}
                     </div>
                   </button>
                 );
