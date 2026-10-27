@@ -523,27 +523,26 @@ export const CheckinModal: React.FC<{
                             </div>
                           </div>
                         )}
-                        <div>
-                          <div className="flex justify-between gap-3">
-                            <span className="text-slate-500">
-                              {bankToday !== undefined ? `No vencimento (${dueLabel})` : `Saldo depois da parcela (${dueLabel})`}
-                            </span>
-                            <span className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(balanceAfter ?? forecast)}</span>
+                        {/* Com o saldo do banco de hoje, o do dia do vencimento só confundiria */}
+                        {bankToday === undefined && (
+                          <div>
+                            <div className="flex justify-between gap-3">
+                              <span className="text-slate-500">Saldo depois da parcela</span>
+                              <span className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(balanceAfter ?? forecast)}</span>
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                              {balanceSource === 'fatura' && far
+                                ? `Calculado pela fatura. O contrato sozinho previa ${formatBRL(forecast)}: a diferença vem de amortizações feitas antes de você usar o app. A partir de agora vale o saldo da fatura.`
+                                : balanceSource === 'fatura'
+                                ? 'Calculado pelos juros e pela amortização da fatura: não precisa esperar o banco atualizar o saldo.'
+                                : balanceSource === 'banco'
+                                  ? 'O saldo do banco que você informou neste mês.'
+                                  : far && computed !== null
+                                    ? 'Previsto, até você confirmar a fatura abaixo.'
+                                    : 'Previsto. Com os juros e a amortização da fatura, o app calcula o saldo exato.'}
+                            </div>
                           </div>
-                          <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            {bankToday !== undefined
-                              ? `${balanceSource === 'fatura' ? 'Pela fatura' : 'Previsto'}. A diferença para o saldo de hoje é só a TR dos dias desde o vencimento. É dele que saem as próximas parcelas.`
-                              : balanceSource === 'fatura' && far
-                              ? `Calculado pela fatura. O contrato sozinho previa ${formatBRL(forecast)}: a diferença vem de amortizações feitas antes de você usar o app. A partir de agora vale o saldo da fatura.`
-                              : balanceSource === 'fatura'
-                              ? 'Calculado pelos juros e pela amortização da fatura: não precisa esperar o banco atualizar o saldo.'
-                              : balanceSource === 'banco'
-                                ? 'O saldo do banco que você informou neste mês.'
-                                : far && computed !== null
-                                  ? 'Previsto, até você confirmar a fatura abaixo.'
-                                  : 'Previsto. Com os juros e a amortização da fatura, o app calcula o saldo exato.'}
-                          </div>
-                        </div>
+                        )}
                         {remainingAfter !== undefined && (
                           <div>
                             <div className="flex justify-between gap-3">
