@@ -28,6 +28,8 @@ import { celebrate } from '../components/ui/Confetti';
 
 const PRESETS = [1000, 5000, 10000, 30000];
 
+const installments = (n: number) => `${n} ${n === 1 ? 'parcela' : 'parcelas'}`;
+
 export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) => {
   const reduce = Boolean(useReducedMotion());
   const { contract, summary } = model;
@@ -220,7 +222,9 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) =
               </div>
               <div className="font-display text-xl font-bold text-slate-900 dark:text-white mt-2">{monthLong(sim.newEndYm)}</div>
               <div className="text-sm mt-0.5 text-emerald-700 dark:text-emerald-400 font-semibold">
-                {sim.monthsSaved > 0 ? `${formatDuration(sim.monthsSaved)} antes` : 'mesma data'}
+                {sim.monthsSaved > 0
+                  ? `${installments(sim.monthsSaved)} a menos · ${formatDuration(sim.monthsSaved)} antes`
+                  : 'mesma data'}
               </div>
             </div>
             <div className={`${card} p-5`}>
@@ -260,7 +264,7 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) =
                     <div className="text-xs text-slate-500 dark:text-slate-400">{m === 'prazo' ? 'Reduzindo o prazo' : 'Reduzindo a parcela'}</div>
                     <div className="font-num font-bold text-lg text-slate-900 dark:text-white mt-1">{formatBRL0(Math.max(0, r.interestSaved))}</div>
                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                      {m === 'prazo' ? `${r.monthsSaved} meses a menos` : `parcela ${formatBRL0(r.paymentBefore - r.paymentAfter)} menor`}
+                      {m === 'prazo' ? `${installments(r.monthsSaved)} a menos · ${formatDuration(r.monthsSaved)} antes` : `parcela ${formatBRL0(r.paymentBefore - r.paymentAfter)} menor`}
                     </div>
                   </button>
                 );
