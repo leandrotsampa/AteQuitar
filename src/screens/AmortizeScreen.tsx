@@ -55,12 +55,13 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) =
     [model.options, registered]
   );
   const sim = useMemo(
-    () => simulateExtra(contract, simOptions, { amount, startYm, frequency, mode }),
-    [contract, simOptions, amount, startYm, frequency, mode]
+    // Pagando hoje, simula com o que de fato abate o saldo (sem os juros desde o vencimento)
+    () => simulateExtra(contract, simOptions, { amount: effectiveNow, startYm, frequency, mode }),
+    [contract, simOptions, amount, effectiveNow, startYm, frequency, mode]
   );
   const other = useMemo(
-    () => simulateExtra(contract, simOptions, { amount, startYm, frequency, mode: mode === 'prazo' ? 'parcela' : 'prazo' }),
-    [contract, simOptions, amount, startYm, frequency, mode]
+    () => simulateExtra(contract, simOptions, { amount: effectiveNow, startYm, frequency, mode: mode === 'prazo' ? 'parcela' : 'prazo' }),
+    [contract, simOptions, amount, effectiveNow, startYm, frequency, mode]
   );
   const byMode = mode === 'prazo' ? { prazo: sim, parcela: other } : { prazo: other, parcela: sim };
   const best = byMode.prazo.interestSaved >= byMode.parcela.interestSaved ? 'prazo' : 'parcela';

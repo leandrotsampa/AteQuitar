@@ -151,7 +151,9 @@ export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): S
     const cp = checkpointByMonth.get(ym);
     let extra = 0;
     let mode: ExtraMode | null = null;
+    let beforeExtras: number | null = null;
     const apply = (e: ExtraPayment) => {
+      if (beforeExtras === null) beforeExtras = balance;
       const applied = Math.min(e.amount, balance);
       extra += applied;
       balance -= applied;
@@ -173,10 +175,21 @@ export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): S
     if (balance <= EPS) {
       balance = 0;
     } else if (mode === 'prazo' && remaining > 0) {
-      // Mantém o mesmo nível de pagamento: o prazo encolhe
-      const reference = contract.system === 'SAC' ? amortization : amortization + interest;
-      remaining = Math.min(remaining, monthsToPayOff(contract.system, balance, i, reference));
-      if (remaining === 0) remaining = 1;
+      if (contract.system === 'SAC' && beforeExtras !== null) {
+        // Como a Caixa: corta o máximo de meses sem que a prestação nova (amortização + juros)
+        // passe da que o saldo de antes daria com o prazo de agora (conferido em seis simulações)
+        const before: number = beforeExtras;
+        const payment = (b: number, n: number) => Math.floor((b / n) * 100 + 1e-6) / 100 + cents(b * i);
+        const limit = payment(before, remaining);
+        let n = remaining;
+        while (n > 1 && payment(balance, n - 1) <= limit + 1e-9) n--;
+        remaining = n;
+      } else {
+        // Price: mantém a prestação; o prazo encolhe
+        const reference = contract.system === 'SAC' ? amortization : amortization + interest;
+        remaining = Math.min(remaining, monthsToPayOff(contract.system, balance, i, reference));
+        if (remaining === 0) remaining = 1;
+      }
     }
 
     rows.push({
@@ -388,14 +401,16 @@ export function lastDueBefore(contract: Contract, date: string): { yearMonth: st
   return { yearMonth: prev, date: new Date(py, pm - 1, Math.min(contract.dueDay, daysInMonth(py, pm))) };
 }
 
-// Amortização extra: do valor pago, uma parte são os juros pro rata desde o último vencimento
-// (sobre o próprio valor amortizado); o resto abate o saldo. Estimativa: o banco informa o exato
+// Amortização extra: do valor pago, uma parte são os juros desde o último vencimento ("juros
+// diários"); o resto abate o saldo. Como a Caixa: valor pago × taxa do mês × dias ÷ 30, truncado
+// (conferido em seis simulações: R$ 1.000 em 21 dias dão 5,4696 de juros, que viram 5,46)
 export function effectiveExtra(contract: Contract, paid: number, date: string): number {
   if (!(paid > 0)) return 0;
   const i = annualToMonthly(contract.annualRate) / 100;
   const [y, m, d] = date.split('-').map(Number);
   const days = Math.max(0, Math.round((new Date(y, m - 1, d).getTime() - lastDueBefore(contract, date).date.getTime()) / 86400000));
-  return Math.round((paid / (1 + (i * days) / 30)) * 100) / 100;
+  const interest = Math.floor(((paid * i * days) / 30) * 100 + 1e-6) / 100;
+  return Math.round((paid - interest) * 100) / 100;
 }
 
 // Mês da última parcela paga hoje (pela data ou pelo check-in que disse que já pagou): o saldo

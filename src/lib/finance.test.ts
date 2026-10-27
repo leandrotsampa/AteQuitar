@@ -101,9 +101,10 @@ describe('buildSchedule', () => {
     const rows = buildSchedule(base, {
       extras: [{ id: 'x', yearMonth: '2020-01', amount: 30000, mode: 'prazo', source: 'proprio' }],
     });
-    // Saldo 89.000 a 1.000 por mês: 89 parcelas restantes
-    expect(rows).toHaveLength(90);
-    expect(rows[1].amortization).toBeCloseTo(1000, 2);
+    // Como a Caixa: corta o máximo de meses sem a prestação (amortização + juros) passar da de
+    // antes, 1.000 + 1.190 = 2.190. Com 89.000: 69 parcelas (1.289,85 + 890 = 2.179,85)
+    expect(rows).toHaveLength(70);
+    expect(rows[1].amortization).toBe(1289.85);
   });
 
   it('amortização extra reduzindo a parcela mantém o prazo', () => {
@@ -166,7 +167,7 @@ describe('summarize', () => {
 describe('simulateExtra', () => {
   it('extra único reduzindo prazo economiza juros e meses', () => {
     const r = simulateExtra(base, {}, { amount: 30000, startYm: '2020-01', frequency: 'once', mode: 'prazo' });
-    expect(r.monthsSaved).toBe(30);
+    expect(r.monthsSaved).toBe(50);
     expect(r.interestSaved).toBeGreaterThan(0);
   });
 
@@ -330,6 +331,32 @@ describe('centavos como o banco', () => {
       const rows = buildSchedule({ ...caixa, financedAmount: f.corrigido, termMonths: f.faltam, firstDueMonth: f.ym, trIndexed: false });
       expect(rows[0].amortization).toBe(f.amortizacao);
       expect(rows[0].interest).toBe(f.juros);
+    });
+  }
+});
+
+describe('amortização extra como a Caixa (simulações de 26/10)', () => {
+  const contrato = { ...caixa, financedAmount: 400000, firstDueMonth: '2026-03', trIndexed: false };
+  // Saldo logo depois da parcela de outubro e as 362 parcelas que faltavam
+  const outubro = { id: 'c', yearMonth: '2026-10', balance: 380098.96, remaining: 362, source: 'fatura' as const, createdAt: '' };
+  const sims = [
+    { pago: 500, juros: 2.73, novoPrazo: 361 },
+    { pago: 800, juros: 4.37, novoPrazo: 360 },
+    { pago: 1000, juros: 5.46, novoPrazo: 359 },
+    { pago: 1500, juros: 8.2, novoPrazo: 357 },
+    { pago: 2000, juros: 10.93, novoPrazo: 355 },
+    { pago: 3000, juros: 16.4, novoPrazo: 352 },
+  ];
+  for (const s of sims) {
+    it(`R$ ${s.pago}: juros diários ${s.juros} e prazo de 362 para ${s.novoPrazo}`, () => {
+      const efetiva = effectiveExtra(contrato, s.pago, '2026-10-26');
+      expect(Math.round((s.pago - efetiva) * 100) / 100).toBe(s.juros);
+      const rows = buildSchedule(contrato, {
+        checkpoints: [outubro],
+        extras: [{ id: 'x', yearMonth: '2026-10', amount: efetiva, mode: 'prazo', source: 'proprio', createdAt: '2026-10-26T12:00:00.000Z' }],
+      });
+      const oct = rows.findIndex((r) => r.yearMonth === '2026-10');
+      expect(rows.length - oct - 1).toBe(s.novoPrazo);
     });
   }
 });
