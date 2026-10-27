@@ -453,16 +453,34 @@ export function balanceAtDue(
   if (!contract.trIndexed || !trFor || !cp.createdAt) return cp.balance;
   const seen = new Date(cp.createdAt);
   if (Number.isNaN(seen.getTime())) return cp.balance;
+  return Math.round((cp.balance / trSinceDue(contract, cp.yearMonth, seen, trFor)) * 100) / 100;
+}
+
+// O caminho de volta: o saldo logo depois da parcela de yearMonth, como o banco o mostra num dia
+// qualquer até o próximo vencimento (com a TR proporcional dos dias que passaram)
+export function balanceOnDate(
+  contract: Contract,
+  balance: number,
+  yearMonth: string,
+  date: Date,
+  trFor: (yearMonth: string) => number
+): number {
+  if (!contract.trIndexed) return balance;
+  return Math.round(balance * trSinceDue(contract, yearMonth, date, trFor) * 100) / 100;
+}
+
+// Fator da TR acumulada do vencimento de yearMonth até o dia: 1 fora do período até o próximo
+function trSinceDue(contract: Contract, yearMonth: string, date: Date, trFor: (yearMonth: string) => number): number {
   const dueOf = (ym: string) => {
     const [y, m] = ym.split('-').map(Number);
     return new Date(y, m - 1, Math.min(contract.dueDay, new Date(y, m, 0).getDate()));
   };
-  const due = dueOf(cp.yearMonth);
-  const nextYm = addMonths(cp.yearMonth, 1);
+  const due = dueOf(yearMonth);
+  const nextYm = addMonths(yearMonth, 1);
   const nextDue = dueOf(nextYm);
-  const day = new Date(seen.getFullYear(), seen.getMonth(), seen.getDate());
-  if (day <= due || day >= nextDue) return cp.balance;
+  const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+  if (day <= due || day >= nextDue) return 1;
   const share = (day.getTime() - due.getTime()) / (nextDue.getTime() - due.getTime());
   const tr = Math.max(0, trFor(nextYm)) / 100;
-  return Math.round((cp.balance / Math.pow(1 + tr, share)) * 100) / 100;
+  return Math.pow(1 + tr, share);
 }

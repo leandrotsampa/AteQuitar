@@ -28,6 +28,7 @@ import {
   monthName,
   monthShort,
 } from '../lib/format';
+import { balanceOnDate } from '../lib/finance';
 import { buildTips, checkinStreak, pendingCheckinMonth } from '../lib/insights';
 import { EASE_OUT, instantIf } from '../lib/motion';
 import { playSound } from '../hooks/useSound';
@@ -57,6 +58,12 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
   ];
   // De onde vem o saldo de hoje: do último saldo real, mais as parcelas pagas desde então
   const real = model.lastRealBalance;
+  // Saldo de hoje como o banco mostra: o de depois da última parcela, com a TR dos dias desde então
+  const lastPaid = summary.paidCount > 0 ? model.rows[summary.paidCount - 1] : null;
+  const balanceToday = lastPaid
+    ? balanceOnDate(model.contract, summary.currentBalance, lastPaid.yearMonth, new Date(), model.trFor)
+    : summary.currentBalance;
+  const trToday = balanceToday - summary.currentBalance;
   const realIndex = real ? model.rows.findIndex((r) => r.yearMonth === real.yearMonth) : -1;
   const sinceReal = real && realIndex >= 0 ? summary.paidCount - 1 - realIndex : 0;
   const realLabel = real ? (real.source === 'fatura' ? 'pela fatura' : 'do banco') : '';
@@ -136,14 +143,18 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
             <HelpTip
               help={{
                 title: 'Saldo devedor',
-                body: real
-                  ? `Parte do último saldo real: ${formatBRL(real.balance)} depois da parcela de ${monthLong(real.yearMonth)} (${realLabel}). Desde então o app aplica a TR, os juros e cada parcela paga.`
-                  : 'Estimado a partir do contrato. Para ficar exato, faça o check-in com a fatura do mês: o app calcula o saldo pelos juros e pela amortização.',
+                body:
+                  (real
+                    ? `Parte do último saldo real: ${formatBRL(real.balance)} depois da parcela de ${monthLong(real.yearMonth)} (${realLabel}). Desde então o app aplica a TR, os juros e cada parcela paga.`
+                    : 'Estimado a partir do contrato. Para ficar exato, faça o check-in com a fatura do mês: o app calcula o saldo pelos juros e pela amortização.') +
+                  (trToday >= 0.01
+                    ? `\nÉ o saldo de hoje, como no app do banco: ${formatBRL(summary.currentBalance)} logo depois da última parcela, mais ${formatBRL(trToday)} da TR dos dias desde o vencimento.`
+                    : ''),
               }}
             />
           </div>
           <AnimatedNumber
-            value={summary.currentBalance}
+            value={balanceToday}
             format={formatBRL}
             durationMs={1100}
             className="font-display text-[2.6rem] xl:text-[3rem] leading-none font-extrabold tracking-tight text-slate-900 dark:text-white tabular-nums mt-1"
