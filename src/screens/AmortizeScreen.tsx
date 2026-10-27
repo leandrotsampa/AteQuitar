@@ -308,9 +308,10 @@ export const AmortizeScreen: React.FC<ScreenProps> = ({ model, data, update }) =
               </>,
               <>Compare com investir: na tela "Amortizar ou investir?" usamos as taxas de hoje.</>,
               <>
-                <b className="text-slate-900 dark:text-white">Não existe dia melhor no mês.</b> O banco cobra juros dos dias desde o último
-                vencimento sobre o valor amortizado, mas o mesmo valor deixa de pagar o mês cheio de juros e TR na parcela seguinte: no
-                saldo, dá na mesma. Amortize assim que o dinheiro estiver livre; esperar só vale se ele render mais que a dívida enquanto isso.
+                <b className="text-slate-900 dark:text-white">Não existe dia melhor no mês.</b> Amortizando hoje, o banco cobra juros só
+                dos dias desde o último vencimento. Esperando o vencimento, esses juros somem, mas até lá a parcela cobra juros e TR
+                sobre o saldo maior, o que custa bem mais. Por isso amortize assim que o dinheiro estiver livre: esperar só compensa
+                se ele render mais que a dívida enquanto isso.
               </>,
               <>Amortizar não tem multa: é um direito seu pelo Código de Defesa do Consumidor.</>,
             ].map((text, k) => (
