@@ -57,7 +57,7 @@ export const HELP = {
   },
   insurance: {
     title: 'Seguros obrigatórios',
-    body: 'Todo financiamento tem dois seguros na parcela: MIP (morte e invalidez), que acompanha o saldo devedor, e DFI (danos ao imóvel), corrigido pela TR. Com os dois separados, a previsão das próximas faturas fica exata.',
+    body: 'Todo financiamento tem dois seguros na parcela: MIP (morte e invalidez), que acompanha o saldo devedor, e DFI (danos ao imóvel), corrigido pela TR. A taxa do MIP depende da idade: ela pode mudar no aniversário de quem está no contrato ou do próprio contrato, e aí o seguro sobe de uma vez. Por isso a previsão da próxima fatura pode variar alguns centavos; o check-in de cada mês corrige com o valor real.',
     where: 'No detalhe da parcela no app do banco: linhas "Seguro MIP" e "Seguro DFI". Faturas em aberto às vezes mostram só "Seguros": aí use o total.',
   },
   adminFee: {
@@ -67,7 +67,7 @@ export const HELP = {
   },
   currentBalance: {
     title: 'Saldo devedor de hoje',
-    body: 'Quanto você ainda deve, segundo o banco. Com ele os números do app ficam exatos em vez de estimados.',
+    body: 'Quanto você ainda deve, segundo o banco. Copie no mesmo dia em que for informar: o banco corrige o saldo pela TR a cada dia, e o app desconta essa correção pela data de hoje. Um saldo anotado em outro dia deixa os números alguns reais fora.',
     where: 'No app da Caixa: Habitação → seu contrato → "Saldo devedor".\nNos outros bancos: Habitação (ou Financiamento) → "Saldo devedor". Não use o "valor para quitação", que pode vir com desconto.',
   },
   remaining: {

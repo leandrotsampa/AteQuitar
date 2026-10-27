@@ -165,8 +165,11 @@ export const CheckinModal: React.FC<{
   // Prévia: a tabela como fica depois de salvar
   const preview = useMemo(() => {
     const checkpoints: ScheduleCheckpoint[] = [
-      ...(model.options.checkpoints ?? []).filter((c) => c.id !== `ci-${existing?.id}`),
-      ...(balanceAfter && !data.checkpoints.some((c) => c.yearMonth === ym)
+      // Como no app: o saldo pela fatura vale mais que o do banco no mesmo mês
+      ...(model.options.checkpoints ?? []).filter(
+        (c) => c.id !== `ci-${existing?.id}` && !(balanceSource === 'fatura' && c.yearMonth === ym)
+      ),
+      ...(balanceAfter && (balanceSource === 'fatura' || !data.checkpoints.some((c) => c.yearMonth === ym))
         ? [
             {
               id: 'x',

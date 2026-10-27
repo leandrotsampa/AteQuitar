@@ -483,7 +483,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
                       </div>
                       <p className="mt-2.5 text-xs leading-relaxed text-slate-500 dark:text-slate-400">
                         {formYm === paidYm
-                          ? `${monthName(formYm)[0].toUpperCase()}${monthName(formYm).slice(1)} foi a última parcela paga: use o saldo e o prazo que o app do banco mostra hoje.`
+                          ? `${monthName(formYm)[0].toUpperCase()}${monthName(formYm).slice(1)} foi a última parcela paga: copie o saldo e o prazo que o app do banco mostra agora, no mesmo dia. O saldo muda um pouco a cada dia pela TR, e o app usa a data de hoje para descontar isso.`
                           : `Use o saldo e o prazo que o banco mostrava logo depois da parcela de ${monthLong(formYm)}.`}{' '}
                         As parcelas que faltam são opcionais e acertam o prazo de quem já amortizou.
                       </p>

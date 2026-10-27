@@ -124,10 +124,12 @@ export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): S
     const ym = addMonths(contract.firstDueMonth, k);
     const opening = balance;
     const tr = contract.trIndexed && opts.trFor ? Math.max(0, opts.trFor(ym)) / 100 : 0;
-    const correction = balance * tr;
+    // Centavos como o banco: atualização e juros arredondados, amortização do SAC truncada
+    // (conferido nas faturas da Caixa: 1.049,9971 vira 1.049,99, e 2.985,9784 de juros, 2.985,98)
+    const correction = cents(balance * tr);
     balance += correction;
     const actual = actualByMonth.get(ym);
-    const interest = actual ? actual.interest : balance * i;
+    const interest = actual ? actual.interest : cents(balance * i);
 
     let amortization: number;
     if (actual) {
@@ -135,7 +137,7 @@ export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): S
     } else if (remaining <= 1) {
       amortization = balance;
     } else if (contract.system === 'SAC') {
-      amortization = balance / remaining;
+      amortization = Math.floor((balance / remaining) * 100 + 1e-6) / 100;
     } else {
       const pmt = i === 0 ? balance / remaining : (balance * i) / (1 - Math.pow(1 + i, -remaining));
       amortization = pmt - interest;
@@ -423,4 +425,29 @@ export function remainingFromInvoice(contract: Contract, interest: number, amort
   const whole = Math.round(n);
   if (Math.abs(n - whole) > 0.1 || whole < 1 || whole > contract.termMonths) return null;
   return whole - 1;
+}
+
+// O saldo que o banco mostra num dia qualquer já tem a TR desde o último vencimento (o saldo é
+// corrigido dia a dia). O app precisa do saldo logo depois da parcela: desconta a TR proporcional
+// do vencimento até o dia em que o saldo foi visto. Fora do mês da parcela (ou sem data), fica igual
+export function balanceAtDue(
+  contract: Contract,
+  cp: { yearMonth: string; balance: number; createdAt?: string },
+  trFor?: (yearMonth: string) => number
+): number {
+  if (!contract.trIndexed || !trFor || !cp.createdAt) return cp.balance;
+  const seen = new Date(cp.createdAt);
+  if (Number.isNaN(seen.getTime())) return cp.balance;
+  const dueOf = (ym: string) => {
+    const [y, m] = ym.split('-').map(Number);
+    return new Date(y, m - 1, Math.min(contract.dueDay, new Date(y, m, 0).getDate()));
+  };
+  const due = dueOf(cp.yearMonth);
+  const nextYm = addMonths(cp.yearMonth, 1);
+  const nextDue = dueOf(nextYm);
+  const day = new Date(seen.getFullYear(), seen.getMonth(), seen.getDate());
+  if (day <= due || day >= nextDue) return cp.balance;
+  const share = (day.getTime() - due.getTime()) / (nextDue.getTime() - due.getTime());
+  const tr = Math.max(0, trFor(nextYm)) / 100;
+  return Math.round((cp.balance / Math.pow(1 + tr, share)) * 100) / 100;
 }

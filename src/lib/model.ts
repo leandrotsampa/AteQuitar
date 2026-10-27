@@ -1,7 +1,7 @@
 // Tudo o que as telas precisam calculado uma vez a partir dos dados salvos
 import { useMemo } from 'react';
 import type { Contract, ScheduleCheckpoint, ScheduleRow } from '../types/finance';
-import { buildSchedule, summarize, type ScheduleOptions, type Summary } from './finance';
+import { balanceAtDue, buildSchedule, summarize, type ScheduleOptions, type Summary } from './finance';
 import { trFunction, trIsOfficial } from './rates';
 import type { AppData } from './store';
 
@@ -39,27 +39,40 @@ function completenessOf(data: AppData): { score: number; missing: string[] } {
   return { score: done / checks.length, missing: checks.filter(([ok]) => !ok).map(([, label]) => label) };
 }
 
+// Saldos reais que calibram a tabela: os do banco e os calculados pela fatura do check-in
+export function realBalances(data: AppData, contract: Contract, trFor: (ym: string) => number): ScheduleCheckpoint[] {
+  // Saldos do check-in também calibram a projeção. O calculado pela fatura é o de logo depois
+  // da parcela, exato: no mesmo mês, vale mais que o saldo do banco (que é o do dia em que foi
+  // visto). Uma amortização extra do mesmo mês sempre abate em cima dele
+  const byInvoice = new Map(data.checkins.filter((ci) => ci.balanceSource === 'fatura' && ci.balanceAfter).map((ci) => [ci.yearMonth, ci]));
+  const bankOf = (ym: string) => data.checkpoints.find((cp) => cp.yearMonth === ym);
+  return [
+    // O saldo do banco vira o de logo depois da parcela: sem a TR dos dias até ser visto
+    ...data.checkpoints.filter((cp) => !byInvoice.has(cp.yearMonth)).map((cp) => ({ ...cp, balance: balanceAtDue(contract, cp, trFor) })),
+    ...data.checkins
+      .filter((ci) => ci.balanceAfter && ci.balanceAfter > 0)
+      .filter((ci) => ci.balanceSource === 'fatura' || !bankOf(ci.yearMonth))
+      .map((ci) => {
+        // Prazo: o da fatura; sem ele, o do saldo do banco do mesmo mês
+        const remaining = ci.remainingAfter ?? bankOf(ci.yearMonth)?.remaining;
+        return {
+          id: `ci-${ci.id}`,
+          yearMonth: ci.yearMonth,
+          balance: ci.balanceAfter!,
+          source: ci.balanceSource === 'fatura' ? ('fatura' as const) : ('banco' as const),
+          ...(remaining ? { remaining } : {}),
+          createdAt: ci.balanceSource === 'fatura' ? '' : ci.createdAt,
+        };
+      }),
+  ];
+}
+
 export function useFinanceModel(data: AppData): FinanceModel | null {
   return useMemo(() => {
     const contract = data.contract;
     if (!contract) return null;
     const trFor = trFunction(data.rates, contract.dueDay);
-    // Saldos do check-in também calibram a projeção. O calculado pela fatura é o de logo depois
-    // da parcela: uma amortização extra do mesmo mês sempre abate em cima dele
-    const checkpoints: ScheduleCheckpoint[] = [
-      ...data.checkpoints,
-      ...data.checkins
-        .filter((ci) => ci.balanceAfter && ci.balanceAfter > 0)
-        .filter((ci) => !data.checkpoints.some((cp) => cp.yearMonth === ci.yearMonth))
-        .map((ci) => ({
-          id: `ci-${ci.id}`,
-          yearMonth: ci.yearMonth,
-          balance: ci.balanceAfter!,
-          source: ci.balanceSource === 'fatura' ? ('fatura' as const) : ('banco' as const),
-          ...(ci.remainingAfter ? { remaining: ci.remainingAfter } : {}),
-          createdAt: ci.balanceSource === 'fatura' ? '' : ci.createdAt,
-        })),
-    ];
+    const checkpoints = realBalances(data, contract, trFor);
     // Amortização e juros copiados da fatura valem no lugar dos calculados
     const actuals = data.checkins
       .filter((ci) => ci.amortization !== undefined && ci.interest !== undefined)

@@ -111,7 +111,8 @@ describe('buildSchedule', () => {
       extras: [{ id: 'x', yearMonth: '2020-01', amount: 30000, mode: 'parcela', source: 'proprio' }],
     });
     expect(rows).toHaveLength(120);
-    expect(rows[1].amortization).toBeCloseTo(89000 / 119, 2);
+    // Como o banco: a amortização do SAC é truncada nos centavos
+    expect(rows[1].amortization).toBe(Math.floor((89000 / 119) * 100) / 100);
   });
 
   it('saldo real informado substitui o calculado', () => {
@@ -265,7 +266,7 @@ describe('prazo de quem já amortizou', () => {
     const oct = rows.findIndex((r) => r.yearMonth === '2026-10');
     expect(rows.length).toBe(oct + 1 + 362);
     // SAC: a amortização de novembro é o saldo corrigido dividido pelas 362 que faltam
-    expect(rows[oct + 1].amortization).toBeCloseTo((rows[oct + 1].openingBalance + rows[oct + 1].correction) / 362, 2);
+    expect(rows[oct + 1].amortization).toBe(Math.floor(((rows[oct + 1].openingBalance + rows[oct + 1].correction) / 362) * 100) / 100);
   });
 
   it('antes do primeiro dado real, as parcelas são estimadas', () => {
@@ -315,4 +316,20 @@ describe('seguros só com o total', () => {
     const rows = buildSchedule(caixa, { trFor, invoices: [sep, { yearMonth: '2026-10', insurance: 100, adminFee: 25 }] });
     expect(rows.find((r) => r.yearMonth === '2026-10')!.mip).toBeUndefined();
   });
+});
+
+describe('centavos como o banco', () => {
+  // Faturas de agosto a outubro: saldo logo antes (corrigido), parcelas que faltavam, amortização e juros
+  const faturas = [
+    { ym: '2026-08', corrigido: 382149.45, faltam: 365, amortizacao: 1046.98, juros: 2985.98 },
+    { ym: '2026-09', corrigido: 381759.88, faltam: 364, amortizacao: 1048.79, juros: 2982.93 },
+    { ym: '2026-10', corrigido: 381148.95, faltam: 363, amortizacao: 1049.99, juros: 2978.16 },
+  ];
+  for (const f of faturas) {
+    it(`${f.ym}: amortização truncada e juros arredondados batem com a fatura`, () => {
+      const rows = buildSchedule({ ...caixa, financedAmount: f.corrigido, termMonths: f.faltam, firstDueMonth: f.ym, trIndexed: false });
+      expect(rows[0].amortization).toBe(f.amortizacao);
+      expect(rows[0].interest).toBe(f.juros);
+    });
+  }
 });

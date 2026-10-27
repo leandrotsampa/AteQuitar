@@ -498,7 +498,7 @@ export const ContractWizard: React.FC<{
                         fatura faz o mesmo.
                       </div>
                       <div className="grid sm:grid-cols-2 gap-4 items-start">
-                        <Field label="Saldo devedor de hoje" help={HELP.currentBalance} optional hint="O que o app do banco mostra hoje.">
+                        <Field label="Saldo devedor de hoje" help={HELP.currentBalance} optional hint="Copie do app do banco agora: o saldo muda um pouco a cada dia.">
                           <MoneyField value={balance} onChange={setBalance} />
                         </Field>
                         <Field
