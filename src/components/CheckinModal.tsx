@@ -64,7 +64,6 @@ export const CheckinModal: React.FC<{
     () => [...(contract.feesRef ? [contract.feesRef] : []), ...(model.options.invoices ?? [])].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)),
     [contract.feesRef, model.options.invoices]
   );
-  const lastSplit = refs.length > 0 && refs[refs.length - 1].mip !== undefined;
   const extraOf = (m: string) => {
     const ci = data.checkins.find((c) => c.yearMonth === m);
     return ci?.extraId ? data.extras.find((e) => e.id === ci.extraId) : undefined;
@@ -78,7 +77,7 @@ export const CheckinModal: React.FC<{
     return {
       amort: cents(ci?.amortization ?? r?.amortization ?? 0),
       interest: cents(ci?.interest ?? r?.interest ?? 0),
-      fees: ci?.fees ? draftFromFees(ci.fees) : draftFromRow(r, lastSplit),
+      fees: ci?.fees ? draftFromFees(ci.fees) : draftFromRow(r, true),
       charges: ci?.charges ?? 0,
       fgts: ci?.fgts ?? 0,
       // Adiantada sem registro: o comum é o débito automático agendado
