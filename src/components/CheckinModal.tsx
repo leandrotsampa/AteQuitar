@@ -11,7 +11,7 @@ import { InvoiceFeesRows, LedgerRow, draftFromFees, draftFromRow, draftTotal, fe
 import type { FinanceModel } from '../lib/model';
 import type { AppData } from '../lib/store';
 import type { ExtraMode, ExtraPayment, ExtraSource, ScheduleCheckpoint } from '../types/finance';
-import { balanceFromInvoice, buildSchedule, effectiveExtra, remainingFromInvoice, summarize } from '../lib/finance';
+import { balanceFromInvoice, bankBalanceOnDate, buildSchedule, effectiveExtra, remainingFromInvoice, summarize } from '../lib/finance';
 import { ExtraPaymentFields, extraEffective, todayIso } from './ExtraPaymentFields';
 import { currentYearMonth, formatBRL, formatPct, monthLong, monthName, uid } from '../lib/format';
 import { pendingCheckinMonth } from '../lib/insights';
@@ -150,6 +150,12 @@ export const CheckinModal: React.FC<{
   // Amortização extra: só o efetivo abate o saldo; o resto são juros pro rata
   const eff = extraEffective(contract, { paid: f.extraPaid, date: f.extraDate, eff: f.extraEff, effEdited: f.effEdited });
   const keepExtra = f.hasExtra && eff > 0;
+  // Saldo que o banco mostrou depois desta parcela: é o saldo de hoje, e a fatura não abate nada
+  // dele. Ela só acerta o saldo do dia do vencimento, de onde saem as próximas parcelas
+  const bankSeen = data.checkpoints
+    .flatMap((c) => (c.source === 'banco' && c.yearMonth === ym && c.createdAt && !c.createdAt.startsWith('9999') ? [{ ...c, createdAt: c.createdAt }] : []))
+    .sort((a, b) => b.createdAt.localeCompare(a.createdAt))[0];
+  const bankToday = bankSeen && !keepExtra ? bankBalanceOnDate(contract, bankSeen, new Date(), model.trFor) : undefined;
   const extraRecord = (id: string): ExtraPayment => ({
     id,
     yearMonth: ym,
@@ -505,13 +511,29 @@ export const CheckinModal: React.FC<{
                           <span className="text-slate-500">Prestação de {monthLong(ym)}</span>
                           <span className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(installment)}</span>
                         </div>
+                        {bankSeen && bankToday !== undefined && (
+                          <div>
+                            <div className="flex justify-between gap-3">
+                              <span className="text-slate-500">Saldo de hoje</span>
+                              <span className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(bankToday)}</span>
+                            </div>
+                            <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                              O do banco, informado em {new Date(bankSeen.createdAt).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}. Ele já
+                              tem esta parcela paga: o check-in não abate nada dele.
+                            </div>
+                          </div>
+                        )}
                         <div>
                           <div className="flex justify-between gap-3">
-                            <span className="text-slate-500">Saldo depois da parcela</span>
+                            <span className="text-slate-500">
+                              {bankToday !== undefined ? `No vencimento (${dueLabel})` : `Saldo depois da parcela (${dueLabel})`}
+                            </span>
                             <span className="font-num font-semibold text-slate-900 dark:text-white">{formatBRL(balanceAfter ?? forecast)}</span>
                           </div>
                           <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                            {balanceSource === 'fatura' && far
+                            {bankToday !== undefined
+                              ? `${balanceSource === 'fatura' ? 'Pela fatura' : 'Previsto'}. A diferença para o saldo de hoje é só a TR dos dias desde o vencimento. É dele que saem as próximas parcelas.`
+                              : balanceSource === 'fatura' && far
                               ? `Calculado pela fatura. O contrato sozinho previa ${formatBRL(forecast)}: a diferença vem de amortizações feitas antes de você usar o app. A partir de agora vale o saldo da fatura.`
                               : balanceSource === 'fatura'
                               ? 'Calculado pelos juros e pela amortização da fatura: não precisa esperar o banco atualizar o saldo.'
