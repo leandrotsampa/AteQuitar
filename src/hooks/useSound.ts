@@ -15,7 +15,8 @@ export function installClickSounds(): () => void {
   const onClick = (e: MouseEvent) => {
     const el = (e.target as Element | null)?.closest?.(CLICKABLE);
     if (!el || el.closest('[data-silent]') || el.matches(':disabled, [aria-disabled="true"]')) return;
-    if (player.playedWithin(50)) return;
+    // Desde o começo deste clique, não há pouco: salvar pode levar mais de 50 ms recalculando a tela
+    if (player.playedSince(e.timeStamp)) return;
     player.play('tick');
   };
   // Na fase de bolha do documento: roda depois dos cliques do React, que podem ter tocado outro som
