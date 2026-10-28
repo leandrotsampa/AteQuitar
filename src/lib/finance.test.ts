@@ -179,6 +179,20 @@ describe('simulateExtra', () => {
     expect(r.totalExtra).toBe(10000);
     expect(r.interestSaved).toBeGreaterThan(0);
   });
+
+  it('a fatura já registrada do mês seguinte não apaga a economia', () => {
+    // Check-in da próxima parcela (em aberto): o saldo e os juros dela são os de sem a amortização
+    const rows = buildSchedule(base);
+    const jul = rows.find((r) => r.yearMonth === '2020-07')!;
+    const opts = {
+      checkpoints: [{ id: 'f', yearMonth: '2020-07', balance: jul.closingBalance, remaining: base.termMonths - 7, source: 'fatura' as const }],
+      actuals: [{ yearMonth: '2020-07', amortization: jul.amortization, interest: jul.interest }],
+    };
+    const r = simulateExtra(base, opts, { amount: 10000, startYm: '2020-06', frequency: 'once', mode: 'prazo' });
+    expect(r.totalExtra).toBe(10000);
+    expect(r.interestSaved).toBeGreaterThan(0);
+    expect(r.monthsSaved).toBeGreaterThan(0);
+  });
 });
 
 describe('compareSystems', () => {

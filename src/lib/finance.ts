@@ -315,7 +315,15 @@ export interface SimulationResult {
   paymentAfter: number;
 }
 
-export function simulateExtra(contract: Contract, opts: ScheduleOptions, plan: ExtraPlan): SimulationResult {
+export function simulateExtra(contract: Contract, rawOpts: ScheduleOptions, plan: ExtraPlan): SimulationResult {
+  // Saldos e faturas registrados depois do mês simulado (como a fatura em aberto da próxima
+  // parcela) são do caminho sem a amortização: valendo, apagariam o efeito dela. As duas tabelas
+  // seguem só a conta a partir dali, para comparar na mesma base
+  const opts: ScheduleOptions = {
+    ...rawOpts,
+    checkpoints: rawOpts.checkpoints?.filter((c) => c.yearMonth <= plan.startYm),
+    actuals: rawOpts.actuals?.filter((a) => a.yearMonth <= plan.startYm),
+  };
   const base = buildSchedule(contract, opts);
   const lastYm = base[base.length - 1]?.yearMonth ?? plan.startYm;
   const planned = planToExtras(plan, lastYm);
