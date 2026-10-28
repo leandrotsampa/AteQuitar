@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BadgeCheck, CircleDashed, Copy, Minus, RefreshCw, Square, X } from 'lucide-react';
+import { BadgeCheck, ChevronRight, CircleDashed, Copy, Minus, RefreshCw, Square, X } from 'lucide-react';
 import { motion } from 'motion/react';
 
 const WEEKDAYS = ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'];
@@ -72,18 +72,21 @@ export const TopBar: React.FC<{
               {title}
             </button>
             {calibrated !== undefined && (
+              // Um botão de verdade: a seta e o "Acertar" dizem que ele abre o check-in
               <button
                 type="button"
                 onClick={onCalibrate}
-                title={calibrated ? 'Projeção calibrada com o saldo real' : 'Informe o saldo do banco para os números ficarem exatos'}
-                className={`shrink-0 whitespace-nowrap inline-flex items-center gap-1 h-6 px-2 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
+                title={calibrated ? 'Saldo real do banco. Abrir o check-in para atualizar' : 'Números estimados pelo contrato. Abrir o check-in para acertar com a fatura'}
+                className={`group shrink-0 whitespace-nowrap inline-flex items-center gap-1 h-6 pl-2 pr-1.5 rounded-full text-[11px] font-bold cursor-pointer transition-colors ${
                   calibrated
-                    ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300'
-                    : 'bg-sol-100 text-sol-800 hover:bg-sol-200 dark:bg-sol-400/15 dark:text-sol-200'
+                    ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:hover:bg-emerald-500/25'
+                    : 'bg-sol-100 text-sol-800 hover:bg-sol-200 dark:bg-sol-400/15 dark:text-sol-200 dark:hover:bg-sol-400/25'
                 }`}
               >
                 {calibrated ? <BadgeCheck className="w-3.5 h-3.5" /> : <CircleDashed className="w-3.5 h-3.5" />}
                 {calibrated ? 'Saldo real' : 'Estimado'}
+                {!calibrated && <span className="font-semibold opacity-70">· Acertar</span>}
+                <ChevronRight className="w-3 h-3 opacity-60 transition-transform group-hover:translate-x-0.5" />
               </button>
             )}
           </div>
