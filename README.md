@@ -70,7 +70,8 @@ O **Até Quitar** responde essas perguntas com os números do seu contrato. Voc�
 
 ### 📅 Check-in do mês
 - Em menos de um minuto: **parcela paga**, **amortização extra** (dinheiro próprio, FGTS ou 13º) e o **saldo que o banco mostra**
-- Com o saldo real, o selo muda de **Estimado** para **Saldo real** e a projeção passa a partir dele
+- A fatura linha a linha, como no app do banco: amortização, juros, seguros (total ou MIP e DFI) e taxas e, se houver, atraso, FGTS e o **ajuste de centavos do banco**
+- Com o saldo real, o selo muda de **Estimado** para **Saldo real** e a projeção passa a partir dele. Clicar no selo abre o check-in
 - Compara o saldo do banco com a estimativa e explica a diferença
 - Celebração com confete ao concluir e a cada novo marco de 10%
 
@@ -132,6 +133,7 @@ O **Até Quitar** responde essas perguntas com os números do seu contrato. Voc�
 - Menu lateral recolhível (botão na borda ou **Ctrl+B**), animações suaves e sons sutis que podem ser desligados
 - **Tutorial guiado** na primeira abertura, cada tela se apresenta na primeira visita e o botão **Como usar** revê o passo a passo
 - **Modo exemplo** para explorar tudo antes de cadastrar o seu
+- **Aviso de versão nova** no menu, com o link para baixar, "Mais tarde" e "Ignorar esta versão"
 
 </td>
 </tr>
@@ -339,7 +341,7 @@ O banco `atequitar.sqlite` tem uma tabela para cada tipo de informação, com re
 | Tabela | O que guarda |
 |---|---|
 | `contract` | O financiamento: valores, taxa, CET, prazo, sistema, datas, TR, seguros e taxa de administração |
-| `checkins` | Parcela paga em cada mês e, se informado, o saldo depois dela |
+| `checkins` | A fatura de cada mês (amortização, juros, seguros, taxas, atraso, FGTS e ajuste do banco), o total pago e, se houver, o saldo e as parcelas que faltam depois dela |
 | `extra_payments` | Amortizações extras: mês, valor, prazo ou parcela e origem (próprio, FGTS, 13º) |
 | `balance_checkpoints` | Saldos reais informados (app do banco ou extrato do IR) |
 | `milestones` | Marcos de 10% já comemorados |
@@ -389,12 +391,14 @@ Em **Dados e backup → Exportar (JSON)** o app gera um arquivo com o contrato e
 | `extras[].mode` | `prazo` (reduz o prazo) ou `parcela` (reduz a parcela) |
 | `extras[].source` | `proprio`, `fgts` ou `decimo` |
 | `checkpoints[].source` | `banco` (app do banco) ou `ir` (extrato do Imposto de Renda, saldo de 31/12) |
+| `checkins[].adjustment` | Ajuste de centavos do banco, com sinal: negativo é desconto, positivo é acréscimo |
 
 **De onde tirar os números:**
 - **Contrato:** quadro-resumo da primeira página (valor financiado, taxa efetiva anual, CET, prazo, sistema de amortização e vencimento do primeiro encargo)
 - **Seguros e taxa de administração:** boleto ou detalhe da parcela no app do banco (linhas MIP, DFI e TA)
 - **Saldo devedor:** app do banco → Habitação → Saldo devedor (não use o valor de quitação com desconto)
 - **Extrato do IR:** app ou site do banco → Habitação → Extrato para Imposto de Renda, com o saldo em 31 de dezembro
+- **Documento Descritivo do Crédito:** peça ao banco, que é obrigado a entregar pela Resolução CMN nº 5.057/2022. Em PDF, ele importa tudo de uma vez
 
 ## 🛠️ Desenvolvimento
 
@@ -414,7 +418,7 @@ npm run dev
 | `npm run electron:dev` | Abre o app desktop (usa o build em `dist/` se existir; senão, o servidor em `:3100`) |
 | `npm start` | Build de produção e abre o app desktop |
 | `npm run lint` | Checagem de tipos com TypeScript |
-| `npm test` | Testes automatizados (Vitest) do cálculo, da comparação com investimentos, do seletor de mês e da conversão dos dados |
+| `npm test` | Testes automatizados (Vitest) do cálculo, dos dias úteis, da comparação com investimentos, do seletor de mês, da leitura do documento do banco, da verificação de versão e da conversão dos dados |
 | `npm run build` | Build de produção da interface em `dist/` |
 | `npm run icons` | Gera os ícones (`.png` e `.ico`) a partir de `build/icon.svg` |
 | `npm run splash` | Gera a tela de carregamento do portátil (`build/splash.bmp`) a partir de `scripts/splash/splash.html` |
@@ -444,12 +448,17 @@ atequitar/
 ├── src/
 │   ├── screens/           # Minha casa, Parcelas, Amortizar, Amortizar ou investir, SAC ou Price, Minha taxa, Taxas e Aprender
 │   ├── components/        # menu, barra superior, casa animada, cadastro guiado, check-in, dados e componentes de interface
-│   ├── hooks/             # preferências da interface, sons e contagem animada
+│   ├── hooks/             # preferências da interface, sons, contagem animada, data de hoje e versão nova
 │   ├── lib/
 │   │   ├── finance.ts     # tabela SAC/Price com TR, extras e saldos reais; resumo e simulações
+│   │   ├── businessDays.ts # dias úteis e feriados nacionais, para a TR entre vencimentos
+│   │   ├── bankDocument.ts # leitura do Documento Descritivo do Crédito
+│   │   ├── importDocument.ts # plano da importação, aplicação e conferência do saldo
+│   │   ├── pdfText.ts     # texto do PDF em linhas (pdf.js, carregado só quando usado)
 │   │   ├── invest.ts      # amortizar × investir, IR regressivo e ganho real
 │   │   ├── rates.ts       # taxas do Banco Central (SGS), cache e TR projetada
 │   │   ├── insights.ts    # dicas do momento e check-in pendente
+│   │   ├── updates.ts     # última versão publicada no GitHub
 │   │   └── store.ts       # estado do app e gravação (SQLite no desktop, localStorage no navegador)
 │   └── types/             # tipos do financiamento
 ├── scripts/               # ícones, tela de carregamento do portátil, empacotamento e notas de release
@@ -460,14 +469,14 @@ atequitar/
 ## 🗺️ Próximos passos
 
 - [ ] Ler o extrato anual do IR e o boleto direto em PDF
+- [ ] Documento Descritivo do Crédito de outros bancos (hoje o leitor reconhece um modelo)
 - [ ] Contratos corrigidos pelo IPCA ou pela poupança, com o índice próprio de cada mês
 - [ ] Mais de um financiamento (por exemplo, casa e terreno)
 - [ ] Lembrete do sistema no dia do vencimento
-- [x] Testes automatizados do cálculo, da comparação com investimentos e dos dados
 
 ## ⚠️ Aviso
 
-O Até Quitar é uma ferramenta de acompanhamento e simulação. Os valores são aproximações do que o banco calcula: o banco aplica a TR na data de aniversário do contrato e pode arredondar seguros e taxas de outro jeito. Por isso o saldo informado no check-in sempre tem a palavra final. O app **não substitui** o extrato oficial do banco nem a orientação de um profissional de finanças.
+O Até Quitar é uma ferramenta de acompanhamento e simulação. Os valores refazem a conta do banco, mas podem diferir em centavos (veja **Precisão e diferenças conhecidas**), e cada banco pode arredondar seguros e taxas de um jeito próprio. Por isso a fatura, o saldo informado e o documento do banco sempre têm a palavra final. O app **não substitui** o extrato oficial do banco nem a orientação de um profissional de finanças.
 
 ## 📊 Acompanhamento
 
