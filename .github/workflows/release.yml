@@ -40,6 +40,8 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+          # A tag só existe depois de publicar: um rascunho da mesma versão pode ser gerado de novo,
+          # e aí a release e o CHANGELOG.md são atualizados com os commits novos
           if git rev-parse "v$VERSION" >/dev/null 2>&1; then
             echo "::error::A versão v$VERSION já foi publicada. Aumente o campo \"version\" do package.json e rode de novo."
             exit 1
@@ -153,8 +155,13 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add CHANGELOG.md
-          git commit -m "chore(release): v${{ needs.version.outputs.version }}"
-          git push origin HEAD:${{ github.ref_name }}
+          # Rodando de novo sem commits novos, o changelog não muda: nada a registrar
+          if git diff --cached --quiet; then
+            echo "CHANGELOG.md sem mudanças"
+          else
+            git commit -m "chore(release): v${{ needs.version.outputs.version }}"
+            git push origin HEAD:${{ github.ref_name }}
+          fi
 
       - name: Publicar a release
         uses: softprops/action-gh-release@v2

@@ -1,5 +1,6 @@
 // Gera as notas da release a partir dos commits desde a última tag (padrão "tipo: descrição")
-// e atualiza o CHANGELOG.md. Uso: node scripts/release-notes.mjs <versão> <arquivo-de-notas>
+// e atualiza o CHANGELOG.md. Rodar de novo para a mesma versão (um rascunho ainda não publicado)
+// troca a seção dela, sem repetir. Uso: node scripts/release-notes.mjs <versão> <arquivo-de-notas>
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 
@@ -14,7 +15,8 @@ const git = (...args) =>
 
 let previousTag = '';
 try {
-  previousTag = git('describe', '--tags', '--abbrev=0', '--match', 'v*');
+  // A tag da própria versão não conta: as notas são sempre desde a versão anterior
+  previousTag = git('describe', '--tags', '--abbrev=0', '--match', 'v*', '--exclude', `v${version}`);
 } catch {
   // primeira release: considera todo o histórico
 }
@@ -56,10 +58,13 @@ const date = new Date().toISOString().slice(0, 10);
 const section = `## v${version} (${date})\n\n${body || '- Sem mudanças registradas nos commits.'}\n`;
 writeFileSync(notesFile, `${body || '- Sem mudanças registradas nos commits.'}\n`);
 
-// CHANGELOG.md: a versão nova entra no topo, logo abaixo do título
+// CHANGELOG.md: a versão entra no topo, logo abaixo do título, no lugar da seção dela se já houver
 const header = '# Changelog\n\nTodas as versões do Até Quitar e o que mudou em cada uma.\n\n';
 const current = existsSync('CHANGELOG.md') ? readFileSync('CHANGELOG.md', 'utf8') : header;
-const rest = current.startsWith(header) ? current.slice(header.length) : current;
+const rest = (current.startsWith(header) ? current.slice(header.length) : current)
+  .split(/^(?=## )/m)
+  .filter((part) => !part.startsWith(`## v${version} (`))
+  .join('');
 writeFileSync('CHANGELOG.md', `${header}${section}\n${rest}`.replace(/\n{3,}/g, '\n\n'));
 
 console.log(`Notas de v${version} geradas (${commits.length} commits desde ${previousTag || 'o início'})`);
