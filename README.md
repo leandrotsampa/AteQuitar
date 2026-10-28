@@ -120,6 +120,7 @@ O **Até Quitar** responde essas perguntas com os números do seu contrato. Voc�
 ### 🗂️ Parcelas e registros
 - Tabela mês a mês de todo o financiamento: valor, amortização, juros, **TR**, seguros e saldo
 - Check-ins, amortizações extras, saldos do banco e do **extrato do IR**, com exclusão
+- **Importa o Documento Descritivo do Crédito** em PDF (Resolução CMN nº 5.057/2022): cadastro, parcelas pagas e amortizações de uma vez, com a conferência do saldo antes de gravar
 - Seletor de mês próprio, com os meses que já têm registro marcados
 
 </td>
@@ -136,7 +137,7 @@ O **Até Quitar** responde essas perguntas com os números do seu contrato. Voc�
 </tr>
 </table>
 
-**Privado por padrão:** os dados ficam num banco SQLite no seu computador. A única conexão com a internet é a consulta pública às taxas do Banco Central.
+**Privado por padrão:** os dados ficam num banco SQLite no seu computador, e o PDF importado é lido ali mesmo, sem sair dele. As únicas conexões com a internet são a consulta pública às taxas do Banco Central e a verificação de versão nova no GitHub; nenhuma envia os seus dados.
 
 ## 📸 Telas
 
@@ -182,14 +183,18 @@ O **Até Quitar** responde essas perguntas com os números do seu contrato. Voc�
 
 | Etapa | Regra |
 |---|---|
-| **Taxa mensal** | Equivalente à taxa efetiva anual do contrato: `(1 + a)^(1/12) − 1`. O cadastro aceita a taxa de três jeitos: **efetiva ao ano** (como no contrato), **nominal ao ano** (como o app da Caixa mostra em "Juros nominais vigente", que é a taxa do mês × 12) ou **ao mês**. Exemplo: 9,3764% nominal = 0,7814% ao mês = 9,79% efetiva |
-| **Correção pela TR** | Nos contratos com TR, o saldo é corrigido antes dos juros: `saldo × TR do mês`. Os meses passados usam a **TR oficial** de cada mês; os futuros, a média dos últimos 12 meses |
-| **Juros** | `saldo corrigido × taxa mensal` |
-| **Amortização no SAC** | `saldo ÷ parcelas restantes`: a parcela cai todo mês |
+| **Taxa mensal** | Equivalente à taxa efetiva anual do contrato, com as 4 casas decimais do contrato (9,7900%): `(1 + a)^(1/12) − 1`. O cadastro aceita a taxa de três jeitos: **efetiva ao ano** (como no contrato), **nominal ao ano** (como o app da Caixa mostra em "Juros nominais vigente", que é a taxa do mês × 12) ou **ao mês**. Exemplo: 9,3764% nominal = 0,7814% ao mês = 9,79% efetiva |
+| **Correção pela TR** | Nos contratos com TR, o saldo é corrigido antes dos juros: `saldo × TR do período`. Os meses passados usam a **TR oficial** de cada período (de um vencimento ao outro); os futuros, a média dos últimos 12 meses |
+| **Saldo de hoje** | Entre dois vencimentos, a TR entra aos poucos, pelos **dias úteis** que já passaram: `saldo × (1 + TR)^(dias úteis passados ÷ dias úteis do período)`. Sábados, domingos e feriados nacionais não contam |
+| **Juros** | `saldo corrigido × taxa mensal`, arredondado ao centavo |
+| **Amortização no SAC** | `saldo corrigido ÷ parcelas restantes`, sem arredondar para cima: a parcela cai todo mês |
 | **Amortização na Price** | Parcela pela fórmula `saldo × i ÷ (1 − (1 + i)^−n)` sobre o saldo e o prazo restantes; amortização = parcela − juros |
+| **Seguros** | MIP sobre o saldo logo depois da parcela; DFI corrigido pela TR. Os dois partem dos valores da última fatura informada |
 | **Parcela** | Amortização + juros + seguros (MIP + DFI) + taxa de administração |
 
 A parcela do mês conta como paga depois do dia do vencimento. O percentual quitado é `1 − saldo ÷ valor financiado`, sempre arredondado para baixo (29,9% ainda não acende a luz dos 30%).
+
+Essas regras foram conferidas, parcela por parcela, com o Documento Descritivo do Crédito de um contrato real. Cada banco pode arredondar de um jeito próprio; veja abaixo as diferenças conhecidas.
 
 </details>
 
@@ -201,6 +206,26 @@ A parcela do mês conta como paga depois do dia do vencimento. O percentual quit
 - **Reduzir o prazo:** mantém o mesmo nível de pagamento e recalcula quantas parcelas faltam (no SAC, mantém a amortização; na Price, a parcela)
 - **Reduzir a parcela:** mantém o prazo e recalcula a parcela sobre o saldo menor
 - **Economia de uma amortização:** juros e seguros do plano com a amortização comparados aos do plano sem ela, até o fim do financiamento
+- **Documento do banco:** importado, ele traz o saldo depois de cada parcela paga e as amortizações extras, e passa a valer no lugar do que foi calculado nesses meses
+
+</details>
+
+<details>
+<summary><b>Precisão e diferenças conhecidas</b></summary>
+<br />
+
+O app refaz a conta do banco, mas o banco não publica todos os detalhes do arredondamento. Por isso, alguns campos podem diferir em centavos:
+
+| Campo | Diferença | Por quê |
+|---|---|---|
+| **Juros** | Até 1 centavo em alguns meses | O arredondamento do saldo corrigido no banco nem sempre é reproduzível |
+| **Seguro MIP** | Até 1 centavo | A regra exata de arredondamento do seguro não é pública |
+| **Seguro MIP, de um mês para o outro** | Pode subir de uma vez | A taxa depende da idade e muda no aniversário de quem está no contrato; o app não sabe a data |
+| **Saldo de hoje** | Alguns reais, até sair a TR oficial | Antes de o Banco Central publicar a TR do período, o app usa uma estimativa |
+| **Parcelas futuras × planilha do banco** | Alguns reais por parcela | A planilha de evolução do banco costuma projetar sem TR; o app projeta com a média da TR |
+| **Ajuste entre boleto e pagamento** | Centavos, para mais ou para menos | O banco recalcula a parcela no dia do pagamento e acerta a diferença; é imprevisível |
+
+As diferenças **não se acumulam**: cada check-in com a fatura paga, cada saldo informado e cada importação do documento do banco trazem o app de volta ao valor exato.
 
 </details>
 
