@@ -15,6 +15,7 @@ import {
   Settings2,
   Sun,
   Database,
+  Download,
   Volume2,
   VolumeX,
 } from 'lucide-react';
@@ -24,6 +25,7 @@ import { RailTooltip } from './ui/RailTooltip';
 import { DURATION, EASE_OUT, instantIf } from '../lib/motion';
 import { playSound } from '../hooks/useSound';
 import { useUiPrefs } from '../hooks/useUiPrefs';
+import { useUpdateCheck } from '../hooks/useUpdateCheck';
 import type { ScreenId } from '../screens/types';
 
 const WIDTH_EXPANDED = 272;
@@ -95,6 +97,7 @@ export const Sidebar: React.FC<{
   const navRef = useRef<HTMLElement>(null);
   // Para baixo, como os marcos: 29,9% ainda não é 30%
   const pct = Math.floor(progress * 100 + 1e-9);
+  const { update, later, skip } = useUpdateCheck();
 
   const footerBtn = `w-full flex items-center rounded-xl text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer text-[13px] ${
     collapsed ? 'justify-center h-10' : 'justify-between px-3 py-2'
@@ -273,6 +276,51 @@ export const Sidebar: React.FC<{
         </nav>
 
         <div className={`border-t border-slate-900/[0.06] dark:border-white/[0.06] space-y-0.5 ${collapsed ? 'p-2' : 'p-3'}`}>
+          {update &&
+            (collapsed ? (
+              <RailTooltip enabled label={`Versão ${update.version} disponível`} detail="Abrir a página para baixar">
+                <a
+                  href={update.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className={`${footerBtn} relative text-emerald-600 dark:text-emerald-400`}
+                  aria-label={`Versão ${update.version} disponível. Baixar`}
+                >
+                  <Download className="w-4 h-4" />
+                  <span className="absolute top-2 right-3.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" />
+                </a>
+              </RailTooltip>
+            ) : (
+              <div className="mb-1.5 rounded-xl bg-emerald-50 ring-1 ring-inset ring-emerald-600/15 dark:bg-emerald-500/10 dark:ring-emerald-400/20 px-3 py-2.5">
+                <div className="flex items-start gap-2.5">
+                  <Download className="mt-0.5 w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <div className="min-w-0">
+                    <div className="text-[13px] font-bold text-slate-900 dark:text-white">
+                      Versão <span className="font-num">{update.version}</span> disponível
+                    </div>
+                    <div className="text-xs text-slate-600 dark:text-slate-400">
+                      Você usa a <span className="font-num">{__APP_VERSION__}</span>. Seus dados continuam.
+                    </div>
+                  </div>
+                </div>
+                <a
+                  href={update.url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="mt-2 flex items-center justify-center gap-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold py-1.5 transition-colors"
+                >
+                  <Download className="w-3.5 h-3.5" /> Baixar no GitHub
+                </a>
+                <div className="mt-1 flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                  <button onClick={later} className="px-1 py-0.5 rounded hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer">
+                    Mais tarde
+                  </button>
+                  <button onClick={skip} className="px-1 py-0.5 rounded hover:text-slate-800 dark:hover:text-slate-200 cursor-pointer">
+                    Ignorar esta versão
+                  </button>
+                </div>
+              </div>
+            ))}
           <RailTooltip enabled={collapsed} label="Meu financiamento" detail="Editar os dados do contrato">
             <button onClick={onOpenContract} className={footerBtn} aria-label={collapsed ? 'Meu financiamento' : undefined}>
               <span className="flex items-center gap-2.5">
