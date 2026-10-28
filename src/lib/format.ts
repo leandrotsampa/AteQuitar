@@ -68,6 +68,11 @@ export function formatDuration(months: number): string {
 
 // Taxa anual ↔ mensal equivalentes (juros compostos), em %
 export const annualToMonthly = (pctYear: number): number => (Math.pow(1 + pctYear / 100, 1 / 12) - 1) * 100;
+// Taxa do mês que o banco usa nas parcelas: a partir da efetiva com 4 casas, como sai no contrato.
+// Na Caixa, 9,3764% nominal vira 9,7900% efetiva, e os juros saem dela (conferido em 26 parcelas:
+// pela nominal ÷ 12 só 2 batiam no centavo; pela efetiva impressa, 16, e as outras a 1 centavo)
+export const contractMonthlyRate = (pctEffectiveYear: number): number =>
+  annualToMonthly(Math.round(pctEffectiveYear * 10000) / 10000);
 export const monthlyToAnnual = (pctMonth: number): number => (Math.pow(1 + pctMonth / 100, 12) - 1) * 100;
 
 // Taxa nominal anual = taxa do mês × 12 (é a que o app da Caixa mostra como "Juros nominais").

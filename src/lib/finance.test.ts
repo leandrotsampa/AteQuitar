@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { contractMonthlyRate } from './format';
 import type { Contract } from '../types/finance';
 import { migrateCheckpoints } from './store';
 import { balanceAtDue, balanceOnDate, bankBalanceOnDate, balanceFromInvoice, remainingFromInvoice, buildSchedule, effectiveExtra, lastDueBefore, lastPaidMonth, summarize, simulateExtra, compareSystems } from './finance';
@@ -54,10 +55,11 @@ describe('buildSchedule', () => {
     const c = { ...base, trIndexed: true, feesRef: { yearMonth: '2020-03', insurance: 160, mip: 60, dfi: 100, adminFee: 25 } };
     const rows = buildSchedule(c, { trFor: () => 0.5 });
     const at = (ym: string) => rows.find((r) => r.yearMonth === ym)!;
-    const corrected = (ym: string) => at(ym).openingBalance + at(ym).correction;
+    // Base do MIP: o saldo logo depois da parcela
+    const after = (ym: string) => at(ym).closingBalance + at(ym).extra;
     expect(at('2020-03')).toMatchObject({ mip: 60, dfi: 100, insurance: 160, fees: 185 });
     expect(at('2020-04').dfi).toBeCloseTo(100.5, 2);
-    expect(at('2020-04').mip).toBeCloseTo((60 * corrected('2020-04')) / corrected('2020-03'), 2);
+    expect(at('2020-04').mip).toBeCloseTo((60 * after('2020-04')) / after('2020-03'), 2);
     expect(at('2020-02').dfi).toBeCloseTo(100 / 1.005, 2);
     expect(at('2020-02').mip!).toBeGreaterThan(60);
     expect(at('2020-04').adminFee).toBe(25);
@@ -378,7 +380,24 @@ describe('saldo do banco num dia qualquer', () => {
     expect(later).toBeGreaterThan(380511.89);
     expect(later - 380511.89).toBeLessThan(200);
   });
+  it('a TR corre pelos dias úteis, como no saldo da Caixa', () => {
+    // Depois da parcela de outubro: 380.098,96 (Documento Descritivo do Crédito); TR de 05/10 a 05/11: 0,1630%
+    const tr = () => 0.163;
+    expect(balanceOnDate(c, 380098.96, '2026-10', new Date(2026, 9, 26), tr)).toBe(380511.89);
+    expect(balanceOnDate(c, 380098.96, '2026-10', new Date(2026, 9, 28), tr)).toBe(380570.92);
+  });
   it('no dia do vencimento não há TR a somar', () => {
     expect(balanceOnDate(c, 1000, '2026-10', new Date(2026, 9, 5), trFor)).toBe(1000);
+  });
+});
+
+describe('taxa do mês do contrato', () => {
+  it('sai da efetiva com 4 casas, como a Caixa: juros de setembro e outubro no centavo', () => {
+    // 9,3764% nominal = 9,790034% efetiva, que o contrato imprime como 9,7900%
+    const i = contractMonthlyRate(9.790034) / 100;
+    const cents = (v: number) => Math.round(v * 100) / 100;
+    // Saldos corrigidos do Documento Descritivo do Crédito (saldo depois + amortização)
+    expect(cents(381759.87 * i)).toBe(2982.93);
+    expect(cents(381148.95 * i)).toBe(2978.16);
   });
 });

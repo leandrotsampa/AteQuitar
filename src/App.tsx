@@ -16,6 +16,7 @@ import { EASE_OUT, instantIf } from './lib/motion';
 import { uid, withBank } from './lib/format';
 import { demoData } from './lib/demo';
 import { installClickSounds, playSound } from './hooks/useSound';
+import { useToday } from './hooks/useToday';
 import { getUiPrefs, setUiPrefs } from './hooks/useUiPrefs';
 import { HomeScreen } from './screens/HomeScreen';
 import type { ScreenId, ScreenProps } from './screens/types';
@@ -86,7 +87,8 @@ function applyWizard(prev: AppData, r: WizardResult): AppData {
 
 export default function App() {
   const { data, loaded, update } = useAppData();
-  const model = useFinanceModel(data);
+  const today = useToday();
+  const model = useFinanceModel(data, today);
   const reduce = Boolean(useReducedMotion());
   const { dialog, confirm, notify } = useAppDialog();
 

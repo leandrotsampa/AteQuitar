@@ -32,6 +32,7 @@ import { balanceOnDate, bankBalanceOnDate } from '../lib/finance';
 import { buildTips, checkinStreak, pendingCheckinMonth } from '../lib/insights';
 import { EASE_OUT, instantIf } from '../lib/motion';
 import { playSound } from '../hooks/useSound';
+import { useToday } from '../hooks/useToday';
 
 const MILESTONES = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100];
 
@@ -57,6 +58,7 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
       : []),
   ];
   // De onde vem o saldo de hoje: do último saldo real, mais as parcelas pagas desde então
+  const today = useToday();
   const real = model.lastRealBalance;
   // Saldo de hoje como o banco mostra: o de depois da última parcela, com a TR dos dias desde então
   const lastPaid = summary.paidCount > 0 ? model.rows[summary.paidCount - 1] : null;
@@ -78,8 +80,8 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
   const balanceToday = !lastPaid
     ? summary.currentBalance
     : bankStillValid
-      ? bankBalanceOnDate(model.contract, bankNow, new Date(), model.trFor)
-      : balanceOnDate(model.contract, summary.currentBalance, lastPaid.yearMonth, new Date(), model.trFor);
+      ? bankBalanceOnDate(model.contract, bankNow, today, model.trFor)
+      : balanceOnDate(model.contract, summary.currentBalance, lastPaid.yearMonth, today, model.trFor);
   const trToday = balanceToday - summary.currentBalance;
   const realIndex = real ? model.rows.findIndex((r) => r.yearMonth === real.yearMonth) : -1;
   const sinceReal = real && realIndex >= 0 ? summary.paidCount - 1 - realIndex : 0;

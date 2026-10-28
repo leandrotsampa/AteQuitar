@@ -1,7 +1,7 @@
 // Tudo o que as telas precisam calculado uma vez a partir dos dados salvos
 import { useMemo } from 'react';
-import type { Contract, ScheduleCheckpoint, ScheduleRow } from '../types/finance';
-import { balanceAtDue, buildSchedule, summarize, type ScheduleOptions, type Summary } from './finance';
+import type { BalanceCheckpoint, Contract, ScheduleCheckpoint, ScheduleRow } from '../types/finance';
+import { balanceAtDue, balanceFromInvoice, buildSchedule, summarize, type ScheduleOptions, type Summary } from './finance';
 import { trFunction, trIsOfficial } from './rates';
 import type { AppData } from './store';
 
@@ -41,24 +41,43 @@ function completenessOf(data: AppData): { score: number; missing: string[] } {
 
 // Saldos reais que calibram a tabela: os do banco e os calculados pela fatura do check-in
 export function realBalances(data: AppData, contract: Contract, trFor: (ym: string) => number): ScheduleCheckpoint[] {
-  // Saldos do check-in também calibram a projeção. O calculado pela fatura é o de logo depois
-  // da parcela, exato: no mesmo mês, vale mais que o saldo do banco (que é o do dia em que foi
-  // visto). Uma amortização extra do mesmo mês sempre abate em cima dele
-  const byInvoice = new Map(data.checkins.filter((ci) => ci.balanceSource === 'fatura' && ci.balanceAfter).map((ci) => [ci.yearMonth, ci]));
+  // Saldos do check-in também calibram a projeção. No mesmo mês, vale o saldo do banco com data:
+  // sem a TR dos dias úteis até ser visto, ele volta ao centavo para o vencimento (conferido na
+  // Caixa). O calculado pela fatura sai de juros arredondados e pode errar uns centavos de real.
+  // Uma amortização extra do mesmo mês sempre abate em cima dele
+  const dated = (cp: BalanceCheckpoint) => Boolean(cp.createdAt) && !cp.createdAt!.startsWith('9999');
   const bankOf = (ym: string) => data.checkpoints.find((cp) => cp.yearMonth === ym);
+  const invoiceWins = (ym: string) => {
+    const cp = bankOf(ym);
+    return !cp || !dated(cp);
+  };
+  const byInvoice = new Set(
+    data.checkins.filter((ci) => ci.balanceSource === 'fatura' && ci.balanceAfter && invoiceWins(ci.yearMonth)).map((ci) => ci.yearMonth)
+  );
   return [
     // O saldo do banco vira o de logo depois da parcela: sem a TR dos dias até ser visto
-    ...data.checkpoints.filter((cp) => !byInvoice.has(cp.yearMonth)).map((cp) => ({ ...cp, balance: balanceAtDue(contract, cp, trFor) })),
+    ...data.checkpoints
+      .filter((cp) => !byInvoice.has(cp.yearMonth))
+      .map((cp) => {
+        // Prazo: o informado com o saldo; sem ele, o da fatura do mesmo mês
+        const remaining = cp.remaining ?? data.checkins.find((ci) => ci.yearMonth === cp.yearMonth)?.remainingAfter;
+        return { ...cp, balance: balanceAtDue(contract, cp, trFor), ...(remaining ? { remaining } : {}) };
+      }),
     ...data.checkins
       .filter((ci) => ci.balanceAfter && ci.balanceAfter > 0)
-      .filter((ci) => ci.balanceSource === 'fatura' || !bankOf(ci.yearMonth))
+      .filter((ci) => (ci.balanceSource === 'fatura' && byInvoice.has(ci.yearMonth)) || !bankOf(ci.yearMonth))
       .map((ci) => {
         // Prazo: o da fatura; sem ele, o do saldo do banco do mesmo mês
         const remaining = ci.remainingAfter ?? bankOf(ci.yearMonth)?.remaining;
+        // Pela fatura, recalcula com a regra de hoje (o valor guardado é o da época do check-in)
+        const fromInvoice =
+          ci.balanceSource === 'fatura' && ci.interest !== undefined && ci.amortization !== undefined
+            ? balanceFromInvoice(contract, ci.interest, ci.amortization, ci.remainingAfter)
+            : null;
         return {
           id: `ci-${ci.id}`,
           yearMonth: ci.yearMonth,
-          balance: ci.balanceAfter!,
+          balance: fromInvoice ?? ci.balanceAfter!,
           source: ci.balanceSource === 'fatura' ? ('fatura' as const) : ('banco' as const),
           ...(remaining ? { remaining } : {}),
           createdAt: ci.balanceSource === 'fatura' ? '' : ci.createdAt,
@@ -67,7 +86,9 @@ export function realBalances(data: AppData, contract: Contract, trFor: (ym: stri
   ];
 }
 
-export function useFinanceModel(data: AppData): FinanceModel | null {
+// `today` refaz as contas na virada do dia (a parcela que venceu passa a contar como paga)
+export function useFinanceModel(data: AppData, today: Date = new Date()): FinanceModel | null {
+  const day = today.toDateString();
   return useMemo(() => {
     const contract = data.contract;
     if (!contract) return null;
@@ -84,7 +105,7 @@ export function useFinanceModel(data: AppData): FinanceModel | null {
     const options: ScheduleOptions = { extras: data.extras, checkpoints, trFor, invoices, trOfficial, actuals };
     const rows = buildSchedule(contract, options);
     const originalRows = buildSchedule(contract, { trFor, invoices });
-    const summary = summarize(contract, rows, new Date(), paidMonths);
+    const summary = summarize(contract, rows, new Date(day), paidMonths);
     const paidYm = summary.paidCount > 0 ? rows[summary.paidCount - 1].yearMonth : '';
     const lastRealBalance = [...checkpoints].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)).filter((c) => c.yearMonth <= paidYm).at(-1) ?? null;
     return {
@@ -99,5 +120,5 @@ export function useFinanceModel(data: AppData): FinanceModel | null {
       lastRealBalance,
       paidMonths,
     };
-  }, [data]);
+  }, [data, day]);
 }

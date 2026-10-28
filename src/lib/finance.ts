@@ -1,7 +1,8 @@
 // Motor de cálculo do financiamento: tabela mês a mês (SAC ou Price), com TR, seguros,
 // amortizações extras e saldos reais informados pelo usuário. Funções puras.
 import type { Contract, ExtraMode, ExtraPayment, FeesReference, ScheduleCheckpoint, ScheduleRow } from '../types/finance';
-import { addMonths, annualToMonthly, currentYearMonth } from './format';
+import { addMonths, contractMonthlyRate, currentYearMonth } from './format';
+import { businessDaysBetween } from './businessDays';
 
 export interface ScheduleOptions {
   extras?: ExtraPayment[];
@@ -30,11 +31,12 @@ function applyFees(rows: ScheduleRow[], refs: FeesReference[]): void {
   const indexOf = new Map(rows.map((r, k) => [r.yearMonth, k]));
   const first = rows[0].yearMonth;
   const rowOf = (ym: string) => indexOf.get(ym) ?? (ym < first ? 0 : rows.length - 1);
-  // Índice acumulado da TR e saldo corrigido (base do MIP) de cada mês
+  // Índice acumulado da TR de cada mês (corrige o DFI)
   const cum: number[] = [];
   rows.forEach((r, k) => cum.push((k > 0 ? cum[k - 1] : 1) * (r.openingBalance > 0 ? 1 + r.correction / r.openingBalance : 1)));
-  // Em mês com saldo real, a base é ele (o de antes da parcela), não o estimado que vinha da tabela
-  const base = rows.map((r) => (r.checkpoint ? r.closingBalance + r.amortization + r.extra : r.openingBalance + r.correction));
+  // Base do MIP: o saldo logo depois da parcela (antes das amortizações extras do mês). É o que
+  // fecha com a projeção da Caixa no Documento Descritivo do Crédito; o de antes da parcela, não
+  const base = rows.map((r) => r.closingBalance + r.extra);
 
   // Divide os totais usando a última fatura detalhada antes deles
   const detailed = sorted.filter((f) => f.mip !== undefined && f.dfi !== undefined);
@@ -104,7 +106,7 @@ function extraAfterCheckpoint(e: ExtraPayment, cp: ScheduleCheckpoint): boolean 
 }
 
 export function buildSchedule(contract: Contract, opts: ScheduleOptions = {}): ScheduleRow[] {
-  const i = annualToMonthly(contract.annualRate) / 100;
+  const i = contractMonthlyRate(contract.annualRate) / 100;
   const extrasByMonth = new Map<string, ExtraPayment[]>();
   for (const e of opts.extras ?? []) {
     if (!(e.amount > 0)) continue;
@@ -383,10 +385,24 @@ export function interestWithRate(contract: Contract, balance: number, months: nu
 // Saldo depois da parcela pelas linhas da fatura: os juros do mês são a taxa sobre o saldo
 // corrigido, então saldo corrigido = juros ÷ taxa, e o saldo depois = esse − amortização.
 // Os juros vêm arredondados nos centavos: a conta erra poucos reais
-export function balanceFromInvoice(contract: Contract, interest: number, amortization: number): number | null {
-  const i = annualToMonthly(contract.annualRate) / 100;
+export function balanceFromInvoice(
+  contract: Contract,
+  interest: number,
+  amortization: number,
+  remainingAfter?: number
+): number | null {
+  const i = contractMonthlyRate(contract.annualRate) / 100;
   if (!(i > 0) || !(interest > 0)) return null;
-  return Math.max(0, interest / i - amortization);
+  let corrected = interest / i;
+  // No SAC, com o prazo, a amortização (truncada) também diz o saldo corrigido: o meio da faixa
+  // que os dois deixam erra menos que só os juros (arredondados, ±R$ 0,60 no saldo)
+  if (contract.system === 'SAC' && remainingAfter && remainingAfter > 0 && amortization > 0) {
+    const n = remainingAfter + 1;
+    const lo = Math.max((interest - 0.005) / i, amortization * n);
+    const hi = Math.min((interest + 0.005) / i, (amortization + 0.01) * n);
+    if (lo < hi) corrected = (lo + hi) / 2;
+  }
+  return Math.max(0, corrected - amortization);
 }
 
 const daysInMonth = (y: number, m: number) => new Date(y, m, 0).getDate();
@@ -406,7 +422,7 @@ export function lastDueBefore(contract: Contract, date: string): { yearMonth: st
 // (conferido em seis simulações: R$ 1.000 em 21 dias dão 5,4696 de juros, que viram 5,46)
 export function effectiveExtra(contract: Contract, paid: number, date: string): number {
   if (!(paid > 0)) return 0;
-  const i = annualToMonthly(contract.annualRate) / 100;
+  const i = contractMonthlyRate(contract.annualRate) / 100;
   const [y, m, d] = date.split('-').map(Number);
   const days = Math.max(0, Math.round((new Date(y, m - 1, d).getTime() - lastDueBefore(contract, date).date.getTime()) / 86400000));
   const interest = Math.floor(((paid * i * days) / 30) * 100 + 1e-6) / 100;
@@ -426,7 +442,7 @@ export function lastPaidMonth(contract: Contract, paidMonths: ReadonlySet<string
 // pelas parcelas que faltam (contando esta); no Price, pela fórmula da prestação. Os valores da
 // fatura vêm arredondados: só vale se a conta der um número (quase) inteiro
 export function remainingFromInvoice(contract: Contract, interest: number, amortization: number): number | null {
-  const i = annualToMonthly(contract.annualRate) / 100;
+  const i = contractMonthlyRate(contract.annualRate) / 100;
   if (!(i > 0) || !(interest > 0) || !(amortization > 0)) return null;
   const corrected = interest / i;
   let n: number;
@@ -494,7 +510,8 @@ function trSinceDue(contract: Contract, yearMonth: string, date: Date, trFor: (y
   const nextDue = dueOf(nextYm);
   const day = new Date(date.getFullYear(), date.getMonth(), date.getDate());
   if (day <= due || day >= nextDue) return 1;
-  const share = (day.getTime() - due.getTime()) / (nextDue.getTime() - due.getTime());
+  // A TR do período corre pelos dias úteis, como a poupança (conferido no saldo da Caixa)
+  const share = businessDaysBetween(due, day) / Math.max(1, businessDaysBetween(due, nextDue));
   const tr = Math.max(0, trFor(nextYm)) / 100;
   return Math.pow(1 + tr, share);
 }

@@ -24,16 +24,24 @@ const data = (over: Partial<AppData>): AppData => ({
 });
 
 describe('saldos reais', () => {
-  it('no mesmo mês, o saldo pela fatura vale mais que o saldo do banco', () => {
+  it('no mesmo mês, o saldo do banco vale mais que o calculado pela fatura', () => {
     const cps = realBalances(data({ checkpoints: [bank], checkins: [october] }), contract, trFor);
     expect(cps).toHaveLength(1);
-    expect(cps[0]).toMatchObject({ source: 'fatura', balance: 380098.85, remaining: 362 });
+    // O prazo vem da fatura quando o saldo não trouxe o seu
+    expect(cps[0]).toMatchObject({ source: 'banco', balance: 380098.96, remaining: 362 });
   });
 
-  it('o saldo do banco visto depois do vencimento perde a TR desses dias', () => {
+  it('sem saldo do banco no mês, vale o calculado pela fatura', () => {
+    const [cp] = realBalances(data({ checkins: [october] }), contract, trFor);
+    expect(cp.source).toBe('fatura');
+    // Juros arredondados: a fatura só fecha o saldo dentro de alguns centavos de real
+    expect(Math.abs(cp.balance - 380098.96)).toBeLessThan(0.7);
+  });
+
+  it('o saldo do banco visto depois do vencimento perde a TR dos dias úteis, ao centavo', () => {
     const [cp] = realBalances(data({ checkpoints: [bank] }), contract, trFor);
-    // Pela fatura de outubro, o saldo logo depois da parcela era 380.098,96
-    expect(Math.abs(cp.balance - 380098.96)).toBeLessThan(10);
+    // Documento Descritivo do Crédito da Caixa: saldo logo depois da parcela de outubro
+    expect(cp.balance).toBe(380098.96);
   });
 
   it('com a fatura de outubro, novembro bate com a fatura do banco', () => {
