@@ -347,7 +347,7 @@ export const HomeScreen: React.FC<ScreenProps> = ({ model, data, dark, go, openC
         />
         <Stat
           icon={PiggyBank}
-          label="Suas amortizações extras"
+          label="Amortizações extras"
           value={extrasSaving > 0 ? <AnimatedNumber value={extrasSaving} format={formatBRL0} /> : 'Nenhuma ainda'}
           detail={extrasSaving > 0 ? `de juros evitados${monthsSaved > 0 ? ` e ${monthsSaved} meses a menos` : ''}` : 'veja quanto economizaria'}
           tone="menta"
@@ -522,10 +522,12 @@ const Stat: React.FC<{
   return (
     <Tag
       {...(onClick ? { type: 'button' as const, onClick } : {})}
-      className={`${card} p-5 text-left group ${onClick ? 'cursor-pointer hover:-translate-y-0.5 transition-transform duration-[var(--duration-base)]' : ''}`}
+      // Coluna a partir do topo: um botão centraliza o conteúdo e desalinha dos outros cartões
+      className={`${card} p-5 text-left group flex flex-col justify-start ${onClick ? 'cursor-pointer hover:-translate-y-0.5 transition-transform duration-[var(--duration-base)]' : ''}`}
     >
-      <div className="flex items-center gap-2.5">
-        <span className={`w-9 h-9 rounded-xl flex items-center justify-center ${toneCls}`}>
+      {/* Altura de duas linhas: com o título quebrado num cartão, os valores continuam alinhados */}
+      <div className="flex items-center gap-2.5 min-h-10">
+        <span className={`w-9 h-9 shrink-0 rounded-xl flex items-center justify-center ${toneCls}`}>
           <Icon className="w-[18px] h-[18px]" />
         </span>
         <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
