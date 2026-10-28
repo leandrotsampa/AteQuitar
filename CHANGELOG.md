@@ -12,6 +12,26 @@ Todas as versões do Até Quitar e o que mudou em cada uma.
 
 ### 🐛 Correções
 
+- Cartões da tela inicial com os valores alinhados (b32d114)
+- Check-in cabe na janela sem rolagem (5dd61f6)
+- Selo do saldo no topo mostra que abre o check-in (556c68e)
+- Contas como a Caixa (TR por dias úteis, taxa pela efetiva e MIP sobre o saldo depois da parcela) (5c8c4f9)
+
+### 📝 Documentação
+
+- README alinhado com a versão 1.2.0 (a5ac8a5)
+- Regras de cálculo atualizadas e diferenças conhecidas (a55071a)
+
+## v1.2.0 (2026-10-28)
+
+### ✨ Novidades
+
+- Ajuste do banco no check-in (2f83258)
+- Avisa quando sai uma versão nova no GitHub (8c9cb9d)
+- Importar o Documento Descritivo do Crédito do banco (78fb719)
+
+### 🐛 Correções
+
 - Check-in cabe na janela sem rolagem (5dd61f6)
 - Selo do saldo no topo mostra que abre o check-in (556c68e)
 - Contas como a Caixa (TR por dias úteis, taxa pela efetiva e MIP sobre o saldo depois da parcela) (5c8c4f9)
