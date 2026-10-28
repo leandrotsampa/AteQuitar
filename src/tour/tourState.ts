@@ -52,20 +52,22 @@ export function parseTourState(raw: string | null): TourState {
 
 const KEY = 'atequitar_tour_v1';
 
-// O que já foi visto vale para os dados de agora: o registro guarda a data de criação deles, e
-// dados novos (banco excluído ou "Apagar tudo e recomeçar") mostram os tutoriais de novo
+// O que já foi visto vale para os dados de agora, com um registro para cada banco (pela data de
+// criação dele): dois portáteis em pastas diferentes dividem o armazenamento do navegador, mas não
+// os tutoriais. Dados novos (banco excluído ou "Apagar tudo e recomeçar") mostram os tutoriais de novo
 let boundDataId: string | null = null;
+const keyOf = (dataId: string | null) => (dataId ? `${KEY}:${dataId}` : KEY);
 
 export function bindTourToData(dataId: string, hasData: boolean) {
   boundDataId = dataId;
   try {
+    if (localStorage.getItem(keyOf(dataId))) return;
+    // Registro único das versões anteriores: vale para o banco dono dele e, sem dono (versões mais
+    // antigas), para dados que já têm financiamento; banco vazio começa do zero
     const raw = localStorage.getItem(KEY);
     const owner = raw ? (JSON.parse(raw) as { dataId?: unknown })?.dataId : undefined;
-    if (owner === dataId) return;
-    // Registro de antes desta versão (sem dono): fica com dados que já têm financiamento; banco
-    // vazio começa do zero
-    const keep = typeof owner !== 'string' && hasData;
-    localStorage.setItem(KEY, JSON.stringify({ ...(keep ? parseTourState(raw) : emptyTourState), dataId }));
+    const keep = owner === dataId || (typeof owner !== 'string' && hasData);
+    localStorage.setItem(keyOf(dataId), JSON.stringify(keep ? parseTourState(raw) : emptyTourState));
   } catch {
     // Sem armazenamento: o tutorial segue como se fosse a primeira vez
   }
@@ -73,7 +75,7 @@ export function bindTourToData(dataId: string, hasData: boolean) {
 
 export function loadTourState(): TourState {
   try {
-    return parseTourState(localStorage.getItem(KEY));
+    return parseTourState(localStorage.getItem(keyOf(boundDataId)));
   } catch {
     return emptyTourState;
   }
@@ -81,7 +83,7 @@ export function loadTourState(): TourState {
 
 export function saveTourState(state: TourState) {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ ...state, ...(boundDataId ? { dataId: boundDataId } : {}) }));
+    localStorage.setItem(keyOf(boundDataId), JSON.stringify(state));
   } catch {
     // Sem armazenamento: o tutorial só volta a aparecer na próxima abertura
   }

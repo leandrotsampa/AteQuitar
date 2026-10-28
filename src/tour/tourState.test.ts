@@ -96,6 +96,23 @@ describe('tutoriais ligados aos dados', () => {
     expect(loadTourState()).toEqual(emptyTourState);
   });
 
+  it('dois bancos (portáteis em pastas diferentes) guardam cada um o que já viu', () => {
+    bindTourToData('dados-a', true);
+    saveTourState(completeTour(emptyTourState, ['casa']));
+    bindTourToData('dados-b', true);
+    saveTourState(completeTour(emptyTourState, ['parcela']));
+    bindTourToData('dados-a', true);
+    expect(loadTourState()).toEqual({ welcomed: true, seen: ['casa'] });
+    bindTourToData('dados-b', true);
+    expect(loadTourState()).toEqual({ welcomed: true, seen: ['parcela'] });
+  });
+
+  it('o registro único da versão anterior continua valendo para o banco dono dele', () => {
+    store.set('atequitar_tour_v1', JSON.stringify({ welcomed: true, seen: ['casa'], dataId: 'dados-a' }));
+    bindTourToData('dados-a', true);
+    expect(loadTourState().seen).toEqual(['casa']);
+  });
+
   it('registro de antes desta versão: fica com quem já tem financiamento, banco vazio começa do zero', () => {
     store.set('atequitar_tour_v1', JSON.stringify({ welcomed: true, seen: ['casa'] }));
     bindTourToData('dados-a', true);
