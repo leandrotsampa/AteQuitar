@@ -12,6 +12,8 @@ export interface ScreenProps {
   // Sem mês: o modal escolhe o mês pendente
   openCheckin: (month?: string) => void;
   openContract: (step?: number) => void;
+  // Importar o Documento Descritivo do Crédito do banco
+  openImport: () => void;
   refreshRates: () => void;
   ratesLoading: boolean;
   // Abrir Parcelas direto em Registros (link do cadastro)

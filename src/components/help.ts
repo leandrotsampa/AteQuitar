@@ -75,4 +75,9 @@ export const HELP = {
     body: 'Quantas parcelas ainda faltam, segundo o banco. Se você já amortizou reduzindo o prazo, esse número é menor que o do contrato, e é ele que acerta o valor das próximas parcelas.',
     where: 'No app da Caixa: Habitação → seu contrato → "Prazo atual" (ou na simulação de amortização, "Prazo atual").\nNos outros bancos: "Prazo restante" ou "Parcelas a vencer".',
   },
+  bankDocument: {
+    title: 'Documento Descritivo do Crédito',
+    body: 'O extrato oficial do financiamento, em PDF: cada parcela paga (amortização, juros, seguros e saldo), as amortizações extras e o prazo que falta. Pela Resolução CMN nº 5.057/2022, todo banco tem de entregá-lo a quem pede, para avaliar a portabilidade. Com ele, o app fica igual ao banco desde a primeira parcela.',
+    where: 'Na Caixa: em habitacaodigital.caixa.gov.br, escolha o contrato → Documentos → Descritivo do crédito → Baixar documento. O documento não é gerado na hora: se não vier, tente de novo em até 24 horas.\nNos outros bancos: peça o "Documento Descritivo do Crédito" no app, no site ou na agência. Por enquanto o app lê o modelo da Caixa.',
+  },
 } satisfies Record<string, HelpContent>;

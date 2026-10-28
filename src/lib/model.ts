@@ -89,36 +89,39 @@ export function realBalances(data: AppData, contract: Contract, trFor: (ym: stri
 // `today` refaz as contas na virada do dia (a parcela que venceu passa a contar como paga)
 export function useFinanceModel(data: AppData, today: Date = new Date()): FinanceModel | null {
   const day = today.toDateString();
-  return useMemo(() => {
-    const contract = data.contract;
-    if (!contract) return null;
-    const trFor = trFunction(data.rates, contract.dueDay);
-    const checkpoints = realBalances(data, contract, trFor);
-    // Amortização e juros copiados da fatura valem no lugar dos calculados
-    const actuals = data.checkins
-      .filter((ci) => ci.amortization !== undefined && ci.interest !== undefined)
-      .map((ci) => ({ yearMonth: ci.yearMonth, amortization: ci.amortization!, interest: ci.interest! }));
-    const paidMonths = new Set(data.checkins.filter((ci) => !ci.scheduled).map((ci) => ci.yearMonth));
-    // Seguros e taxa das faturas informadas no check-in: base da previsão dos meses seguintes
-    const invoices = data.checkins.filter((ci) => ci.fees).map((ci) => ({ ...ci.fees!, yearMonth: ci.yearMonth }));
-    const trOfficial = trIsOfficial(data.rates, contract.dueDay);
-    const options: ScheduleOptions = { extras: data.extras, checkpoints, trFor, invoices, trOfficial, actuals };
-    const rows = buildSchedule(contract, options);
-    const originalRows = buildSchedule(contract, { trFor, invoices });
-    const summary = summarize(contract, rows, new Date(day), paidMonths);
-    const paidYm = summary.paidCount > 0 ? rows[summary.paidCount - 1].yearMonth : '';
-    const lastRealBalance = [...checkpoints].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)).filter((c) => c.yearMonth <= paidYm).at(-1) ?? null;
-    return {
-      contract,
-      rows,
-      originalRows,
-      summary,
-      trFor,
-      options,
-      completeness: completenessOf(data),
-      calibrated: checkpoints.length > 0,
-      lastRealBalance,
-      paidMonths,
-    };
-  }, [data, day]);
+  return useMemo(() => computeModel(data, new Date(day)), [data, day]);
+}
+
+// As contas de uma vez, fora do React: também servem para conferir dados antes de gravar
+export function computeModel(data: AppData, today: Date = new Date()): FinanceModel | null {
+  const contract = data.contract;
+  if (!contract) return null;
+  const trFor = trFunction(data.rates, contract.dueDay);
+  const checkpoints = realBalances(data, contract, trFor);
+  // Amortização e juros copiados da fatura valem no lugar dos calculados
+  const actuals = data.checkins
+    .filter((ci) => ci.amortization !== undefined && ci.interest !== undefined)
+    .map((ci) => ({ yearMonth: ci.yearMonth, amortization: ci.amortization!, interest: ci.interest! }));
+  const paidMonths = new Set(data.checkins.filter((ci) => !ci.scheduled).map((ci) => ci.yearMonth));
+  // Seguros e taxa das faturas informadas no check-in: base da previsão dos meses seguintes
+  const invoices = data.checkins.filter((ci) => ci.fees).map((ci) => ({ ...ci.fees!, yearMonth: ci.yearMonth }));
+  const trOfficial = trIsOfficial(data.rates, contract.dueDay);
+  const options: ScheduleOptions = { extras: data.extras, checkpoints, trFor, invoices, trOfficial, actuals };
+  const rows = buildSchedule(contract, options);
+  const originalRows = buildSchedule(contract, { trFor, invoices });
+  const summary = summarize(contract, rows, today, paidMonths);
+  const paidYm = summary.paidCount > 0 ? rows[summary.paidCount - 1].yearMonth : '';
+  const lastRealBalance = [...checkpoints].sort((a, b) => a.yearMonth.localeCompare(b.yearMonth)).filter((c) => c.yearMonth <= paidYm).at(-1) ?? null;
+  return {
+    contract,
+    rows,
+    originalRows,
+    summary,
+    trFor,
+    options,
+    completeness: completenessOf(data),
+    calibrated: checkpoints.length > 0,
+    lastRealBalance,
+    paidMonths,
+  };
 }

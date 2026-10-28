@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { BadgeCheck, CalendarCheck2, Info, Landmark, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
+import { BadgeCheck, CalendarCheck2, FileUp, Info, Landmark, Pencil, Plus, Trash2, Wallet } from 'lucide-react';
 import type { ScreenProps } from './types';
 import { PageHeader } from '../components/ui/PageHeader';
 import { SegmentedControl } from '../components/ui/SegmentedControl';
@@ -11,6 +11,7 @@ import { HELP } from '../components/help';
 import { currentYearMonth, formatBRL, monthLong, monthName, monthShort, uid } from '../lib/format';
 import { EASE_OUT } from '../lib/motion';
 import { playSound } from '../hooks/useSound';
+import { isFromDocument } from '../lib/importDocument';
 import type { ExtraMode, ExtraSource } from '../types/finance';
 import { ExtraPaymentFields, draftFromExtra, extraEffective, type ExtraDraft } from '../components/ExtraPaymentFields';
 import { lastDueBefore } from '../lib/finance';
@@ -18,7 +19,7 @@ import { lastDueBefore } from '../lib/finance';
 type Tab = 'table' | 'records';
 type AddKind = 'banco' | 'extra' | null;
 
-export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, openCheckin, historyTab }) => {
+export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, openCheckin, openImport, historyTab }) => {
   const { rows, summary } = model;
   const [tab, setTab] = useState<Tab>(historyTab ?? 'table');
   // O saldo que o banco mostra hoje é o de depois da última parcela paga
@@ -133,7 +134,7 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
       id: c.id,
       ym: c.yearMonth,
       kind: 'checkin' as const,
-      title: 'Check-in',
+      title: isFromDocument(c.id) ? 'Parcela do documento do banco' : 'Check-in',
       value: c.paidAmount,
       detail: c.balanceAfter
         ? `saldo depois: ${formatBRL(c.balanceAfter)}${c.balanceSource === 'fatura' ? ' (pela fatura)' : ''}`
@@ -147,7 +148,9 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
       kind: 'extra' as const,
       title: e.source === 'fgts' ? 'Amortização com FGTS' : e.source === 'decimo' ? 'Amortização com 13º' : 'Amortização extra',
       value: e.amount,
-      detail: `${e.paid && e.paid > e.amount + 0.005 ? `pagou ${formatBRL(e.paid)}, ` : ''}${e.mode === 'prazo' ? 'reduziu o prazo' : 'reduziu a parcela'}`,
+      detail: `${e.paid && e.paid > e.amount + 0.005 ? `pagou ${formatBRL(e.paid)}, ` : ''}${e.mode === 'prazo' ? 'reduziu o prazo' : 'reduziu a parcela'}${
+        isFromDocument(e.id) ? ', do documento do banco' : ''
+      }`,
     })),
     ...data.checkpoints.map((c) => ({
       id: c.id,
@@ -404,6 +407,9 @@ export const HistoryScreen: React.FC<ScreenProps> = ({ model, data, update, open
             </button>
             <button type="button" onClick={() => openAdd('extra')} className={btnGhost}>
               <Plus className="w-4 h-4" /> Amortização extra
+            </button>
+            <button type="button" onClick={openImport} className={btnGhost} title="Documento Descritivo do Crédito, em PDF">
+              <FileUp className="w-4 h-4" /> Importar documento do banco
             </button>
           </div>
 

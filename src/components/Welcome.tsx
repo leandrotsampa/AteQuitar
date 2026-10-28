@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
-import { ArrowRight, Calculator, Gauge, LineChart, Moon, PiggyBank, Sun } from 'lucide-react';
+import { ArrowRight, Calculator, FileUp, Gauge, LineChart, Moon, PiggyBank, Sun } from 'lucide-react';
 import { HouseHero } from './HouseHero';
 import { EASE_OUT } from '../lib/motion';
 import { btnGhost, btnPrimary } from './ui/card';
@@ -16,8 +16,9 @@ export const Welcome: React.FC<{
   dark: boolean;
   onStart: () => void;
   onDemo: () => void;
+  onImport: () => void;
   toggleTheme: (origin?: HTMLElement | null) => void;
-}> = ({ dark, onStart, onDemo, toggleTheme }) => {
+}> = ({ dark, onStart, onDemo, onImport, toggleTheme }) => {
   const reduce = Boolean(useReducedMotion());
   // A casa da vitrine vai se enchendo sozinha, de pouco em pouco
   const [demo, setDemo] = useState(0.05);
@@ -69,6 +70,18 @@ export const Welcome: React.FC<{
             Explorar com um exemplo
           </button>
         </motion.div>
+        <p className="mt-4 text-sm text-slate-600 dark:text-slate-300 flex flex-wrap items-center gap-x-1.5 gap-y-1">
+          <FileUp className="w-4 h-4 text-anil-600 dark:text-anil-300" />
+          Tem o extrato do banco em PDF?
+          <button
+            type="button"
+            onClick={onImport}
+            className="font-semibold text-anil-700 dark:text-anil-300 underline underline-offset-4 decoration-anil-300 hover:decoration-anil-600 cursor-pointer"
+          >
+            Importar o documento
+          </button>
+          e pular o cadastro.
+        </p>
         <p className="mt-3 text-sm text-slate-500 dark:text-slate-400 flex items-center gap-2">
           Leva uns 2 minutos. Seus dados ficam só neste computador.
           <button

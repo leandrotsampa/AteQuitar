@@ -1,7 +1,8 @@
 import React, { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { PartyPopper } from 'lucide-react';
+import { FileUp, PartyPopper } from 'lucide-react';
+import { btnGhost } from './components/ui/card';
 import { Sidebar } from './components/Sidebar';
 import { TopBar } from './components/TopBar';
 import { ConfettiLayer, celebrate } from './components/ui/Confetti';
@@ -37,6 +38,7 @@ const loadWizard = () => import('./components/ContractWizard');
 const Welcome = lazy(() => loadWelcome().then((m) => ({ default: m.Welcome })));
 const ContractWizard = lazy(() => loadWizard().then((m) => ({ default: m.ContractWizard })));
 const loadData = () => import('./components/DataModal');
+const loadImport = () => import('./components/ImportDocumentModal');
 const HistoryScreen = lazy(() => loadHistory().then((m) => ({ default: m.HistoryScreen })));
 const AmortizeScreen = lazy(() => loadAmortize().then((m) => ({ default: m.AmortizeScreen })));
 const InvestScreen = lazy(() => loadInvest().then((m) => ({ default: m.InvestScreen })));
@@ -46,8 +48,9 @@ const MarketScreen = lazy(() => loadMarket().then((m) => ({ default: m.MarketScr
 const LearnScreen = lazy(() => loadLearn().then((m) => ({ default: m.LearnScreen })));
 const CheckinModal = lazy(() => loadCheckin().then((m) => ({ default: m.CheckinModal })));
 const DataModal = lazy(() => loadData().then((m) => ({ default: m.DataModal })));
+const ImportDocumentModal = lazy(() => loadImport().then((m) => ({ default: m.ImportDocumentModal })));
 const preloadAll = () => {
-  for (const l of [loadHistory, loadAmortize, loadInvest, loadSystems, loadRate, loadMarket, loadLearn, loadCheckin, loadData, loadWizard]) void l();
+  for (const l of [loadHistory, loadAmortize, loadInvest, loadSystems, loadRate, loadMarket, loadLearn, loadCheckin, loadData, loadImport, loadWizard]) void l();
 };
 
 const THEME_KEY = 'atequitar_theme';
@@ -214,6 +217,7 @@ export default function App() {
   const [checkinOpen, setCheckinOpen] = useState(false);
   const [checkinMonth, setCheckinMonth] = useState<string | undefined>();
   const [dataOpen, setDataOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [contractOpen, setContractOpen] = useState(false);
   // Parcelas → Registros a partir do link do cadastro
   const [historyTab, setHistoryTab] = useState<'table' | 'records' | undefined>();
@@ -240,7 +244,7 @@ export default function App() {
       });
     }, 700);
   };
-  const overlayOpen = checkinOpen || dataOpen || contractOpen;
+  const overlayOpen = checkinOpen || dataOpen || contractOpen || importOpen;
   const hasModel = Boolean(model);
   // Os tutoriais vistos são dos dados de agora: dados novos começam do zero
   useEffect(() => {
@@ -316,6 +320,7 @@ export default function App() {
       setCheckinOpen(true);
     },
     openContract: () => setContractOpen(true),
+    openImport: () => setImportOpen(true),
     refreshRates: () => void refreshRates(true),
     ratesLoading,
   };
@@ -338,6 +343,7 @@ export default function App() {
                       setOnboardingStage('wizard');
                     }}
                     onDemo={startDemo}
+                    onImport={() => setImportOpen(true)}
                     toggleTheme={toggleTheme}
                   />
                 </motion.div>
@@ -350,7 +356,18 @@ export default function App() {
                   className="max-w-6xl mx-auto px-6 lg:px-10 pb-12 pt-2"
                 >
                   <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-1">Vamos cadastrar o seu financiamento</h1>
-                  <p className="text-slate-600 dark:text-slate-400 mb-7">Tenha o contrato por perto. Cada campo tem um "?" que mostra onde achar a informação.</p>
+                  <p className="text-slate-600 dark:text-slate-400 mb-5">Tenha o contrato por perto. Cada campo tem um "?" que mostra onde achar a informação.</p>
+                  {/* Atalho: o documento do banco preenche o cadastro e o histórico de uma vez */}
+                  <div className="mb-7 flex flex-col sm:flex-row sm:items-center gap-3 p-4 rounded-2xl bg-anil-50 ring-1 ring-inset ring-anil-600/10 dark:bg-anil-500/10 dark:ring-anil-400/20">
+                    <FileUp className="w-5 h-5 text-anil-600 dark:text-anil-300 shrink-0" />
+                    <p className="flex-1 text-sm text-slate-700 dark:text-slate-200 leading-relaxed">
+                      <b className="text-slate-900 dark:text-white">Tem o Documento Descritivo do Crédito em PDF?</b> Importe e o app preenche o cadastro e todas
+                      as parcelas pagas, iguais às do banco.
+                    </p>
+                    <button type="button" onClick={() => setImportOpen(true)} className={`${btnGhost} shrink-0`}>
+                      Importar documento
+                    </button>
+                  </div>
                   <ContractWizard
                     initial={null}
                     dark={dark}
@@ -480,6 +497,14 @@ export default function App() {
         {checkinOpen && model && (
           <Suspense key="checkin" fallback={null}>
             <CheckinModal model={model} data={data} update={update} dark={dark} month={checkinMonth} onClose={() => setCheckinOpen(false)} />
+          </Suspense>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {importOpen && (
+          <Suspense key="import" fallback={null}>
+            <ImportDocumentModal data={data} update={update} onClose={() => setImportOpen(false)} />
           </Suspense>
         )}
       </AnimatePresence>
