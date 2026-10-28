@@ -75,6 +75,11 @@ export const HELP = {
     body: 'Quantas parcelas ainda faltam, segundo o banco. Se você já amortizou reduzindo o prazo, esse número é menor que o do contrato, e é ele que acerta o valor das próximas parcelas.',
     where: 'No app da Caixa: Habitação → seu contrato → "Prazo atual" (ou na simulação de amortização, "Prazo atual").\nNos outros bancos: "Prazo restante" ou "Parcelas a vencer".',
   },
+  adjustment: {
+    title: 'Ajuste do banco',
+    body: 'Centavos que o banco acerta na parcela: quando uma parcela foi paga com alguns centavos a mais ou a menos, a diferença volta como desconto ou acréscimo numa das próximas. Entra no total que você paga, mas não muda o saldo nem o prazo.',
+    where: 'Na fatura do app do banco, quando existe: "Valor da diferença" (ex.: − R$ 0,08). Se não aparecer, deixe zero.',
+  },
   bankDocument: {
     title: 'Documento Descritivo do Crédito',
     body: 'O extrato oficial do financiamento, em PDF: cada parcela paga (amortização, juros, seguros e saldo), as amortizações extras e o prazo que falta. Pela Resolução CMN nº 5.057/2022, todo banco tem de entregá-lo a quem pede, para avaliar a portabilidade. Com ele, o app fica igual ao banco desde a primeira parcela.',

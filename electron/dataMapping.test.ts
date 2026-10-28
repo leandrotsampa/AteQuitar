@@ -22,7 +22,7 @@ const contract = {
 const doc = {
   version: 1,
   contract,
-  checkins: [{ id: 'a', yearMonth: '2026-10', paidAmount: 3971.78, balanceAfter: 329800, extraId: 'b', fees: { insurance: 171.37, adminFee: 25 }, amortization: 1051.7, interest: 2974.81, charges: 3.2, scheduled: true, balanceSource: 'fatura', remainingAfter: 362, createdAt: '2026-10-26T00:00:00.000Z' }],
+  checkins: [{ id: 'a', yearMonth: '2026-10', paidAmount: 3971.78, balanceAfter: 329800, extraId: 'b', fees: { insurance: 171.37, adminFee: 25 }, amortization: 1051.7, interest: 2974.81, charges: 3.2, adjustment: -0.08, scheduled: true, balanceSource: 'fatura', remainingAfter: 362, createdAt: '2026-10-26T00:00:00.000Z' }],
   extras: [
     { id: 'b', yearMonth: '2026-10', amount: 1989.07, paid: 2000, date: '2026-10-26', mode: 'prazo', source: 'fgts', createdAt: '2026-10-26T00:00:00.000Z' },
     { id: 'd', yearMonth: '2025-03', amount: 2000, mode: 'parcela', source: 'proprio' },

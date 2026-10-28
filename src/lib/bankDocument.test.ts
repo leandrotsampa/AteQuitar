@@ -97,6 +97,9 @@ describe('importar o documento', () => {
     const after = applyImport(data, plan, { nickname: 'Apartamento', propertyValue: 450000 });
     expect(after.contract).toMatchObject({ nickname: 'Apartamento', propertyValue: 450000 });
     expect(after.checkins).toHaveLength(10);
+    // Outubro: as linhas somam 4.224,38 e foram pagos 4.224,41
+    expect(after.checkins.find((c) => c.yearMonth === '2026-10')).toMatchObject({ paidAmount: 4224.41, adjustment: 0.03 });
+    expect(after.checkins.find((c) => c.yearMonth === '2026-02')?.adjustment).toBeUndefined();
     expect(after.extras).toEqual([expect.objectContaining({ yearMonth: '2026-02', amount: 531, mode: 'prazo' })]);
 
     // Em 28/10 o app do banco mostrava 380.570,92: o saldo do documento com a TR de 16 dos 21 dias úteis

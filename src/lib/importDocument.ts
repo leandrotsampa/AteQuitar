@@ -22,6 +22,13 @@ const checkinId = (ym: string) => `doc-${ym}`;
 const isDocExtra = (e: ExtraPayment) => e.id.startsWith('doc-ex-');
 export const isFromDocument = (id: string) => id.startsWith('doc-');
 
+// Ajuste do banco: o pago menos as linhas da parcela (com atraso e FGTS)
+const adjustmentOf = (r: DocumentInstallment): Pick<CheckIn, 'adjustment'> => {
+  const lines = r.amortization + r.interest + r.mip + r.dfi + r.adminFee + r.charges - r.fgts;
+  const adj = cents(r.paid - lines);
+  return adj !== 0 ? { adjustment: adj } : {};
+};
+
 export interface ContractChange {
   label: string;
   from: string;
@@ -120,6 +127,8 @@ export function planImport(current: AppData, doc: BankDocument): ImportPlan {
       interest: r.interest,
       ...(r.charges > 0 ? { charges: r.charges } : {}),
       ...(r.fgts > 0 ? { fgts: r.fgts } : {}),
+      // Os centavos pagos a mais ou a menos que as linhas da parcela: reabrindo o mês, o total fecha
+      ...adjustmentOf(r),
       fees: { insurance: cents(r.mip + r.dfi), mip: r.mip, dfi: r.dfi, adminFee: r.adminFee },
       // O saldo do documento é o de logo depois da parcela, no vencimento: exato
       balanceAfter: r.balanceAfter,

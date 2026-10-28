@@ -88,6 +88,9 @@ export interface CheckIn {
   charges?: number;
   // FGTS usado na prestação: abate do que a pessoa pagou
   fgts?: number;
+  // Ajuste de centavos do banco ("Valor da diferença"), com sinal: negativo é desconto.
+  // Entra no total pago, não mexe no saldo
+  adjustment?: number;
   // Parcela adiantada só agendada no débito automático: conta como paga no vencimento
   scheduled?: boolean;
   // Parcelas que faltam depois desta, calculadas pela fatura (saldo corrigido ÷ amortização)

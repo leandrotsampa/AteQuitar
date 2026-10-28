@@ -57,6 +57,8 @@ const SCHEMA = `
     interest REAL,
     charges REAL,
     fgts REAL,
+    -- Ajuste de centavos do banco, com sinal (negativo = desconto)
+    adjustment REAL,
     -- Adiantada só agendada no débito: conta como paga no vencimento
     scheduled INTEGER NOT NULL DEFAULT 0,
     -- De onde veio balance_after: 'fatura' (calculado pelos juros) ou 'banco'
@@ -140,6 +142,7 @@ const ADDED_COLUMNS = [
   { table: 'checkins', name: 'interest', ddl: 'REAL' },
   { table: 'checkins', name: 'charges', ddl: 'REAL' },
   { table: 'checkins', name: 'fgts', ddl: 'REAL' },
+  { table: 'checkins', name: 'adjustment', ddl: 'REAL' },
   { table: 'checkins', name: 'scheduled', ddl: 'INTEGER NOT NULL DEFAULT 0' },
   { table: 'checkins', name: 'balance_source', ddl: "TEXT CHECK (balance_source IS NULL OR balance_source IN ('fatura', 'banco'))" },
   { table: 'extra_payments', name: 'paid', ddl: 'REAL' },
@@ -215,7 +218,7 @@ function writeDoc(db, doc) {
       const stmt = db.prepare(sql);
       for (const r of list) stmt.run(r);
     };
-    ins('INSERT INTO checkins (id, year_month, paid_amount, balance_after, extra_id, insurance, mip, dfi, admin_fee, amortization, interest, charges, fgts, scheduled, balance_source, remaining_after, created_at) VALUES (@id, @year_month, @paid_amount, @balance_after, @extra_id, @insurance, @mip, @dfi, @admin_fee, @amortization, @interest, @charges, @fgts, @scheduled, @balance_source, @remaining_after, @created_at)', rows.checkins);
+    ins('INSERT INTO checkins (id, year_month, paid_amount, balance_after, extra_id, insurance, mip, dfi, admin_fee, amortization, interest, charges, fgts, adjustment, scheduled, balance_source, remaining_after, created_at) VALUES (@id, @year_month, @paid_amount, @balance_after, @extra_id, @insurance, @mip, @dfi, @admin_fee, @amortization, @interest, @charges, @fgts, @adjustment, @scheduled, @balance_source, @remaining_after, @created_at)', rows.checkins);
     ins('INSERT OR REPLACE INTO extra_payments (id, year_month, amount, mode, source, note, paid, paid_date, created_at) VALUES (@id, @year_month, @amount, @mode, @source, @note, @paid, @paid_date, @created_at)', rows.extras);
     ins('INSERT INTO balance_checkpoints (id, year_month, balance, remaining, source, created_at) VALUES (@id, @year_month, @balance, @remaining, @source, @created_at)', rows.checkpoints);
     ins('INSERT INTO milestones (percent) VALUES (@percent)', rows.milestones.map((percent) => ({ percent })));

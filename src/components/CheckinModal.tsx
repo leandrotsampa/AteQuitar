@@ -7,6 +7,7 @@ import { Field } from './ui/HelpTip';
 import { MoneyField, MonthField } from './ui/Inputs';
 import { btnGhost, btnPrimary, chip, tile } from './ui/card';
 import { celebrate } from './ui/Confetti';
+import { HELP } from './help';
 import { InvoiceFeesRows, LedgerRow, draftFromFees, draftFromRow, draftTotal, feesFromDraft, type FeesDraft } from './InvoiceFeesFields';
 import type { FinanceModel } from '../lib/model';
 import type { AppData } from '../lib/store';
@@ -75,6 +76,9 @@ export const CheckinModal: React.FC<{
       fees: ci?.fees ? draftFromFees(ci.fees) : draftFromRow(r),
       charges: ci?.charges ?? 0,
       fgts: ci?.fgts ?? 0,
+      // Ajuste do banco: o valor sem sinal e se é desconto (o mais comum) ou acréscimo
+      adjust: Math.abs(ci?.adjustment ?? 0),
+      adjustUp: (ci?.adjustment ?? 0) > 0,
       // Adiantada sem registro: o comum é o débito automático agendado
       scheduled: ci ? Boolean(ci.scheduled) : true,
       hasExtra: Boolean(e),
@@ -92,7 +96,8 @@ export const CheckinModal: React.FC<{
   // (as taxas podem atualizar com a tela aberta e mudar a previsão por baixo)
   const [prefill, setPrefill] = useState(() => ({ amort: f.amort, interest: f.interest }));
   const set = (patch: Partial<typeof f>) => setF((prev) => ({ ...prev, ...patch }));
-  const [moreLines, setMoreLines] = useState(f.charges > 0 || f.fgts > 0);
+  const hasMoreLines = (x: typeof f) => x.charges > 0 || x.fgts > 0 || x.adjust > 0;
+  const [moreLines, setMoreLines] = useState(hasMoreLines(f));
   const linkedExtra = extraOf(ym);
   // As outras amortizações (sem a deste check-in), para as prévias não contarem duas vezes
   const otherExtras = data.extras.filter((e) => e.id !== linkedExtra?.id);
@@ -108,7 +113,7 @@ export const CheckinModal: React.FC<{
     const next = load(v);
     setF(next);
     setPrefill({ amort: next.amort, interest: next.interest });
-    setMoreLines(next.charges > 0 || next.fgts > 0);
+    setMoreLines(hasMoreLines(next));
   };
 
   // Data deste check-in: a amortização dele entra depois de saldos informados antes
@@ -116,7 +121,8 @@ export const CheckinModal: React.FC<{
   const at = existing?.createdAt ?? stamp;
 
   const installment = cents(f.amort + f.interest + draftTotal(f.fees));
-  const paid = cents(installment + f.charges - f.fgts);
+  const adjustment = cents(f.adjustUp ? f.adjust : -f.adjust);
+  const paid = cents(installment + f.charges - f.fgts + adjustment);
 
   // Saldo depois da parcela pela fatura: só quando os juros e a amortização são os da fatura
   // (alterados em relação à previsão, ou já vindos de uma fatura antes)
@@ -220,6 +226,7 @@ export const CheckinModal: React.FC<{
           ...(invoice ? { fees: invoice } : {}),
           ...(f.charges > 0 ? { charges: f.charges } : {}),
           ...(f.fgts > 0 ? { fgts: f.fgts } : {}),
+          ...(adjustment !== 0 ? { adjustment } : {}),
           ...(ahead && f.scheduled ? { scheduled: true } : {}),
           ...(balanceAfter ? { balanceAfter, balanceSource } : {}),
           ...(remainingAfter ? { remainingAfter } : {}),
@@ -413,6 +420,24 @@ export const CheckinModal: React.FC<{
                               <LedgerRow label="FGTS na prestação" sign="−">
                                 <MoneyField size="sm" value={f.fgts} onChange={(v) => set({ fgts: v })} ariaLabel="FGTS na prestação" />
                               </LedgerRow>
+                              <LedgerRow
+                                label="Ajuste do banco"
+                                sign={f.adjustUp ? '+' : '−'}
+                                help={HELP.adjustment}
+                                action={
+                                  <button
+                                    type="button"
+                                    onClick={() => set({ adjustUp: !f.adjustUp })}
+                                    aria-label={`Ajuste como ${f.adjustUp ? 'acréscimo' : 'desconto'}. Trocar`}
+                                    className="ml-1 inline-flex items-center h-6 px-2 rounded-full whitespace-nowrap text-[11px] font-semibold text-anil-700 dark:text-anil-300 bg-anil-50 dark:bg-anil-500/10 hover:bg-anil-100 dark:hover:bg-anil-500/20 cursor-pointer transition-colors"
+                                  >
+                                    {f.adjustUp ? 'acréscimo' : 'desconto'}
+                                  </button>
+                                }
+                                note='Na fatura: "Valor da diferença". Não mexe no saldo.'
+                              >
+                                <MoneyField size="sm" value={f.adjust} onChange={(v) => set({ adjust: v })} ariaLabel="Ajuste do banco" />
+                              </LedgerRow>
                             </>
                           )}
                         </div>
@@ -423,9 +448,9 @@ export const CheckinModal: React.FC<{
                             </span>
                             <span className="font-num text-xl font-bold text-slate-900 dark:text-white tabular-nums">{formatBRL(installment)}</span>
                           </div>
-                          {(f.charges > 0 || f.fgts > 0) && (
+                          {paid !== installment && (
                             <div className="flex items-baseline justify-between gap-3 mt-1 text-sm">
-                              <span className="text-slate-500">Você pagou</span>
+                              <span className="text-slate-500">{ahead ? 'Total a pagar' : 'Você pagou'}</span>
                               <span className="font-num font-semibold text-slate-900 dark:text-white tabular-nums">{formatBRL(paid)}</span>
                             </div>
                           )}
@@ -435,7 +460,7 @@ export const CheckinModal: React.FC<{
                         <span>Confira com o "Valor da prestação" da fatura: se não bater, falta alguma linha.</span>
                         {!moreLines && (
                           <button type="button" onClick={() => setMoreLines(true)} className="font-semibold text-anil-700 dark:text-anil-300 hover:underline cursor-pointer">
-                            Teve atraso ou FGTS?
+                            Teve atraso, FGTS ou diferença?
                           </button>
                         )}
                       </div>

@@ -110,6 +110,8 @@ function docToRows(doc) {
       interest: optNum(c.interest),
       charges: optNum(c.charges) || null,
       fgts: optNum(c.fgts) || null,
+      // Com sinal: negativo é desconto
+      adjustment: num(c.adjustment) || null,
       scheduled: c.scheduled ? 1 : 0,
       balance_source: c.balanceSource === 'fatura' || c.balanceSource === 'banco' ? c.balanceSource : null,
       remaining_after: Number.isInteger(c.remainingAfter) && c.remainingAfter > 0 ? c.remainingAfter : null,
@@ -209,6 +211,7 @@ function rowsToDoc(rows) {
         ...(c.interest != null ? { interest: c.interest } : {}),
         ...(c.charges != null ? { charges: c.charges } : {}),
         ...(c.fgts != null ? { fgts: c.fgts } : {}),
+        ...(c.adjustment != null ? { adjustment: c.adjustment } : {}),
         ...(c.scheduled ? { scheduled: true } : {}),
         ...(c.balance_source ? { balanceSource: c.balance_source } : {}),
         ...(c.remaining_after != null ? { remainingAfter: c.remaining_after } : {}),
