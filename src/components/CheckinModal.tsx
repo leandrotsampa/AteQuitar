@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { AlertTriangle, ArrowLeft, ArrowRight, CalendarClock, CalendarDays, Check, CircleCheck, ClipboardCheck, PiggyBank, Receipt, X } from 'lucide-react';
+import { AlertTriangle, ArrowLeft, ArrowRight, CalendarClock, CalendarDays, Check, CircleCheck, ClipboardCheck, PiggyBank, Plus, Receipt, X } from 'lucide-react';
 import { ModalShell } from './ui/ModalShell';
 import { StepTrack } from './ui/StepTrack';
 import { Field } from './ui/HelpTip';
@@ -330,7 +330,7 @@ export const CheckinModal: React.FC<{
                   animate={{ x: 0, opacity: 1 }}
                   exit={reduce ? { opacity: 0 } : { x: dir * -40, opacity: 0 }}
                   transition={{ duration: 0.3, ease: EASE_OUT }}
-                  className="space-y-5"
+                  className="space-y-4"
                 >
                   {step === 0 && (
                     <>
@@ -366,7 +366,7 @@ export const CheckinModal: React.FC<{
                           </div>
                           <div className="grid grid-cols-2 gap-2" role="radiogroup" aria-label="A parcela já foi paga?">
                             {[
-                              { v: true, icon: CalendarClock, l: 'Agendada no débito', d: `Conta como paga em ${dueLabel}, quando o banco debitar.` },
+                              { v: true, icon: CalendarClock, l: 'Agendada no débito', d: `Conta como paga em ${dueLabel}.` },
                               { v: false, icon: CircleCheck, l: 'Já paguei', d: 'Conta como paga a partir de hoje.' },
                             ].map((o) => {
                               const on = f.scheduled === o.v;
@@ -378,7 +378,7 @@ export const CheckinModal: React.FC<{
                                   role="radio"
                                   aria-checked={on}
                                   onClick={() => set({ scheduled: o.v })}
-                                  className={`flex items-start gap-2.5 p-3 rounded-2xl text-left cursor-pointer transition-colors ${
+                                  className={`flex items-start gap-2.5 px-3 py-2.5 rounded-2xl text-left cursor-pointer transition-colors ${
                                     on
                                       ? 'bg-anil-50 ring-2 ring-anil-500 dark:bg-anil-500/10'
                                       : 'ring-1 ring-slate-200 hover:ring-anil-300 dark:ring-slate-700 dark:hover:ring-anil-500/50'
@@ -440,6 +440,20 @@ export const CheckinModal: React.FC<{
                               </LedgerRow>
                             </>
                           )}
+                          {/* As linhas raras ficam guardadas, mas o convite é uma linha da própria fatura */}
+                          {!moreLines && (
+                            <button
+                              type="button"
+                              onClick={() => setMoreLines(true)}
+                              className="group w-full flex items-center gap-2 py-2 text-left text-sm font-semibold text-anil-700 dark:text-anil-300 cursor-pointer"
+                            >
+                              <span className="w-5 h-5 shrink-0 flex items-center justify-center rounded-full bg-anil-50 dark:bg-anil-500/10 ring-1 ring-anil-500/20 group-hover:bg-anil-100 dark:group-hover:bg-anil-500/20 transition-colors">
+                                <Plus className="w-3.5 h-3.5" />
+                              </span>
+                              <span className="group-hover:underline underline-offset-2">Adicionar atraso, FGTS ou diferença</span>
+                              <span className="ml-auto text-xs font-normal text-slate-500 dark:text-slate-400">se a fatura tiver</span>
+                            </button>
+                          )}
                         </div>
                         <div className="sticky bottom-0 -mx-4 px-4 mt-1 pt-3 pb-2.5 rounded-b-2xl bg-slate-50 dark:bg-slate-950 border-t border-slate-400 dark:border-slate-600">
                           <div className="flex items-baseline justify-between gap-3">
@@ -456,13 +470,8 @@ export const CheckinModal: React.FC<{
                           )}
                         </div>
                       </div>
-                      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 -mt-2 text-xs text-slate-500 dark:text-slate-400">
-                        <span>Confira com o "Valor da prestação" da fatura: se não bater, falta alguma linha.</span>
-                        {!moreLines && (
-                          <button type="button" onClick={() => setMoreLines(true)} className="font-semibold text-anil-700 dark:text-anil-300 hover:underline cursor-pointer">
-                            Teve atraso, FGTS ou diferença?
-                          </button>
-                        )}
+                      <div className="-mt-2 text-xs text-slate-500 dark:text-slate-400">
+                        Confira com o "Valor da prestação" da fatura: se não bater, falta alguma linha.
                       </div>
                     </>
                   )}

@@ -57,7 +57,7 @@ export const LedgerRow: React.FC<{
   sub?: boolean;
   children: React.ReactNode;
 }> = ({ label, help, sign = '+', action, note, sub = false, children }) => (
-  <div className={`flex items-center gap-3 ${sub ? 'py-1.5 pl-4 ml-1 border-l border-slate-200 dark:border-slate-700' : 'py-2'}`}>
+  <div className={`flex items-center gap-3 ${sub ? 'py-1 pl-4 ml-1 border-l border-slate-200 dark:border-slate-700' : 'py-1.5'}`}>
     <div className="flex-1 min-w-0">
       <div className={`flex items-center gap-1.5 ${sub ? 'text-[13px] text-slate-500 dark:text-slate-400' : 'text-sm font-medium text-slate-800 dark:text-slate-100'}`}>
         {label}
