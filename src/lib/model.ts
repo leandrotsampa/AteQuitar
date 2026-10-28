@@ -1,6 +1,6 @@
 // Tudo o que as telas precisam calculado uma vez a partir dos dados salvos
 import { useMemo } from 'react';
-import type { BalanceCheckpoint, Contract, ScheduleCheckpoint, ScheduleRow } from '../types/finance';
+import type { BalanceCheckpoint, CheckIn, Contract, ScheduleCheckpoint, ScheduleRow } from '../types/finance';
 import { balanceAtDue, balanceFromInvoice, buildSchedule, summarize, type ScheduleOptions, type Summary } from './finance';
 import { trFunction, trIsOfficial } from './rates';
 import type { AppData } from './store';
@@ -51,8 +51,17 @@ export function realBalances(data: AppData, contract: Contract, trFor: (ym: stri
     const cp = bankOf(ym);
     return !cp || !dated(cp);
   };
+  // Fatura registrada antes do próprio vencimento (agendada ou paga adiantada): o banco ainda não
+  // abateu a parcela, e o saldo e o prazo dela são uma previsão feita sem as amortizações de depois.
+  // Só as linhas da parcela valem; o saldo do mês sai da conta a partir do saldo real anterior
+  const ahead = (ci: CheckIn) => {
+    const [y, m] = ci.yearMonth.split('-').map(Number);
+    const due = new Date(y, m - 1, Math.min(contract.dueDay, new Date(y, m, 0).getDate())).toLocaleDateString('sv-SE');
+    return new Date(ci.createdAt).toLocaleDateString('sv-SE') < due;
+  };
+  const balances = data.checkins.filter((ci) => ci.balanceAfter && ci.balanceAfter > 0 && !ahead(ci));
   const byInvoice = new Set(
-    data.checkins.filter((ci) => ci.balanceSource === 'fatura' && ci.balanceAfter && invoiceWins(ci.yearMonth)).map((ci) => ci.yearMonth)
+    balances.filter((ci) => ci.balanceSource === 'fatura' && invoiceWins(ci.yearMonth)).map((ci) => ci.yearMonth)
   );
   return [
     // O saldo do banco vira o de logo depois da parcela: sem a TR dos dias até ser visto
@@ -63,8 +72,7 @@ export function realBalances(data: AppData, contract: Contract, trFor: (ym: stri
         const remaining = cp.remaining ?? data.checkins.find((ci) => ci.yearMonth === cp.yearMonth)?.remainingAfter;
         return { ...cp, balance: balanceAtDue(contract, cp, trFor), ...(remaining ? { remaining } : {}) };
       }),
-    ...data.checkins
-      .filter((ci) => ci.balanceAfter && ci.balanceAfter > 0)
+    ...balances
       .filter((ci) => (ci.balanceSource === 'fatura' && byInvoice.has(ci.yearMonth)) || !bankOf(ci.yearMonth))
       .map((ci) => {
         // Prazo: o da fatura; sem ele, o do saldo do banco do mesmo mês

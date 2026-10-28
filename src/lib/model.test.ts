@@ -56,4 +56,47 @@ describe('saldos reais', () => {
     expect(Math.abs(nov.amortization - 1051.7)).toBeLessThan(0.02);
     expect(Math.abs(nov.interest - 2974.81)).toBeLessThan(0.02);
   });
+
+  // Fatura de novembro registrada em 27/10, antes do vencimento (emitida sem a amortização de depois)
+  const november: CheckIn = {
+    id: 'n', yearMonth: '2026-11', paidAmount: 4222.88, amortization: 1051.7, interest: 2974.81, scheduled: true,
+    balanceAfter: 379048.98, balanceSource: 'fatura', remainingAfter: 361, createdAt: '2026-10-27T12:00:00.000Z',
+  };
+  const extra = { id: 'x', yearMonth: '2026-10', amount: 5000, paid: 5000, date: '2026-10-28', mode: 'prazo' as const, source: 'proprio' as const, createdAt: '2026-10-28T15:00:00.000Z' };
+
+  it('fatura registrada antes do vencimento não define o saldo nem o prazo', () => {
+    expect(realBalances(data({ checkpoints: [bank], checkins: [october, november] }), contract, trFor).map((c) => c.yearMonth)).toEqual(['2026-10']);
+    // Paga adiantada ("Já paguei") também: o banco só abate a parcela no vencimento
+    const paga = { ...november, scheduled: undefined };
+    expect(realBalances(data({ checkpoints: [bank], checkins: [october, paga] }), contract, trFor).map((c) => c.yearMonth)).toEqual(['2026-10']);
+  });
+
+  it('fatura registrada no vencimento ou depois continua definindo o saldo', () => {
+    const depois = { ...november, scheduled: undefined, createdAt: '2026-11-06T12:00:00.000Z' };
+    expect(realBalances(data({ checkpoints: [bank], checkins: [october, depois] }), contract, trFor).map((c) => c.yearMonth).sort()).toEqual(['2026-10', '2026-11']);
+  });
+
+  it('com a fatura seguinte agendada, a amortização registrada abate o saldo e o prazo', () => {
+    const run = (extras: (typeof extra)[]) => {
+      const d = data({ checkpoints: [bank], checkins: [october, november], extras });
+      return buildSchedule(contract, {
+        trFor,
+        extras,
+        checkpoints: realBalances(d, contract, trFor),
+        actuals: [october, november].map((ci) => ({ yearMonth: ci.yearMonth, amortization: ci.amortization!, interest: ci.interest! })),
+      });
+    };
+    const sem = run([]);
+    const com = run([extra]);
+    const nov = (rows: ReturnType<typeof run>) => rows.find((r) => r.yearMonth === '2026-11')!;
+    // Novembro é a fatura (juros e amortização dela) nos dois casos; o saldo depois cai com a amortização
+    expect(nov(com).interest).toBe(2974.81);
+    expect(nov(sem).closingBalance - nov(com).closingBalance).toBeGreaterThan(5000);
+    // Sem amortização, o saldo calculado (saldo real de outubro + TR − amortização da fatura) fica a
+    // menos de R$ 2 do que se tira da fatura pelos juros arredondados (aqui, R$ 1,58)
+    const depois = { ...november, scheduled: undefined, createdAt: '2026-11-06T12:00:00.000Z' };
+    const pelaFatura = realBalances(data({ checkpoints: [bank], checkins: [october, depois] }), contract, trFor).find((c) => c.yearMonth === '2026-11')!;
+    expect(Math.abs(nov(sem).closingBalance - pelaFatura.balance)).toBeLessThan(2);
+    expect(com.length).toBeLessThan(sem.length);
+  });
 });
