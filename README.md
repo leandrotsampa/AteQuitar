@@ -346,9 +346,9 @@ O banco `atequitar.sqlite` tem uma tabela para cada tipo de informação, com re
 | `balance_checkpoints` | Saldos reais informados (app do banco ou extrato do IR) |
 | `milestones` | Marcos de 10% já comemorados |
 | `rate_latest`, `rate_points`, `tr_monthly` | Últimas taxas do Banco Central, histórico curto e TR mês a mês |
-| `app_meta` | Versão do esquema e datas |
+| `app_meta` | Versão do esquema, datas e as preferências da interface: tema, sons, menu, tutoriais já vistos e versão ignorada |
 
-Se o módulo nativo do SQLite não carregar num computador, o app continua funcionando com um arquivo JSON de reserva e avisa na tela **Dados e backup**.
+Tudo fica nesse arquivo: copiar o `atequitar.sqlite` para outra pasta ou outro computador leva os dados e as preferências. Se ele não existir, o app cria um vazio e abre no cadastro. Se não conseguir abrir o banco (pasta sem permissão de gravar, arquivo aberto em outro programa), o app avisa e fecha sem gravar em outro lugar.
 
 ## 🔄 Exportar e importar
 

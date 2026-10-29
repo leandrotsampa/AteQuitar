@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
+import { getPref, setPref } from '../lib/prefs';
 
-// Preferências de interface (não fiscais): ficam no localStorage, como o tema
+// Preferências de interface (não fiscais): ficam com as outras preferências, no banco (lib/prefs)
 export interface UiPrefs {
   soundEnabled: boolean;
   soundVolume: number; // 0 a 1
@@ -9,7 +10,7 @@ export interface UiPrefs {
 
 export const DEFAULT_UI_PREFS: UiPrefs = { soundEnabled: true, soundVolume: 0.4, sidebar: 'expanded' };
 
-const UI_PREFS_STORAGE_KEY = 'atequitar_ui_v1';
+const UI_PREFS_KEY = 'ui';
 
 // Lê o que foi salvo; campo ausente ou fora do formato usa o padrão
 export function parseUiPrefs(raw: string | null): UiPrefs {
@@ -35,24 +36,14 @@ const listeners = new Set<() => void>();
 
 export function getUiPrefs(): UiPrefs {
   if (!current) {
-    let raw: string | null = null;
-    try {
-      raw = localStorage.getItem(UI_PREFS_STORAGE_KEY);
-    } catch {
-      // Fallback
-    }
-    current = parseUiPrefs(raw);
+    current = parseUiPrefs(getPref(UI_PREFS_KEY));
   }
   return current;
 }
 
 export function setUiPrefs(patch: Partial<UiPrefs>): void {
   current = { ...getUiPrefs(), ...patch };
-  try {
-    localStorage.setItem(UI_PREFS_STORAGE_KEY, JSON.stringify(current));
-  } catch {
-    // Fallback
-  }
+  setPref(UI_PREFS_KEY, JSON.stringify(current));
   listeners.forEach((l) => l());
 }
 

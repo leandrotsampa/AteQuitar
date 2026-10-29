@@ -1,9 +1,8 @@
 /**
  * Banco SQLite do app: esquema, leitura e gravação do documento inteiro numa transação,
- * e importação do arquivo JSON das primeiras versões.
+ * e as preferências da interface.
  */
 
-const fs = require('fs');
 const { docToRows, rowsToDoc } = require('./dataMapping.cjs');
 
 const SCHEMA_VERSION = 1;
@@ -233,18 +232,21 @@ function writeDoc(db, doc) {
   return true;
 }
 
-// Primeira abertura depois de atualizar: traz os dados do arquivo JSON das versões anteriores
-function importLegacyJson(db, jsonPath) {
-  if (!fs.existsSync(jsonPath) || !isEmpty(db)) return false;
-  try {
-    const doc = JSON.parse(fs.readFileSync(jsonPath, 'utf-8'));
-    writeDoc(db, doc);
-    fs.renameSync(jsonPath, `${jsonPath}.importado`);
-    return true;
-  } catch (err) {
-    console.error('[Até Quitar] Não foi possível importar o arquivo JSON antigo.', err);
-    return false;
-  }
+// Preferências da interface (tema, sons, menu, tutoriais vistos, versão ignorada) também ficam no
+// banco, em app_meta com o prefixo "pref:": copiar o arquivo leva tudo junto
+const PREF = 'pref:';
+
+function readPrefs(db) {
+  const prefs = {};
+  for (const r of db.prepare("SELECT key, value FROM app_meta WHERE key LIKE 'pref:%'").all()) prefs[r.key.slice(PREF.length)] = r.value;
+  return prefs;
 }
 
-module.exports = { openDatabase, readDoc, writeDoc, importLegacyJson };
+// Valor nulo apaga a preferência
+function writePref(db, key, value) {
+  if (value === null || value === undefined) db.prepare('DELETE FROM app_meta WHERE key = ?').run(PREF + key);
+  else db.prepare('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)').run(PREF + key, String(value));
+  return true;
+}
+
+module.exports = { openDatabase, readDoc, writeDoc, readPrefs, writePref };

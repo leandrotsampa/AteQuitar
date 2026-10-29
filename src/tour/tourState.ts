@@ -1,3 +1,5 @@
+import { getPref, setPref } from '../lib/prefs';
+
 // O que o tutorial já mostrou: boas-vindas feitas e os passos vistos (por id).
 // Passo com id novo numa versão futura aparece sozinho, como novidade.
 export interface TourState {
@@ -50,41 +52,56 @@ export function parseTourState(raw: string | null): TourState {
   }
 }
 
-const KEY = 'atequitar_tour_v1';
-
-// O que já foi visto vale para os dados de agora, com um registro para cada banco (pela data de
-// criação dele): dois portáteis em pastas diferentes dividem o armazenamento do navegador, mas não
-// os tutoriais. Dados novos (banco excluído ou "Apagar tudo e recomeçar") mostram os tutoriais de novo
+// O que já foi visto fica com as preferências, no próprio banco. O registro guarda a data de criação
+// dos dados: dados novos ("Apagar tudo e recomeçar") mostram os tutoriais de novo
+const PREF = 'tour';
 let boundDataId: string | null = null;
-const keyOf = (dataId: string | null) => (dataId ? `${KEY}:${dataId}` : KEY);
+
+const ownerOf = (raw: string | null): unknown => {
+  try {
+    return raw ? (JSON.parse(raw) as { dataId?: unknown })?.dataId : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
+// Até a 1.2.1 o registro ficava no localStorage (um por banco na 1.2.1, um só antes): na primeira
+// abertura de cada banco ele passa para cá e sai de lá
+function legacyTourState(dataId: string, hasData: boolean): TourState | null {
+  try {
+    const OLD = 'atequitar_tour_v1';
+    const own = localStorage.getItem(`${OLD}:${dataId}`);
+    if (own) {
+      localStorage.removeItem(`${OLD}:${dataId}`);
+      return parseTourState(own);
+    }
+    const single = localStorage.getItem(OLD);
+    const owner = ownerOf(single);
+    // O registro único vale para o banco dono dele e, sem dono (versões mais antigas), para dados
+    // que já têm financiamento
+    if (single && (owner === dataId || (typeof owner !== 'string' && hasData))) {
+      localStorage.removeItem(OLD);
+      return parseTourState(single);
+    }
+  } catch {
+    // Sem localStorage: nada a migrar
+  }
+  return null;
+}
 
 export function bindTourToData(dataId: string, hasData: boolean) {
   boundDataId = dataId;
-  try {
-    if (localStorage.getItem(keyOf(dataId))) return;
-    // Registro único das versões anteriores: vale para o banco dono dele e, sem dono (versões mais
-    // antigas), para dados que já têm financiamento; banco vazio começa do zero
-    const raw = localStorage.getItem(KEY);
-    const owner = raw ? (JSON.parse(raw) as { dataId?: unknown })?.dataId : undefined;
-    const keep = owner === dataId || (typeof owner !== 'string' && hasData);
-    localStorage.setItem(keyOf(dataId), JSON.stringify(keep ? parseTourState(raw) : emptyTourState));
-  } catch {
-    // Sem armazenamento: o tutorial segue como se fosse a primeira vez
-  }
+  const raw = getPref(PREF);
+  if (ownerOf(raw) === dataId) return;
+  // Sem registro neste banco: o das versões anteriores; com registro de outros dados, recomeçou
+  const state = raw ? emptyTourState : (legacyTourState(dataId, hasData) ?? emptyTourState);
+  setPref(PREF, JSON.stringify({ ...state, dataId }));
 }
 
 export function loadTourState(): TourState {
-  try {
-    return parseTourState(localStorage.getItem(keyOf(boundDataId)));
-  } catch {
-    return emptyTourState;
-  }
+  return parseTourState(getPref(PREF));
 }
 
 export function saveTourState(state: TourState) {
-  try {
-    localStorage.setItem(keyOf(boundDataId), JSON.stringify(state));
-  } catch {
-    // Sem armazenamento: o tutorial só volta a aparecer na próxima abertura
-  }
+  setPref(PREF, JSON.stringify({ ...state, ...(boundDataId ? { dataId: boundDataId } : {}) }));
 }

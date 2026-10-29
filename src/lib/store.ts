@@ -32,11 +32,10 @@ const emptyData = (): AppData => ({
 
 const LS_KEY = 'atequitar_data_v1';
 
-// Onde e como os dados estão guardados ('json' só se o SQLite não carregar)
+// Onde fica o banco SQLite: ao lado do app (portátil) ou na pasta de dados do sistema
 export interface DataInfo {
   path: string;
   mode: 'portable' | 'system';
-  engine: 'sqlite' | 'json';
 }
 
 export interface ElectronAPI {
@@ -51,6 +50,9 @@ export interface ElectronAPI {
   openDataFolder: () => Promise<boolean>;
   exportData: () => Promise<{ ok: boolean; path?: string }>;
   importData: () => Promise<{ ok: boolean; doc?: unknown; error?: string }>;
+  // Preferências da interface guardadas no banco (lidas ao abrir a janela)
+  prefs?: Record<string, string>;
+  writePref?: (key: string, value: string | null) => Promise<boolean>;
 }
 
 declare global {

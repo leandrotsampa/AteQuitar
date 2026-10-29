@@ -16,4 +16,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   openDataFolder: () => ipcRenderer.invoke('data:open-folder'),
   exportData: () => ipcRenderer.invoke('data:export'),
   importData: () => ipcRenderer.invoke('data:import'),
+  // Preferências guardadas no banco: lidas uma vez aqui, antes da página, para o tema não piscar
+  prefs: ipcRenderer.sendSync('prefs:read'),
+  writePref: (key, value) => ipcRenderer.invoke('prefs:write', key, value),
 });

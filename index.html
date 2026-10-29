@@ -7,9 +7,12 @@
     <link rel="icon" type="image/png" href="./icon.png" />
     <meta name="description" content="Acompanhe seu financiamento imobiliário até a quitação." />
     <script>
-      // Tema antes do primeiro desenho: sem piscar claro ao abrir no escuro
+      // Tema antes do primeiro desenho: sem piscar claro ao abrir no escuro. No app vem do banco (lido
+      // pela ponte do Electron); no navegador, do localStorage. O nome antigo vale até a migração
       try {
-        if (localStorage.getItem('atequitar_theme') === 'dark') document.documentElement.classList.add('dark');
+        var api = window.electronAPI;
+        var theme = (api && api.prefs && api.prefs.theme) || localStorage.getItem('atequitar_pref:theme') || localStorage.getItem('atequitar_theme');
+        if (theme === 'dark') document.documentElement.classList.add('dark');
       } catch (e) {}
     </script>
   </head>

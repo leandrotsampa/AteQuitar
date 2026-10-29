@@ -8,15 +8,12 @@ const path = require('path');
 const fs = require('fs');
 const { windowChromeOptions, windowControlFor, shortcutFor } = require('./windowChrome.cjs');
 const { portableDirectoryFor } = require('./dataDirectory.cjs');
-const { openDatabase, readDoc, writeDoc, importLegacyJson } = require('./database.cjs');
+const { openDatabase, readDoc, writeDoc, readPrefs, writePref } = require('./database.cjs');
 const { exportDocument, parseImport } = require('./dataTransfer.cjs');
 
 const DB_FILE = 'atequitar.sqlite';
-// Arquivo das primeiras versões; também é o modo de reserva se o SQLite não carregar
-const JSON_FILE = 'atequitar-dados.json';
 
 let mainWindow = null;
-let Database = null;
 let db = null;
 let dataPath = '';
 // 'portable' = banco ao lado do app; 'system' = pasta de dados do sistema (userData)
@@ -45,38 +42,22 @@ function getDataDirectory() {
   return userDataDir;
 }
 
+// Os dados ficam só no banco SQLite. Sem ele, o arquivo é criado vazio e o app abre no cadastro.
+// Se o banco não abrir, o app avisa e fecha: nada é gravado em outro lugar
 function initDatabase() {
-  const dir = getDataDirectory();
-  const jsonPath = path.join(dir, JSON_FILE);
+  dataPath = path.join(getDataDirectory(), DB_FILE);
   try {
-    Database = require('better-sqlite3');
-    dataPath = path.join(dir, DB_FILE);
-    db = openDatabase(Database, dataPath);
-    if (importLegacyJson(db, jsonPath)) console.log('[Até Quitar] Dados do arquivo JSON antigo importados para o SQLite.');
+    db = openDatabase(require('better-sqlite3'), dataPath);
   } catch (err) {
-    // Driver nativo indisponível: segue gravando no arquivo JSON para não perder nada
-    console.error('[Até Quitar] SQLite indisponível; usando o arquivo JSON de reserva.', err);
-    db = null;
-    dataPath = jsonPath;
+    console.error('[Até Quitar] Não foi possível abrir o banco de dados.', err);
+    dialog.showErrorBox(
+      'Até Quitar: não foi possível abrir os dados',
+      `O banco de dados não abriu e o app vai fechar para não perder nada.\n\n${dataPath}\n\n${err instanceof Error ? err.message : String(err)}\n\n` +
+        'Confira se a pasta permite gravar e se o arquivo não está aberto em outro programa.'
+    );
+    return false;
   }
-  console.log(`[Até Quitar] Dados (${db ? 'sqlite' : 'json'}, ${storageMode}): ${dataPath}`);
-}
-
-function readData() {
-  if (db) return readDoc(db);
-  try {
-    return fs.existsSync(dataPath) ? JSON.parse(fs.readFileSync(dataPath, 'utf-8')) : null;
-  } catch (err) {
-    return null;
-  }
-}
-
-function writeData(doc) {
-  if (db) return writeDoc(db, doc);
-  // Reserva: arquivo temporário e troca de nome, para nunca ficar pela metade
-  const tmp = `${dataPath}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(doc, null, 2), 'utf-8');
-  fs.renameSync(tmp, dataPath);
+  console.log(`[Até Quitar] Dados (${storageMode}): ${dataPath}`);
   return true;
 }
 
@@ -160,14 +141,19 @@ function setupIpcHandlers() {
     return Boolean(win && win.isMaximized());
   });
 
-  ipcMain.handle('data:load', () => readData());
-  ipcMain.handle('data:save', (event, doc) => writeData(doc));
-  ipcMain.handle('data:info', () => ({ path: dataPath, mode: storageMode, engine: db ? 'sqlite' : 'json' }));
+  ipcMain.handle('data:load', () => readDoc(db));
+  ipcMain.handle('data:save', (event, doc) => writeDoc(db, doc));
+  ipcMain.handle('data:info', () => ({ path: dataPath, mode: storageMode }));
+  // Preferências: lidas de uma vez ao abrir a janela (o tema entra antes da primeira pintura)
+  ipcMain.on('prefs:read', (event) => {
+    event.returnValue = readPrefs(db);
+  });
+  ipcMain.handle('prefs:write', (event, key, value) => writePref(db, String(key), value));
 
   // Exportar: os dados em JSON legível (sem as taxas do mercado, que o app busca de novo)
   ipcMain.handle('data:export', async (event) => {
     const win = BrowserWindow.fromWebContents(event.sender);
-    const doc = readData();
+    const doc = readDoc(db);
     if (!doc) return { ok: false };
     const { canceled, filePath } = await dialog.showSaveDialog(win, {
       title: 'Exportar dados do Até Quitar',
@@ -211,7 +197,10 @@ function setupApplicationMenu() {
 }
 
 app.whenReady().then(() => {
-  initDatabase();
+  if (!initDatabase()) {
+    app.quit();
+    return;
+  }
   setupIpcHandlers();
   setupApplicationMenu();
   createWindow();

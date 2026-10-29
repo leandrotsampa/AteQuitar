@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { AlertTriangle, Database, Download, FolderOpen, RotateCcw, Upload, X } from 'lucide-react';
+import { Database, Download, FolderOpen, RotateCcw, Upload, X } from 'lucide-react';
 import { ModalShell } from './ui/ModalShell';
 import { btnGhost, tile } from './ui/card';
 import { exportJson, normalizeData, type AppData, type DataInfo } from '../lib/store';
@@ -110,15 +110,9 @@ export const DataModal: React.FC<{
         <div className="min-w-0 text-sm">
           <div className="font-semibold text-slate-900 dark:text-white">
             {info
-              ? `${info.engine === 'sqlite' ? 'Banco SQLite' : 'Arquivo de dados'} ${info.mode === 'portable' ? 'ao lado do app' : 'na pasta de dados do sistema'}`
+              ? `Banco SQLite ${info.mode === 'portable' ? 'ao lado do app' : 'na pasta de dados do sistema'}`
               : 'Guardado no navegador'}
           </div>
-          {info?.engine === 'json' && (
-            <div className="mt-1.5 flex items-start gap-1.5 text-xs text-sol-800 dark:text-sol-200">
-              <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-              O banco SQLite não pôde ser aberto neste computador. Os dados estão sendo guardados num arquivo de reserva.
-            </div>
-          )}
           <div className="text-slate-500 dark:text-slate-400 break-all font-num text-xs mt-0.5">{info?.path ?? 'localStorage'}</div>
           {info && (
             <button type="button" onClick={() => window.electronAPI?.openDataFolder()} className="mt-2 inline-flex items-center gap-1.5 text-xs font-bold text-anil-700 dark:text-anil-300 cursor-pointer">

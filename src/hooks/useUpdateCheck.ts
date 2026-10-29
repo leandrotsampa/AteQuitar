@@ -1,18 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
+import { getPref, setPref } from '../lib/prefs';
 import { fetchLatestRelease, isNewerVersion, type Release } from '../lib/updates';
 
 // Consulta ao abrir e a cada 6 horas com o app aberto. "Mais tarde" esconde até a próxima abertura;
-// "Ignorar esta versão" fica no localStorage e só volta a avisar quando sair outra mais nova
+// "Ignorar esta versão" fica nas preferências e só volta a avisar quando sair outra mais nova
 const INTERVAL = 6 * 60 * 60 * 1000;
-const SKIPPED_KEY = 'atequitar:update-skipped';
+const SKIPPED_KEY = 'update-skipped';
 
-const readSkipped = (): string => {
-  try {
-    return localStorage.getItem(SKIPPED_KEY) ?? '';
-  } catch {
-    return '';
-  }
-};
+const readSkipped = (): string => getPref(SKIPPED_KEY) ?? '';
 
 export function useUpdateCheck(): { update: Release | null; later: () => void; skip: () => void } {
   const [latest, setLatest] = useState<Release | null>(null);
@@ -36,11 +31,7 @@ export function useUpdateCheck(): { update: Release | null; later: () => void; s
   const later = useCallback(() => setHidden(true), []);
   const skip = useCallback(() => {
     if (!latest) return;
-    try {
-      localStorage.setItem(SKIPPED_KEY, latest.version);
-    } catch {
-      // sem localStorage: vale só até fechar o app
-    }
+    setPref(SKIPPED_KEY, latest.version);
     setSkipped(latest.version);
   }, [latest]);
 

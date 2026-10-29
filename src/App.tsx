@@ -9,6 +9,7 @@ import { ConfettiLayer, celebrate } from './components/ui/Confetti';
 import { useAppDialog } from './components/ui/AppDialog';
 import type { WizardResult } from './components/ContractWizard';
 import { useAppData, type AppData } from './lib/store';
+import { setPref } from './lib/prefs';
 import { useFinanceModel } from './lib/model';
 import { lastPaidMonth } from './lib/finance';
 import { fetchMarketRates, missingTrMonths, shouldRefresh } from './lib/rates';
@@ -52,8 +53,6 @@ const ImportDocumentModal = lazy(() => loadImport().then((m) => ({ default: m.Im
 const preloadAll = () => {
   for (const l of [loadHistory, loadAmortize, loadInvest, loadSystems, loadRate, loadMarket, loadLearn, loadCheckin, loadData, loadImport, loadWizard]) void l();
 };
-
-const THEME_KEY = 'atequitar_theme';
 
 // Parcelas que o check-in disse que já foram pagas
 const paidMonthsOf = (d: AppData) => new Set(d.checkins.filter((c) => !c.scheduled).map((c) => c.yearMonth));
@@ -101,11 +100,7 @@ export default function App() {
   );
   const toggleTheme = (origin?: HTMLElement | null) => {
     const next = document.documentElement.classList.contains('dark') ? 'light' : 'dark';
-    try {
-      localStorage.setItem(THEME_KEY, next);
-    } catch {
-      // segue sem lembrar
-    }
+    setPref('theme', next);
     playSound('whoosh');
     runThemeWipe(origin ?? null, () => {
       document.documentElement.classList.toggle('dark', next === 'dark');
