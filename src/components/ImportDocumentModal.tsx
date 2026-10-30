@@ -17,6 +17,7 @@ import { ModalShell } from './ui/ModalShell';
 import { StepTrack } from './ui/StepTrack';
 import { Field, HelpTip } from './ui/HelpTip';
 import { MoneyField, NumberField } from './ui/Inputs';
+import { TermPresets } from './ui/TermPresets';
 import { btnGhost, btnPrimary, inputBase, tile } from './ui/card';
 import { celebrate } from './ui/Confetti';
 import { HELP } from './help';
@@ -368,6 +369,12 @@ export const ImportDocumentModal: React.FC<{
                             digits={0}
                             suffix="meses"
                             ariaLabel="Prazo total do contrato em meses"
+                          />
+                          <TermPresets
+                            value={opts.termMonths ?? plan.contract.termMonths}
+                            onPick={(m) => setOpts((o) => ({ ...o, termMonths: m }))}
+                            min={plan.minTerm}
+                            unit="meses"
                           />
                         </Field>
                       </div>

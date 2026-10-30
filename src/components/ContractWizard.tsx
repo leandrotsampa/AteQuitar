@@ -9,7 +9,6 @@ import {
   currentYearMonth,
   effectiveToNominal,
   formatBRL,
-  formatDuration,
   monthLong,
   monthlyToAnnual,
   nominalToEffective,
@@ -19,6 +18,7 @@ import { EASE_OUT } from '../lib/motion';
 import { playSound } from '../hooks/useSound';
 import { Field } from './ui/HelpTip';
 import { MoneyField, MonthField, NumberField } from './ui/Inputs';
+import { TermPresets } from './ui/TermPresets';
 import { btnGhost, btnPrimary, chip, inputBase } from './ui/card';
 import { HouseHero } from './HouseHero';
 import { StepTrack } from './ui/StepTrack';
@@ -339,7 +339,7 @@ export const ContractWizard: React.FC<{
                       {Math.round((1 - c.financedAmount / c.propertyValue) * 100)}% do imóvel).
                     </div>
                   )}
-                  <Field label="Prazo" help={HELP.termMonths} hint={c.termMonths > 0 ? formatDuration(c.termMonths) : undefined}>
+                  <Field label="Prazo" help={HELP.termMonths}>
                     <div className="flex gap-2 items-center">
                       <NumberField
                         value={termUnit === 'meses' ? c.termMonths : c.termMonths / 12}
@@ -363,6 +363,7 @@ export const ContractWizard: React.FC<{
                         ))}
                       </div>
                     </div>
+                    <TermPresets value={c.termMonths} onPick={(m) => set('termMonths', m)} unit={termUnit} />
                   </Field>
                   <Field label="Sistema de amortização" help={HELP.system}>
                     <div className="grid grid-cols-2 gap-3">
