@@ -196,8 +196,7 @@ p { margin: 0; text-wrap: pretty; }
 .hero .cta-row, .hero .platforms { justify-content: center; }
 .platforms { list-style: none; padding: 0; margin: 18px 0 0; display: flex; flex-wrap: wrap; gap: 8px; }
 .platforms li { font-size: 0.86rem; font-weight: 600; color: var(--text-2); padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); }
-.platforms li.os { display: grid; place-items: center; width: 44px; height: 36px; padding: 0; color: var(--text); }
-.platforms li.os svg { width: 20px; height: 20px; }
+.platforms li { display: inline-flex; align-items: center; gap: 7px; }
 .platforms li.muted { border-color: transparent; background: none; color: var(--text-3); padding-inline: 4px; }
 .platforms.center { justify-content: center; }
 @media (max-width: 560px) {
@@ -347,7 +346,7 @@ tr:last-child td { border-bottom: 0; }
 .dl.current { border: 2px solid var(--brand); padding: 23px; }
 .dl-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .dl-head h3 { font-size: 1.35rem; display: flex; align-items: center; gap: 10px; }
-.dl-head h3 svg { width: 24px; height: 24px; flex: none; }
+.dl-head .os-ico { width: 0.95em; height: 0.95em; color: var(--brand-text); }
 .badge { font-size: 0.78rem; font-weight: 700; color: var(--brand-text); background: var(--brand-soft); padding: 5px 12px; border-radius: 999px; white-space: nowrap; }
 .dl-options { display: grid; gap: 8px; }
 .dl-opt {
@@ -365,6 +364,12 @@ tr:last-child td { border-bottom: 0; }
 .dl-help b { color: var(--text-2); font-weight: 700; }
 .dl-help em { font-style: normal; font-weight: 700; color: var(--text-2); }
 .dl-help code { display: block; width: fit-content; max-width: 100%; margin-top: 6px; font-size: 0.8rem; padding: 4px 8px; border-radius: 6px; background: var(--surface-2); color: var(--text-2); overflow-wrap: anywhere; }
+.dl-status:empty { display: none; }
+.dl-status { margin-top: 4px; font-size: 0.9rem; font-weight: 700; color: var(--brand-text); }
+/* Depois do clique: a instrução da primeira abertura vira o próximo passo, em destaque */
+.dl.started .dl-help { margin-top: 4px; padding: 14px 16px; border: 0; border-radius: var(--radius-sm); background: var(--sol-soft); color: var(--text-2); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--sol) 55%, transparent); }
+.dl.started .dl-help b { color: var(--sol-text); }
+.dl-help:focus { outline: none; }
 .trust { margin-top: 18px; font-size: 0.92rem; color: var(--text-3); max-width: 72ch; }
 @media (max-width: 900px) { .download { grid-template-columns: 1fr; } }
 
@@ -395,7 +400,7 @@ tr:last-child td { border-bottom: 0; }
 .end-cta .btn-primary:hover { background: #ffca4d; }
 .end-cta .btn-ghost { background: rgb(255 255 255 / 0.08); color: #fff; border-color: rgb(255 255 255 / 0.3); }
 .end-cta .btn-ghost:hover { border-color: #fff; }
-.end-cta .platforms li { background: rgb(255 255 255 / 0.06); border-color: rgb(255 255 255 / 0.2); color: #fff; --surface: #252266; }
+.end-cta .platforms li { background: rgb(255 255 255 / 0.06); border-color: rgb(255 255 255 / 0.2); color: #e0e5ff; }
 .end-cta :focus-visible { outline-color: #ffca4d; }
 @media (max-width: 560px) { .end-cta { padding: 48px 18px; border-radius: 26px; } .end-cta .cta-row .btn { flex: 1 1 100%; } }
 
@@ -404,6 +409,13 @@ footer { margin-top: 112px; padding: 32px 0 48px; border-top: 1px solid var(--li
 footer .wrap { display: grid; gap: 10px; }
 footer nav { display: flex; flex-wrap: wrap; gap: 4px 18px; margin-bottom: 6px; }
 footer nav a { color: var(--text-2); display: inline-flex; align-items: center; min-height: 44px; }
+
+/* Ícones dos sistemas: desenhados com máscara para herdar a cor do texto nos dois temas.
+   Apple e Linux do Simple Icons (CC0); Windows desenhado aqui (os mesmos do FatorSimples) */
+.os-ico { display: inline-block; width: 1em; height: 1em; flex: none; background: currentColor; vertical-align: -0.125em; -webkit-mask: var(--ico) center / contain no-repeat; mask: var(--ico) center / contain no-repeat; }
+.os-windows { --ico: url('../img/os-windows.svg'); }
+.os-apple { --ico: url('../img/os-apple.svg'); }
+.os-linux { --ico: url('../img/os-linux.svg'); }
 
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 

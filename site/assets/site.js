@@ -166,6 +166,25 @@
       .catch(function () { /* sem rede ou limite da API: os links da página de releases continuam valendo */ });
   }
 
+  // Depois de clicar num arquivo: o cartão confirma o download e destaca o que fazer na primeira
+  // abertura (o aviso do SmartScreen ou do Gatekeeper), que é onde a pessoa costuma travar
+  $$('.dl-opt').forEach(function (link) {
+    link.addEventListener('click', function () {
+      if (!link.hasAttribute('download')) return; // sem a API, o link abre a página da versão
+      var card = link.closest('.dl');
+      if (!card) return;
+      $$('.dl.started').forEach(function (c) { c.classList.remove('started'); setText('[data-dl-status]', '', c); });
+      card.classList.add('started');
+      var nome = link.getAttribute('data-dl-name') || 'o arquivo'; // "o instalador" vira "do instalador"
+      setText('[data-dl-status]', 'Começou o download d' + nome + '. Quando terminar, siga o passo abaixo.', card);
+      var help = $('.dl-help', card);
+      if (help) {
+        var r = help.getBoundingClientRect();
+        if (r.bottom > window.innerHeight || r.top < 0) help.scrollIntoView({ behavior: reduzMovimento ? 'auto' : 'smooth', block: 'center' });
+      }
+    });
+  });
+
   // ---------- Simulador do topo: a casa que se enche ----------
   // Contrato de exemplo: 10,49% ao ano + TR, SAC, 20 anos restantes. Amortização reduzindo o prazo
   // comparada com reduzir a parcela, com as mesmas contas do app (assets/calc.js)
