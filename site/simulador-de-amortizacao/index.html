@@ -1,0 +1,273 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Simulador de amortização do financiamento: reduzir prazo ou parcela? | Até Quitar</title>
+  <meta name="description" content="Simule a amortização do financiamento imobiliário e compare reduzir o prazo com reduzir a parcela, em reais. SAC ou Price, com a TR do Banco Central, uma vez, todo mês ou todo ano. Grátis.">
+  <link rel="canonical" href="https://leandrotsampa.github.io/AteQuitar/simulador-de-amortizacao/">
+  <meta name="theme-color" content="#eef1f8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0a0d1c" media="(prefers-color-scheme: dark)">
+  <link rel="icon" type="image/png" href="../icon.png">
+  <link rel="apple-touch-icon" href="../icon.png">
+
+  <meta property="og:type" content="article">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:site_name" content="Até Quitar">
+  <meta property="og:title" content="Simulador de amortização: reduzir prazo ou parcela?">
+  <meta property="og:description" content="Digite o saldo devedor, a taxa e o prazo e veja quanto de juros some amortizando, reduzindo o prazo ou a parcela, lado a lado.">
+  <meta property="og:url" content="https://leandrotsampa.github.io/AteQuitar/simulador-de-amortizacao/">
+  <meta property="og:image" content="https://leandrotsampa.github.io/AteQuitar/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Até Quitar: acompanhe o financiamento da sua casa até a última parcela">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Simulador de amortização: reduzir prazo ou parcela?">
+  <meta name="twitter:description" content="Quanto de juros some ao amortizar o financiamento, reduzindo o prazo ou a parcela, em reais.">
+  <meta name="twitter:image" content="https://leandrotsampa.github.io/AteQuitar/og.png">
+
+  <script>try{var t=localStorage.getItem('aq-tema');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Manrope:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="../assets/site.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "Article",
+        "headline": "Simulador de amortização do financiamento: reduzir prazo ou parcela?",
+        "description": "Como funciona a amortização do financiamento imobiliário, quando reduzir o prazo ou a parcela, SAC e Price, TR e FGTS, com um simulador em reais.",
+        "inLanguage": "pt-BR",
+        "datePublished": "2026-11-05",
+        "dateModified": "2026-11-05",
+        "author": { "@type": "Person", "name": "Leandro Tavares de Melo", "url": "https://github.com/leandrotsampa" },
+        "publisher": { "@type": "Organization", "name": "Até Quitar", "logo": { "@type": "ImageObject", "url": "https://leandrotsampa.github.io/AteQuitar/icon.png" } },
+        "mainEntityOfPage": "https://leandrotsampa.github.io/AteQuitar/simulador-de-amortizacao/",
+        "image": "https://leandrotsampa.github.io/AteQuitar/og.png"
+      },
+      {
+        "@type": "BreadcrumbList",
+        "itemListElement": [
+          { "@type": "ListItem", "position": 1, "name": "Até Quitar", "item": "https://leandrotsampa.github.io/AteQuitar/" },
+          { "@type": "ListItem", "position": 2, "name": "Simulador de amortização", "item": "https://leandrotsampa.github.io/AteQuitar/simulador-de-amortizacao/" }
+        ]
+      },
+      {
+        "@type": "FAQPage",
+        "mainEntity": [
+          { "@type": "Question", "name": "É melhor amortizar reduzindo o prazo ou a parcela?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Reduzir o prazo quase sempre economiza mais juros, porque a dívida acaba antes e para de render juros mais cedo. Reduzir a parcela economiza menos, mas deixa a parcela mais leve todo mês, o que ajuda quando o orçamento está apertado." } },
+          { "@type": "Question", "name": "Quanto eu economizo amortizando o financiamento?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Depende do saldo, da taxa e do prazo que falta. Num saldo de R$ 300 mil a 10,49% ao ano mais TR, no SAC e com 20 anos pela frente, R$ 10 mil amortizados reduzindo o prazo tiram cerca de R$ 45,8 mil de juros e 22 parcelas. Reduzindo a parcela, a economia fica perto de R$ 11,5 mil." } },
+          { "@type": "Question", "name": "Posso usar o FGTS para amortizar o financiamento?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Sim, em financiamentos do Sistema Financeiro da Habitação para imóvel residencial, com pelo menos 3 anos de trabalho com FGTS somando todos os empregos e um intervalo mínimo de 2 anos entre um uso e outro. O pedido é feito no banco do financiamento." } },
+          { "@type": "Question", "name": "Vale mais a pena amortizar ou investir?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Compare o custo real da dívida, que é a taxa do contrato mais a TR, com o rendimento do investimento já sem o Imposto de Renda. Se a dívida custa mais, amortizar rende mais e sem risco. Antes de amortizar, mantenha uma reserva de emergência, porque o dinheiro amortizado não volta." } },
+          { "@type": "Question", "name": "O banco cobra para amortizar?",
+            "acceptedAnswer": { "@type": "Answer", "text": "Não há multa para amortizar ou quitar antes. Se você paga no meio do mês, uma parte do valor cobre os juros dos dias desde o último vencimento, e o resto abate o saldo devedor." } }
+        ]
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+
+  <header class="nav">
+    <div class="wrap">
+      <a class="brand" href="../" aria-label="Até Quitar, página inicial">
+        <img src="../icon.png" alt="" width="34" height="34">
+        Até Quitar
+      </a>
+      <nav class="nav-links" aria-label="Principal">
+        <a class="hide-sm" href="../#como-funciona">O app</a>
+        <a class="hide-sm" href="#simulador" aria-current="page">Simulador de amortização</a>
+        <a class="hide-sm" href="https://github.com/leandrotsampa/AteQuitar">GitHub</a>
+        <button class="theme-btn" type="button" data-theme-toggle aria-label="Trocar entre tema claro e escuro"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+        <a class="btn btn-primary btn-sm" href="../#baixar">Baixar grátis</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="conteudo" class="article narrow">
+    <nav class="crumbs" aria-label="Você está em"><a href="../">Até Quitar</a> › Simulador de amortização</nav>
+    <h1>Simulador de amortização: reduzir o prazo ou a parcela?</h1>
+    <p class="lead">Veja quanto de juros some quando você paga a mais no financiamento da casa, reduzindo o prazo ou a parcela, lado a lado e em reais. As contas são as mesmas do app Até Quitar: SAC ou Price, com a TR do Banco Central.</p>
+
+    <form class="calc" id="simulador" aria-labelledby="calc-titulo" novalidate onsubmit="return false">
+      <h2 id="calc-titulo">Simule com o seu contrato</h2>
+      <p>Os três primeiros números estão no app ou no extrato do banco, na área de habitação.</p>
+      <div id="amort">
+        <div class="fields fields-3">
+          <div class="field">
+            <label for="saldo">Saldo devedor hoje</label>
+            <div class="input"><span>R$</span><input id="saldo" inputmode="decimal" autocomplete="off" value="300.000,00" aria-describedby="saldo-help"></div>
+            <small id="saldo-help">Não use o valor de quitação com desconto</small>
+          </div>
+          <div class="field">
+            <label for="meses">Parcelas que faltam</label>
+            <div class="input"><input id="meses" inputmode="numeric" autocomplete="off" value="240" aria-describedby="meses-help"><span>meses</span></div>
+            <small id="meses-help">O "prazo remanescente" no app do banco</small>
+          </div>
+          <div class="field">
+            <label for="taxa">Taxa de juros</label>
+            <div class="input"><input id="taxa" inputmode="decimal" autocomplete="off" value="10,49" aria-describedby="taxa-help"><span>% ao ano</span></div>
+            <small id="taxa-help">A efetiva ao ano, do quadro-resumo do contrato</small>
+          </div>
+        </div>
+
+        <div class="choices">
+          <fieldset class="seg">
+            <legend>Sistema</legend>
+            <label><input type="radio" name="sistema" value="SAC" checked><span>SAC</span></label>
+            <label><input type="radio" name="sistema" value="PRICE"><span>Price</span></label>
+          </fieldset>
+          <fieldset class="seg">
+            <legend>Corrigido pela TR?</legend>
+            <label><input type="radio" name="tr" value="sim" checked><span>Sim</span></label>
+            <label><input type="radio" name="tr" value="nao"><span>Não</span></label>
+          </fieldset>
+        </div>
+
+        <div class="fields fields-amort">
+          <div class="field">
+            <label for="valor">Quanto você quer amortizar</label>
+            <div class="input"><span>R$</span><input id="valor" inputmode="decimal" autocomplete="off" value="10.000,00"></div>
+          </div>
+          <fieldset class="seg seg-wide">
+            <legend>Com que frequência?</legend>
+            <label><input type="radio" name="freq" value="once" checked><span>Uma vez</span></label>
+            <label><input type="radio" name="freq" value="monthly"><span>Todo mês</span></label>
+            <label><input type="radio" name="freq" value="yearly"><span>Todo ano</span></label>
+          </fieldset>
+        </div>
+
+        <details class="history" data-r="extra-box">
+          <summary>Seguros e taxas da parcela <span>opcional, para a conta exata</span></summary>
+          <div class="fields">
+            <div class="field">
+              <label for="seguros">Seguros e taxa de administração</label>
+              <div class="input"><span>R$</span><input id="seguros" inputmode="decimal" autocomplete="off" aria-describedby="seguros-help"></div>
+              <small id="seguros-help">MIP + DFI + taxa de administração da última parcela</small>
+            </div>
+          </div>
+          <p class="history-note">Os seguros também entram na economia: com o prazo menor, você paga menos meses de seguro. Os valores estão no boleto ou no detalhe da parcela no app do banco.</p>
+        </details>
+
+        <div class="forecast" aria-live="polite">
+          <div class="selo" data-r="selo"></div>
+          <p class="forecast-verdict" data-r="veredito"></p>
+          <div class="cenarios cenarios-3" data-r="cenarios"></div>
+          <p class="forecast-note" data-r="nota"></p>
+        </div>
+        <p class="calc-foot">A amortização entra junto com a próxima parcela, e os meses futuros usam a TR média dos últimos 12 meses (<span data-r="tr">0,17% ao mês</span>). O resultado é uma simulação: o banco confirma o valor no dia do pagamento.</p>
+      </div>
+    </form>
+
+    <h2>O que é amortizar o financiamento</h2>
+    <p>Amortizar é pagar uma parte da dívida antes do prazo, além da parcela do mês. Esse dinheiro vai inteiro para o <strong>saldo devedor</strong>, sem juros, e todo mês os juros são calculados sobre um saldo menor. Por isso uma amortização de hoje continua economizando por muitos anos.</p>
+    <p>No pedido, o banco pergunta o que você quer diminuir: o <strong>prazo</strong> (quantas parcelas faltam) ou o <strong>valor da parcela</strong>. O dinheiro abatido é o mesmo, mas o efeito no total de juros é bem diferente.</p>
+
+    <h2>Reduzir o prazo ou a parcela: qual compensa mais?</h2>
+    <p><strong>Reduzir o prazo quase sempre economiza mais.</strong> A parcela fica praticamente igual, mas a dívida acaba antes, e cada mês cortado é um mês inteiro de juros e seguros que deixa de existir.</p>
+    <p><strong>Reduzir a parcela economiza menos</strong>, mas alivia o orçamento todo mês. Faz sentido quando a parcela está pesando, quando você quer folga para outras despesas ou quando prefere ter o dinheiro livre agora.</p>
+    <div class="table-wrap">
+      <table>
+        <caption>Exemplo: R$ 10 mil amortizados uma vez</caption>
+        <thead><tr><th scope="col">Contrato</th><th scope="col">Reduzindo o prazo</th><th scope="col">Reduzindo a parcela</th></tr></thead>
+        <tbody>
+          <tr><td>SAC</td><td class="ok">R$ 45.819 a menos e 22 parcelas a menos</td><td>R$ 11.489 a menos e parcela R$ 126 menor</td></tr>
+          <tr><td>Price</td><td class="ok">R$ 70.371 a menos e 22 parcelas a menos</td><td>R$ 15.341 a menos e parcela R$ 97 menor</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="table-note">Saldo de R$ 300 mil, 10,49% ao ano + TR média de 0,17% ao mês e 20 anos restantes, sem os seguros.</p>
+
+    <h3>E amortizar todo mês?</h3>
+    <p>Pequenos valores frequentes também fazem diferença. No mesmo exemplo pelo SAC, R$ 500 por mês reduzindo o prazo tiram cerca de R$ 84 mil de juros. R$ 5 mil uma vez por ano, como com o 13º, tiram cerca de R$ 120 mil e mais de 6 anos de parcelas.</p>
+
+    <h2>Como a amortização funciona no SAC e na Price</h2>
+    <p>No <strong>SAC</strong>, a parte da parcela que abate a dívida é o saldo dividido pelas parcelas que faltam, e a parcela cai um pouco todo mês. Reduzindo o prazo, o banco corta o máximo de meses sem que a parcela nova passe da de antes.</p>
+    <p>Na <strong>Price</strong>, a parcela é fixa e no começo quase toda ela é juros. Por isso amortizar no início de um contrato Price tem um efeito ainda maior: o saldo cai e cada parcela passa a abater mais dívida.</p>
+    <p>Para comparar os dois sistemas com os seus números, o app tem a tela <strong>SAC ou Price</strong>.</p>
+
+    <h2>Por que a TR muda o saldo devedor</h2>
+    <p>Nos contratos corrigidos pela TR, como a maioria da Caixa e do Banco do Brasil, o saldo é atualizado pela Taxa Referencial antes de os juros do mês serem calculados. Com a TR acima de zero, o saldo cresce um pouco todo mês e a dívida demora mais a cair. O simulador usa a TR média dos últimos 12 meses publicada pelo Banco Central.</p>
+
+    <h2>Dá para usar o FGTS para amortizar?</h2>
+    <p>Sim, em financiamentos do Sistema Financeiro da Habitação para imóvel residencial. Em geral é preciso ter pelo menos 3 anos de trabalho com FGTS, somando todos os empregos, e esperar no mínimo 2 anos entre um uso e outro do FGTS no mesmo financiamento. O pedido é feito no banco do financiamento, que confere as regras completas.</p>
+    <p>Como o FGTS rende cerca de 3% ao ano mais TR, bem menos que os juros de um financiamento, usá-lo para amortizar quase sempre compensa.</p>
+
+    <h2>Quando vale a pena amortizar</h2>
+    <ul>
+      <li><strong>Depois da reserva de emergência.</strong> Dinheiro amortizado não volta. Antes, guarde de 3 a 6 meses de gastos num investimento com resgate rápido.</li>
+      <li><strong>Quando a dívida custa mais que o investimento.</strong> Compare a taxa do contrato mais a TR com o rendimento líquido de Imposto de Renda. O app faz essa conta na tela <strong>Amortizar ou investir?</strong></li>
+      <li><strong>Quanto antes, melhor.</strong> No começo do contrato o saldo é maior, e cada real amortizado evita mais juros.</li>
+    </ul>
+
+    <h2>Como pedir a amortização no banco</h2>
+    <ol>
+      <li>No app ou no site do banco, procure a área de habitação e a opção de <strong>amortização extraordinária</strong> ou <strong>antecipação de parcelas</strong>.</li>
+      <li>Escolha reduzir o prazo ou a parcela e confira a simulação do banco.</li>
+      <li>Pague o boleto gerado. Se for no meio do mês, uma parte do valor cobre os juros dos dias desde o último vencimento, e o resto abate o saldo.</li>
+      <li>Depois, confira o saldo novo no extrato. No Até Quitar, o check-in do mês registra a amortização e passa a projetar a partir do saldo real.</li>
+    </ol>
+
+    <h2>Perguntas frequentes</h2>
+    <div class="faq">
+      <details>
+        <summary>É melhor amortizar reduzindo o prazo ou a parcela?</summary>
+        <p>Reduzir o prazo quase sempre economiza mais juros, porque a dívida acaba antes e para de render juros mais cedo. Reduzir a parcela economiza menos, mas deixa a parcela mais leve todo mês, o que ajuda quando o orçamento está apertado.</p>
+      </details>
+      <details>
+        <summary>Quanto eu economizo amortizando o financiamento?</summary>
+        <p>Depende do saldo, da taxa e do prazo que falta. Num saldo de R$ 300 mil a 10,49% ao ano mais TR, no SAC e com 20 anos pela frente, R$ 10 mil amortizados reduzindo o prazo tiram cerca de R$ 45,8 mil de juros e 22 parcelas. Reduzindo a parcela, a economia fica perto de R$ 11,5 mil.</p>
+      </details>
+      <details>
+        <summary>Posso usar o FGTS para amortizar o financiamento?</summary>
+        <p>Sim, em financiamentos do Sistema Financeiro da Habitação para imóvel residencial, com pelo menos 3 anos de trabalho com FGTS somando todos os empregos e um intervalo mínimo de 2 anos entre um uso e outro. O pedido é feito no banco do financiamento.</p>
+      </details>
+      <details>
+        <summary>Vale mais a pena amortizar ou investir?</summary>
+        <p>Compare o custo real da dívida, que é a taxa do contrato mais a TR, com o rendimento do investimento já sem o Imposto de Renda. Se a dívida custa mais, amortizar rende mais e sem risco. Antes de amortizar, mantenha uma reserva de emergência, porque o dinheiro amortizado não volta.</p>
+      </details>
+      <details>
+        <summary>O banco cobra para amortizar?</summary>
+        <p>Não há multa para amortizar ou quitar antes. Se você paga no meio do mês, uma parte do valor cobre os juros dos dias desde o último vencimento, e o resto abate o saldo devedor.</p>
+      </details>
+    </div>
+
+    <div class="end-cta">
+      <h2>Acompanhe o seu financiamento até a última parcela</h2>
+      <p>O Até Quitar guarda o seu contrato, registra cada amortização e mostra a casa ficando sua, com a TR e as taxas do Banco Central sempre em dia. Grátis e com os dados só no seu computador.</p>
+      <div class="cta-row" data-cta-row>
+        <a class="btn btn-primary" href="../#baixar" data-cta-download><span data-cta-download-label>Baixar grátis</span></a>
+        <a class="btn btn-ghost" href="#simulador" data-cta-calc>Simular de novo</a>
+      </div>
+      <ul class="platforms center" aria-label="Sistemas compatíveis">
+        <li><span class="os-ico os-windows" aria-hidden="true"></span>Windows</li><li><span class="os-ico os-apple" aria-hidden="true"></span>macOS</li><li><span class="os-ico os-linux" aria-hidden="true"></span>Linux</li>
+      </ul>
+    </div>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <nav aria-label="Rodapé">
+        <a href="../">Até Quitar</a>
+        <a href="https://github.com/leandrotsampa/AteQuitar">Código no GitHub</a>
+        <a href="https://github.com/leandrotsampa/AteQuitar/releases">Versões</a>
+        <a href="https://github.com/leandrotsampa/AteQuitar/issues">Sugestões e problemas</a>
+      </nav>
+      <p>O simulador refaz a conta do banco, mas é uma simulação: a fatura, o saldo informado pelo banco e o Documento Descritivo do Crédito sempre têm a palavra final. Não substitui a orientação de um profissional de finanças.</p>
+      <p>Feito por <a href="https://github.com/leandrotsampa">@leandrotsampa</a> · © 2026 · <a href="https://github.com/leandrotsampa/AteQuitar/blob/main/LICENSE">Licença MIT</a></p>
+    </div>
+  </footer>
+
+  <script src="../assets/calc.js" defer></script>
+  <script src="../assets/site.js" defer></script>
+</body>
+</html>

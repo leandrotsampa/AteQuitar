@@ -231,6 +231,149 @@
     render();
   }
 
+  // ---------- Simulador de amortização (página simulador-de-amortizacao/) ----------
+  // Três cenários lado a lado com o mesmo cálculo do app: sem amortizar, reduzindo o prazo e
+  // reduzindo a parcela. Sem os seguros da parcela, o que depende deles leva o marcador ≈
+  function parseBRL(s) {
+    s = String(s || '').replace(/[^\d,.-]/g, '');
+    if (s.indexOf(',') !== -1) s = s.replace(/\./g, '').replace(',', '.');
+    else if (/\.\d{3}(\.|$)/.test(s)) s = s.replace(/\./g, '');
+    var n = parseFloat(s);
+    return isFinite(n) && n > 0 ? n : 0;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  var plain = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  var amort = document.getElementById('amort');
+  if (amort && C) {
+    var campo = function (id) { return document.getElementById(id); };
+    var escolha = function (name) { var el = $('input[name="' + name + '"]:checked', amort); return el ? el.value : ''; };
+    var saida = function (k) { return $('[data-r="' + k + '"]', amort); };
+    var custo = function (rows) { return rows.reduce(function (a, row) { return a + row.interest + row.fees; }, 0); };
+    var abrirSeguros = function () {
+      var det = saida('extra-box');
+      det.open = true;
+      campo('seguros').focus();
+    };
+
+    var limpar = function (msg) {
+      saida('selo').className = 'selo';
+      saida('selo').innerHTML = '';
+      saida('veredito').textContent = msg;
+      saida('cenarios').innerHTML = '';
+      saida('nota').textContent = '';
+    };
+
+    var atualizar = function () {
+      var saldo = parseBRL(campo('saldo').value);
+      var meses = Math.round(parseBRL(campo('meses').value));
+      var taxa = parseBRL(campo('taxa').value);
+      var valor = parseBRL(campo('valor').value);
+      var seguros = parseBRL(campo('seguros').value);
+      var sistema = escolha('sistema') || 'SAC';
+      var comTr = escolha('tr') !== 'nao';
+      var freq = escolha('freq') || 'once';
+      saida('tr').textContent = comTr
+        ? trMedia.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '% ao mês' + (trOrigem === 'banco-central' ? '' : ', cópia embutida')
+        : 'sem TR neste contrato';
+
+      if (!saldo || !meses || !taxa) return limpar('Preencha o saldo devedor, as parcelas que faltam e a taxa de juros.');
+      if (meses > 600) return limpar('O prazo vai até 600 meses (50 anos).');
+      if (taxa > 60) return limpar('Confira a taxa: ela é a efetiva ao ano, por exemplo 10,49.');
+      if (!valor) return limpar('Informe quanto você quer amortizar.');
+
+      var inicio = proximoMes();
+      var exato = seguros > 0;
+      var contrato = {
+        financedAmount: saldo, annualRate: taxa, termMonths: meses, system: sistema,
+        firstDueMonth: inicio, trIndexed: comTr,
+        feesRef: exato ? { yearMonth: inicio, insurance: seguros, adminFee: 0 } : undefined
+      };
+      var opts = { trFor: function () { return trMedia; } };
+      var prazo = C.simulateExtra(contrato, opts, { amount: valor, startYm: inicio, frequency: freq, mode: 'prazo' });
+      var parcela = C.simulateExtra(contrato, opts, { amount: valor, startYm: inicio, frequency: freq, mode: 'parcela' });
+      var base = prazo.base;
+      var fimBase = base[base.length - 1].yearMonth;
+
+      // Sem os seguros, a economia e a parcela são estimadas (≈); prazo e datas não dependem deles
+      var marca = '<span class="aprox" title="Estimado: sem os seguros da parcela">≈</span> ';
+      var ap = function (v) { return exato ? v : '<span class="nowrap">' + marca + v + '</span>'; };
+
+      var selo = saida('selo');
+      selo.className = 'selo ' + (exato ? 'ok' : 'est');
+      selo.innerHTML = exato
+        ? '<b>Com os seguros</b><span>' + esc(brl.format(seguros)) + ' por mês de seguros e taxas, corrigidos pela TR.</span><button type="button" data-r="abrir">Editar</button>'
+        : '<b>Sem os seguros</b><span>A conta usa só os juros. Os valores com ≈ mudam com os seguros e taxas da parcela, e reduzindo o prazo a economia real fica um pouco maior.</span><button type="button" data-r="abrir">Informar os seguros</button>';
+      saida('abrir').addEventListener('click', abrirSeguros);
+
+      // Mensagem principal: a diferença entre os dois caminhos, em reais
+      var quitaTudo = prazo.simulated.length <= 1 && freq === 'once';
+      var vence = prazo.interestSaved >= parcela.interestSaved ? 'prazo' : 'parcela';
+      var dif = Math.abs(prazo.interestSaved - parcela.interestSaved);
+      var alivio = parcela.paymentBefore - parcela.paymentAfter;
+      var msg;
+      var nota;
+      if (quitaTudo) {
+        msg = 'Esse valor quita o financiamento: você deixa de pagar <span class="hl">' + ap(esc(brl.format(prazo.interestSaved))) + '</span> de juros e seguros.';
+        nota = 'Para quitar, peça ao banco o valor de quitação do dia, que já desconta os juros futuros.';
+      } else if (vence === 'prazo') {
+        msg = 'Reduzindo o prazo, você deixa de pagar <span class="hl">' + ap(esc(brl.format(prazo.interestSaved))) + '</span>'
+          + (dif >= 1 ? ', ' + ap(esc(brl.format(dif))) + ' a mais do que reduzindo a parcela' : ', o mesmo que reduzindo a parcela')
+          + (prazo.monthsSaved > 0 ? ', e termina ' + esc(duracao(prazo.monthsSaved)) + ' antes.' : '.');
+        nota = 'Reduzindo a parcela, ela cai ' + ap(esc(brl.format(alivio))) + ' por mês logo depois da amortização: menos economia, mais folga no orçamento.';
+      } else {
+        msg = 'Reduzindo a parcela, você deixa de pagar <span class="hl">' + ap(esc(brl.format(parcela.interestSaved))) + '</span>, '
+          + ap(esc(brl.format(dif))) + ' a mais do que reduzindo o prazo.';
+        nota = 'A parcela cai ' + ap(esc(brl.format(alivio))) + ' por mês logo depois da amortização.';
+      }
+      saida('veredito').innerHTML = msg + '<small>' + nota + '</small>';
+
+      var item = function (rotulo, valorHtml, sub) {
+        return '<dt>' + esc(rotulo) + '</dt><dd>' + valorHtml + (sub ? '<small>' + esc(sub) + '</small>' : '') + '</dd>';
+      };
+      var parcelas = function (n) { return n + (n === 1 ? ' parcela' : ' parcelas'); };
+      var cartao = function (tipo, sim) {
+        var melhor = tipo === vence && !quitaTudo;
+        var rows = tipo === 'base' ? base : sim.simulated;
+        var fim = rows.length ? rows[rows.length - 1].yearMonth : inicio;
+        var titulo = tipo === 'base' ? 'Sem amortizar' : tipo === 'prazo' ? 'Reduzindo o prazo' : 'Reduzindo a parcela';
+        var total = tipo === 'base'
+          ? '<small>Juros e seguros até o fim</small><b>' + ap(esc(brl.format(custo(base)))) + '</b>'
+          : '<small>Você deixa de pagar</small><b>' + ap(esc(brl.format(sim.interestSaved))) + '</b>';
+        var proxima = tipo === 'base' ? prazo.paymentBefore : sim.paymentAfter;
+        var mesesAntes = tipo === 'base' ? 0 : sim.monthsSaved;
+        return '<article class="sc' + (melhor ? ' best' : tipo === 'base' ? ' base' : '') + '">'
+          + (melhor ? '<span class="tag">economiza mais</span>' : '')
+          + '<h3>' + titulo + '</h3>'
+          + '<div class="sc-total">' + total + '</div>'
+          + '<dl>'
+          + (tipo === 'base' ? '' : item('Juros e seguros', ap(esc(brl.format(custo(rows)))), 'até a última parcela'))
+          + (tipo === 'base' ? '' : item(freq === 'once' ? 'Amortizado' : 'Amortizado no total', esc(brl.format(sim.totalExtra)), freq === 'monthly' ? brl.format(valor) + ' por mês' : freq === 'yearly' ? brl.format(valor) + ' por ano' : ''))
+          + item('Última parcela', esc(mesAno(fim)), mesesAntes > 0 ? duracao(mesesAntes) + ' antes' : tipo === 'base' ? 'como está hoje' : 'mesmo prazo')
+          + item('Parcelas que faltam', esc(parcelas(rows.length)), '')
+          + item('Parcela seguinte', ap(esc(brl.format(proxima))), tipo === 'base' ? (exato ? 'com seguros e taxas' : 'sem seguros e taxas') : 'era ' + brl.format(prazo.paymentBefore))
+          + '</dl></article>';
+      };
+      saida('cenarios').innerHTML = cartao('base') + cartao('prazo', prazo) + cartao('parcela', parcela);
+      saida('nota').textContent = sistema === 'SAC'
+        ? 'No SAC, reduzindo o prazo, o banco corta o máximo de meses sem que a parcela nova passe da de antes, como a Caixa faz.'
+        : 'Na Price, reduzindo o prazo, a parcela continua a mesma e o número de parcelas diminui.';
+      if (fimBase && !quitaTudo && prazo.monthsSaved === 0 && vence === 'prazo') saida('nota').textContent += ' Com esse valor, ainda não dá para cortar uma parcela inteira.';
+    };
+
+    ['saldo', 'meses', 'taxa', 'valor', 'seguros'].forEach(function (id) {
+      var el = campo(id);
+      el.addEventListener('input', atualizar);
+      el.addEventListener('blur', function () {
+        var n = parseBRL(el.value);
+        el.value = !n ? '' : id === 'meses' ? String(Math.round(n)) : plain.format(n);
+      });
+    });
+    $$('input[type="radio"]', amort).forEach(function (el) { el.addEventListener('change', atualizar); });
+    aoMudarTr.push(atualizar);
+    atualizar();
+  }
+
   // ---------- Entrada suave das seções ----------
   var items = $$('.reveal');
   if ('IntersectionObserver' in window && !reduzMovimento) {
