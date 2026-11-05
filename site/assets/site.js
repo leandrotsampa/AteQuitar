@@ -115,6 +115,9 @@
       row.insertBefore(calc, dl);
       var label = $('[data-cta-download-label]', dl);
       if (label) label.textContent = 'Enviar o link para o computador';
+      // O ícone de download vira o de compartilhar
+      var ico = $('svg', dl);
+      if (ico) ico.innerHTML = '<circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/>';
       dl.addEventListener('click', function (e) {
         var url = location.origin + location.pathname.replace(/[^/]*$/, '');
         var data = { title: 'Até Quitar', text: 'Baixar o Até Quitar no computador', url: url };
@@ -127,7 +130,7 @@
       });
     });
     $$('.nav [data-nav-download]').forEach(function (a) {
-      a.textContent = 'Simular';
+      a.textContent = a.getAttribute('data-mobile-label') || 'Simular';
       a.href = a.getAttribute('data-mobile-href');
     });
   }
@@ -176,7 +179,7 @@
       $$('.dl.started').forEach(function (c) { c.classList.remove('started'); setText('[data-dl-status]', '', c); });
       card.classList.add('started');
       var nome = link.getAttribute('data-dl-name') || 'o arquivo'; // "o instalador" vira "do instalador"
-      setText('[data-dl-status]', 'Começou o download d' + nome + '. Quando terminar, siga o passo abaixo.', card);
+      setText('[data-dl-status]', 'Começou o download d' + nome + '. Quando terminar, siga o passo abaixo: o aviso é normal para um app de código aberto sem assinatura paga.', card);
       var help = $('.dl-help', card);
       if (help) {
         var r = help.getBoundingClientRect();
@@ -187,20 +190,25 @@
 
   // ---------- Simulador do topo: a casa que se enche ----------
   // Contrato de exemplo: 10,49% ao ano + TR, SAC, 20 anos restantes. Amortização reduzindo o prazo
-  // comparada com reduzir a parcela, com as mesmas contas do app (assets/calc.js)
+  // comparada com reduzir a parcela, com as mesmas contas do app (assets/calc.js). A TR é a média
+  // fixa de nov/2025 a out/2026, para o exemplo bater com o título e o texto da página
   var sim = document.getElementById('sim');
   if (sim && C) {
     var saldo = $('[data-in="saldo"]', sim);
     var extra = $('[data-in="extra"]', sim);
+    var voltar = $('[data-sim-reset]', sim);
     var agua = $('[data-water]');
     var janelas = $$('[data-win]').sort(function (a, b) { return Number(a.getAttribute('data-win')) - Number(b.getAttribute('data-win')); });
     var r = function (k, v) { setText('[data-r="' + k + '"]', v, sim); };
     var render = function () {
       var inicio = proximoMes();
       var s = Number(saldo.value);
-      var amt = Math.min(Number(extra.value), s - 1000);
+      // Dá para amortizar até o saldo menos R$ 1.000 (o resto é a parcela do mês): o controle mostra o teto
+      extra.max = String(Math.min(100000, s - 1000));
+      var amt = Number(extra.value);
+      if (voltar) voltar.hidden = saldo.value === saldo.defaultValue && extra.value === extra.defaultValue;
       var contrato = { financedAmount: s, annualRate: 10.49, termMonths: 240, system: 'SAC', firstDueMonth: inicio, trIndexed: true };
-      var trFor = function () { return trMedia; };
+      var trFor = function () { return C.trFallbackAverage; };
       var prazo = C.simulateExtra(contrato, { trFor: trFor }, { amount: amt, startYm: inicio, frequency: 'once', mode: 'prazo' });
       var parcela = C.simulateExtra(contrato, { trFor: trFor }, { amount: amt, startYm: inicio, frequency: 'once', mode: 'parcela' });
       [saldo, extra].forEach(function (el) { el.style.setProperty('--fill', ((el.value - el.min) / (el.max - el.min) * 100) + '%'); });
@@ -215,7 +223,6 @@
       r('prazo-sub', prazo.monthsSaved + (prazo.monthsSaved === 1 ? ' parcela' : ' parcelas') + ' a menos');
       r('parcela-juros', brl0.format(parcela.interestSaved));
       r('parcela-sub', 'parcela ' + brl0.format(parcela.paymentBefore - parcela.paymentAfter) + ' menor');
-      r('tr', (trMedia).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '% ao mês' + (trOrigem === 'banco-central' ? '' : ' (cópia embutida)'));
       // Uma janela acesa por ano a menos de parcelas; a água sobe junto
       var anos = Math.floor(prazo.monthsSaved / 12);
       janelas.forEach(function (w, k) { w.classList.toggle('lit', k < anos); });
@@ -227,7 +234,12 @@
     };
     saldo.addEventListener('input', render);
     extra.addEventListener('input', render);
-    aoMudarTr.push(render);
+    if (voltar) voltar.addEventListener('click', function () {
+      saldo.value = saldo.defaultValue;
+      extra.value = extra.defaultValue;
+      render();
+      extra.focus();
+    });
     render();
   }
 
