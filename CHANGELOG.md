@@ -2,6 +2,23 @@
 
 Todas as versões do Até Quitar e o que mudou em cada uma.
 
+## v1.2.1 (2026-10-30)
+
+### ✨ Novidades
+
+- Atalhos de prazo no cadastro e no importador (1819adb)
+- Dados e preferências só no banco SQLite (1a748e5)
+
+### 🐛 Correções
+
+- Tutorial lembrado para cada banco (048c1e2)
+- Fatura registrada antes do vencimento não define o saldo (a8ccde0)
+- Simulador de amortização com a fatura seguinte já registrada (b4d7a4b)
+
+### 📦 Build e distribuição
+
+- Gerar a release de novo atualiza a versão em vez de repetir (fd253f4)
+
 ## v1.2.0 (2026-10-28)
 
 ### ✨ Novidades
