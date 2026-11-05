@@ -262,13 +262,82 @@
     var escolha = function (name) { var el = $('input[name="' + name + '"]:checked', amort); return el ? el.value : ''; };
     var saida = function (k) { return $('[data-r="' + k + '"]', amort); };
     var custo = function (rows) { return rows.reduce(function (a, row) { return a + row.interest + row.fees; }, 0); };
+    var somar = function (rows, f) { return rows.reduce(function (a, row) { return a + f(row); }, 0); };
     var abrirSeguros = function () {
       var det = saida('extra-box');
       det.open = true;
-      campo('seguros').focus();
+      campo(escolha('seguro-tipo') === 'total' ? 'seguros' : 'mip').focus();
+    };
+    var pct = function (v, casas) { return v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: casas }); };
+
+    // ----- Situação: o financiamento em andamento (saldo de hoje) ou um novo (valor financiado) -----
+    var TEXTOS = {
+      atual: {
+        help: 'Use o saldo e o prazo que o app ou o extrato do banco mostram hoje, na área de habitação.',
+        saldo: 'Saldo devedor hoje', saldoHelp: 'Não use o valor de quitação com desconto',
+        meses: 'Parcelas que faltam', mesesHelp: 'O "prazo remanescente" no app do banco',
+        inicio: 'Próxima parcela', seguroNota: 'Use os valores da última parcela paga, no boleto ou no detalhe da parcela no app do banco. Os seguros também entram na economia: com o prazo menor, você paga menos meses de seguro.'
+      },
+      novo: {
+        help: 'Use os números da proposta ou da simulação do banco: o valor financiado é o preço do imóvel menos a entrada e o FGTS.',
+        saldo: 'Valor financiado', saldoHelp: 'Sem a entrada e o FGTS da compra',
+        meses: 'Prazo', mesesHelp: 'Em meses: 360 são 30 anos',
+        inicio: 'Primeira parcela', seguroNota: 'Use os valores da primeira parcela na simulação do banco. Os seguros também entram na economia: com o prazo menor, você paga menos meses de seguro.'
+      }
+    };
+    var aplicarModo = function () {
+      var t = TEXTOS[escolha('modo') || 'atual'];
+      saida('modo-help').textContent = t.help;
+      saida('saldo-label').textContent = t.saldo;
+      saida('saldo-help').textContent = t.saldoHelp;
+      saida('meses-label').textContent = t.meses;
+      saida('meses-help').textContent = t.mesesHelp;
+      saida('inicio-label').textContent = t.inicio;
+      saida('seguro-nota').textContent = t.seguroNota;
     };
 
-    // Tabela das parcelas mês a mês do cenário escolhido (recolhida; as 24 primeiras e, se pedir, todas)
+    // ----- Taxa: efetiva ao ano, nominal ao ano ou ao mês, como no cadastro do app; guarda a efetiva -----
+    var UNIDADES = {
+      efetiva: { sufixo: '% ao ano', help: 'A efetiva ao ano, do quadro-resumo do contrato', paraEfetiva: function (v) { return v; }, deEfetiva: function (e) { return e; } },
+      nominal: { sufixo: '% ao ano', help: 'A do mês × 12, como em "Juros nominais" no app da Caixa', paraEfetiva: C.nominalToEffective, deEfetiva: C.effectiveToNominal },
+      mes: { sufixo: '% ao mês', help: 'A taxa de cada parcela', paraEfetiva: C.monthlyToAnnual, deEfetiva: C.annualToMonthly }
+    };
+    // Guarda a efetiva do que foi digitado: trocar o tipo só muda a forma de mostrar, sem arredondar
+    var unidadeAtual = 'efetiva';
+    var efetivaGuardada = 0;
+    var lerTaxa = function () {
+      var v = parseBRL(campo('taxa').value);
+      efetivaGuardada = v ? UNIDADES[unidadeAtual].paraEfetiva(v) : 0;
+    };
+    var taxaEfetiva = function () { return efetivaGuardada; };
+    var trocarUnidade = function () {
+      var efetiva = efetivaGuardada;
+      unidadeAtual = escolha('unidade') || 'efetiva';
+      var u = UNIDADES[unidadeAtual];
+      if (efetiva) campo('taxa').value = pct(u.deEfetiva(efetiva), 4);
+      saida('taxa-sufixo').textContent = u.sufixo;
+      atualizar();
+    };
+
+    // ----- Seguros: MIP e DFI separados (o MIP acompanha o saldo) ou só o total, e a taxa à parte -----
+    var aplicarTipoSeguro = function () {
+      var tipo = escolha('seguro-tipo') || 'separado';
+      $$('[data-seguro]', amort).forEach(function (el) { el.hidden = el.getAttribute('data-seguro') !== tipo; });
+      atualizar();
+    };
+    var lerSeguros = function () {
+      var adm = parseBRL(campo('adm').value);
+      if (escolha('seguro-tipo') === 'total') {
+        var total = parseBRL(campo('seguros').value);
+        return { insurance: total, adminFee: adm };
+      }
+      var mip = parseBRL(campo('mip').value);
+      var dfi = parseBRL(campo('dfi').value);
+      var soma = Math.round((mip + dfi) * 100) / 100;
+      return mip > 0 && dfi > 0 ? { insurance: soma, mip: mip, dfi: dfi, adminFee: adm } : { insurance: soma, adminFee: adm };
+    };
+
+    // ----- Tabela das parcelas mês a mês do cenário escolhido (as 24 primeiras e, se pedir, todas) -----
     var ultimo = null;
     var todas = false;
     var MES_CURTO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
@@ -277,10 +346,13 @@
       var box = saida('parcelas-box');
       if (!box) return;
       box.hidden = !ultimo;
-      if (!ultimo || !box.open) return;
-      var qual = escolha('cenario') || 'prazo';
-      var rows = qual === 'base' ? ultimo.prazo.base : ultimo[qual].simulated;
-      var nome = qual === 'base' ? 'sem amortizar' : qual === 'prazo' ? 'reduzindo o prazo' : 'reduzindo a parcela';
+      if (!ultimo) return;
+      // Sem amortização, só existe o cenário do contrato
+      $('.seg', box).hidden = ultimo.soBase;
+      if (!box.open) return;
+      var qual = ultimo.soBase ? 'base' : escolha('cenario') || 'prazo';
+      var rows = qual === 'base' ? ultimo.base : ultimo[qual].simulated;
+      var nome = ultimo.soBase ? '' : qual === 'base' ? ' sem amortizar' : qual === 'prazo' ? ' reduzindo o prazo' : ' reduzindo a parcela';
       var limite = todas ? rows.length : Math.min(24, rows.length);
       var html = '';
       for (var k = 0; k < limite; k++) {
@@ -289,13 +361,15 @@
           + '<td class="r">' + plain.format(row.payment) + (row.extra > 0 ? '<small>+ ' + plain.format(row.extra) + ' amortizados</small>' : '') + '</td>'
           + '<td class="r hide-sm">' + plain.format(row.amortization) + '</td>'
           + '<td class="r hide-sm">' + plain.format(row.interest) + '</td>'
+          + (ultimo.comTaxas ? '<td class="r hide-sm">' + plain.format(row.fees) + '</td>' : '')
           + '<td class="r">' + plain.format(row.closingBalance) + '</td></tr>';
       }
+      $('[data-col="taxas"]', box).hidden = !ultimo.comTaxas;
       saida('parcelas-linhas').innerHTML = html;
-      saida('parcelas-caption').textContent = 'Parcelas mês a mês, ' + nome;
+      saida('parcelas-caption').textContent = 'Parcelas mês a mês' + nome;
       var primeira = rows[0], ultima = rows[rows.length - 1];
-      saida('parcelas-resumo').innerHTML = esc(rows.length + (rows.length === 1 ? ' parcela' : ' parcelas') + ' ' + nome + ', de ' + mesCurto(primeira.yearMonth) + ' a ' + mesCurto(ultima.yearMonth) + '. ')
-        + (ultimo.exato ? 'As parcelas incluem seguros e taxas.' : '<span class="aprox" title="Estimado: sem os seguros da parcela">≈</span> Sem os seguros, as parcelas mostram só amortização e juros.');
+      saida('parcelas-resumo').innerHTML = esc(rows.length + (rows.length === 1 ? ' parcela' : ' parcelas') + nome + ', de ' + mesCurto(primeira.yearMonth) + ' a ' + mesCurto(ultima.yearMonth) + '. ')
+        + (ultimo.exato ? 'As parcelas incluem seguros e taxas.' : '<span class="aprox" title="Estimado: sem os seguros da parcela">≈</span> Sem os seguros, as parcelas mostram só ' + (ultimo.comTaxas ? 'amortização, juros e a taxa de administração.' : 'amortização e juros.'));
       var mais = saida('parcelas-mais');
       mais.hidden = rows.length <= 24;
       mais.textContent = todas ? 'Mostrar só as 24 primeiras' : 'Mostrar todas as ' + rows.length + ' parcelas';
@@ -312,46 +386,77 @@
     };
 
     var atualizar = function () {
+      var modo = escolha('modo') || 'atual';
       var saldo = parseBRL(campo('saldo').value);
       var meses = Math.round(parseBRL(campo('meses').value));
-      var taxa = parseBRL(campo('taxa').value);
+      var taxa = taxaEfetiva();
       var valor = parseBRL(campo('valor').value);
-      var seguros = parseBRL(campo('seguros').value);
+      var fees = lerSeguros();
       var sistema = escolha('sistema') || 'SAC';
       var comTr = escolha('tr') !== 'nao';
       var freq = escolha('freq') || 'once';
+      var inicio = /^\d{4}-\d{2}$/.test(campo('inicio').value) ? campo('inicio').value : proximoMes();
       saida('tr').textContent = comTr
         ? trMedia.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '% ao mês' + (trOrigem === 'banco-central' ? '' : ', cópia embutida')
         : 'sem TR neste contrato';
+      // As três formas da mesma taxa, como no cadastro do app
+      saida('taxa-help').textContent = taxa
+        ? 'Equivale a ' + pct(taxa, 2) + '% efetiva ao ano, ' + pct(C.effectiveToNominal(taxa), 4) + '% nominal ao ano e ' + pct(C.annualToMonthly(taxa), 4) + '% ao mês.'
+        : UNIDADES[unidadeAtual].help;
 
-      if (!saldo || !meses || !taxa) return limpar('Preencha o saldo devedor, as parcelas que faltam e a taxa de juros.');
+      if (!saldo || !meses || !taxa) return limpar('Preencha o ' + (modo === 'novo' ? 'valor financiado, o prazo' : 'saldo devedor, as parcelas que faltam') + ' e a taxa de juros.');
       if (meses > 600) return limpar('O prazo vai até 600 meses (50 anos).');
-      if (taxa > 60) return limpar('Confira a taxa: ela é a efetiva ao ano, por exemplo 10,49.');
-      if (!valor) return limpar('Informe quanto você quer amortizar.');
+      if (taxa > 60) return limpar('Confira a taxa e o tipo escolhido: efetiva ao ano, nominal ao ano ou ao mês.');
 
-      var inicio = proximoMes();
-      var exato = seguros > 0;
+      var exato = fees.insurance > 0;
+      var comTaxas = exato || fees.adminFee > 0;
       var contrato = {
         financedAmount: saldo, annualRate: taxa, termMonths: meses, system: sistema,
         firstDueMonth: inicio, trIndexed: comTr,
-        feesRef: exato ? { yearMonth: inicio, insurance: seguros, adminFee: 0 } : undefined
+        // A fatura de referência: a última paga (antes da próxima) ou a primeira do financiamento novo
+        feesRef: comTaxas ? Object.assign({ yearMonth: modo === 'novo' ? inicio : C.addMonths(inicio, -1) }, fees) : undefined
       };
       var opts = { trFor: function () { return trMedia; } };
-      var prazo = C.simulateExtra(contrato, opts, { amount: valor, startYm: inicio, frequency: freq, mode: 'prazo' });
-      var parcela = C.simulateExtra(contrato, opts, { amount: valor, startYm: inicio, frequency: freq, mode: 'parcela' });
-      var base = prazo.base;
-      var fimBase = base[base.length - 1].yearMonth;
 
-      // Sem os seguros, a economia e a parcela são estimadas (≈); prazo e datas não dependem deles
+      // Sem os seguros, o que depende deles é estimado (≈); prazo e datas não dependem
       var marca = '<span class="aprox" title="Estimado: sem os seguros da parcela">≈</span> ';
       var ap = function (v) { return exato ? v : '<span class="nowrap">' + marca + v + '</span>'; };
 
       var selo = saida('selo');
       selo.className = 'selo ' + (exato ? 'ok' : 'est');
       selo.innerHTML = exato
-        ? '<b>Com os seguros</b><span>' + esc(brl.format(seguros)) + ' por mês de seguros e taxas, corrigidos pela TR.</span><button type="button" data-r="abrir">Editar</button>'
-        : '<b>Sem os seguros</b><span>A conta usa só os juros. Os valores com ≈ mudam com os seguros e taxas da parcela, e reduzindo o prazo a economia real fica um pouco maior.</span><button type="button" data-r="abrir">Informar os seguros</button>';
+        ? '<b>Com os seguros</b><span>' + esc(brl.format(fees.insurance)) + ' de seguros' + (fees.mip !== undefined ? ' (MIP sobre o saldo e DFI pela TR)' : ' (corrigidos pela TR)') + (fees.adminFee ? ' e ' + esc(brl.format(fees.adminFee)) + ' de taxa' : '') + ' por mês.</span><button type="button" data-r="abrir">Editar</button>'
+        : '<b>Sem os seguros</b><span>A conta usa só ' + (fees.adminFee ? 'os juros e a taxa' : 'os juros') + '. Os valores com ≈ mudam com os seguros da parcela, e reduzindo o prazo a economia real fica um pouco maior.</span><button type="button" data-r="abrir">Informar os seguros</button>';
       saida('abrir').addEventListener('click', abrirSeguros);
+
+      // Sem amortização: só a tabela do contrato, com o resumo do que se paga até o fim
+      if (!valor) {
+        var rows = C.buildSchedule(contrato, opts);
+        var pagoTotal = somar(rows, function (row) { return row.payment; });
+        var juros = somar(rows, function (row) { return row.interest; });
+        var taxas = somar(rows, function (row) { return row.fees; });
+        saida('veredito').innerHTML = esc(rows.length + ' parcelas, de ' + mesAno(rows[0].yearMonth) + ' a ' + mesAno(rows[rows.length - 1].yearMonth) + '. ')
+          + 'A primeira é de ' + ap(esc(brl.format(rows[0].payment))) + ' e a última, de ' + ap(esc(brl.format(rows[rows.length - 1].payment))) + '.'
+          + '<small>Até o fim: ' + esc(brl.format(juros)) + ' de juros' + (taxas ? ', ' + esc(brl.format(taxas)) + ' de seguros e taxas' : '') + ' e ' + ap(esc(brl.format(pagoTotal))) + ' pagos no total. Informe um valor para amortizar e compare reduzir o prazo ou a parcela.</small>';
+        saida('cenarios').innerHTML = '';
+        saida('nota').textContent = sistema === 'SAC'
+          ? 'No SAC a amortização é igual todo mês (corrigida pela TR) e a parcela cai aos poucos.'
+          : 'Na Price a parcela é quase fixa: no começo ela é quase toda juros, e no fim, quase toda amortização.';
+        // Na Price com TR, a correção pode passar da amortização no começo: o saldo sobe antes de cair
+        var maior = rows.reduce(function (m, row) { return Math.max(m, row.closingBalance); }, 0);
+        if (maior > saldo + 0.005) {
+          var vira = rows.filter(function (row) { return row.closingBalance < saldo; })[0];
+          saida('nota').textContent += ' Com a TR, o saldo sobe nos primeiros anos, até ' + brl.format(maior) + ', porque a correção passa da amortização' + (vira ? ', e só volta a ficar abaixo do valor financiado em ' + mesAno(vira.yearMonth) : '') + '.';
+        }
+        ultimo = { soBase: true, base: rows, exato: exato, comTaxas: comTaxas };
+        var box = saida('parcelas-box');
+        if (!box.open) box.open = true; else desenharParcelas();
+        return;
+      }
+
+      var prazo = C.simulateExtra(contrato, opts, { amount: valor, startYm: inicio, frequency: freq, mode: 'prazo' });
+      var parcela = C.simulateExtra(contrato, opts, { amount: valor, startYm: inicio, frequency: freq, mode: 'parcela' });
+      var base = prazo.base;
 
       // Mensagem principal: a diferença entre os dois caminhos, em reais
       var quitaTudo = prazo.simulated.length <= 1 && freq === 'once';
@@ -381,8 +486,8 @@
       var parcelas = function (n) { return n + (n === 1 ? ' parcela' : ' parcelas'); };
       var cartao = function (tipo, sim) {
         var melhor = tipo === vence && !quitaTudo;
-        var rows = tipo === 'base' ? base : sim.simulated;
-        var fim = rows.length ? rows[rows.length - 1].yearMonth : inicio;
+        var linhas = tipo === 'base' ? base : sim.simulated;
+        var fim = linhas.length ? linhas[linhas.length - 1].yearMonth : inicio;
         var titulo = tipo === 'base' ? 'Sem amortizar' : tipo === 'prazo' ? 'Reduzindo o prazo' : 'Reduzindo a parcela';
         var total = tipo === 'base'
           ? '<small>Juros e seguros até o fim</small><b>' + ap(esc(brl.format(custo(base)))) + '</b>'
@@ -394,36 +499,47 @@
           + '<h3>' + titulo + '</h3>'
           + '<div class="sc-total">' + total + '</div>'
           + '<dl>'
-          + (tipo === 'base' ? '' : item('Juros e seguros', ap(esc(brl.format(custo(rows)))), 'até a última parcela'))
+          + (tipo === 'base' ? '' : item('Juros e seguros', ap(esc(brl.format(custo(linhas)))), 'até a última parcela'))
           + (tipo === 'base' ? '' : item(freq === 'once' ? 'Amortizado' : 'Amortizado no total', esc(brl.format(sim.totalExtra)), freq === 'monthly' ? brl.format(valor) + ' por mês' : freq === 'yearly' ? brl.format(valor) + ' por ano' : ''))
-          + item('Última parcela', esc(mesAno(fim)), mesesAntes > 0 ? duracao(mesesAntes) + ' antes' : tipo === 'base' ? 'como está hoje' : 'mesmo prazo')
-          + item('Parcelas que faltam', esc(parcelas(rows.length)), '')
-          + item('Parcela seguinte', ap(esc(brl.format(proxima))), tipo === 'base' ? (exato ? 'com seguros e taxas' : 'sem seguros e taxas') : 'era ' + brl.format(prazo.paymentBefore))
+          + item('Última parcela', esc(mesAno(fim)), mesesAntes > 0 ? duracao(mesesAntes) + ' antes' : tipo === 'base' ? 'pelo contrato' : 'mesmo prazo')
+          + item('Parcelas', esc(parcelas(linhas.length)), '')
+          + item('Parcela seguinte', ap(esc(brl.format(proxima))), tipo === 'base' ? (exato ? 'com seguros e taxas' : 'sem seguros') : 'era ' + brl.format(prazo.paymentBefore))
           + '</dl></article>';
       };
       saida('cenarios').innerHTML = cartao('base') + cartao('prazo', prazo) + cartao('parcela', parcela);
-      ultimo = { prazo: prazo, parcela: parcela, exato: exato };
+      ultimo = { soBase: false, base: base, prazo: prazo, parcela: parcela, exato: exato, comTaxas: comTaxas };
       desenharParcelas();
       saida('nota').textContent = sistema === 'SAC'
         ? 'No SAC, reduzindo o prazo, o banco corta o máximo de meses sem que a parcela nova passe da de antes, como a Caixa faz.'
         : 'Na Price, reduzindo o prazo, a parcela continua a mesma e o número de parcelas diminui.';
-      if (fimBase && !quitaTudo && prazo.monthsSaved === 0 && vence === 'prazo') saida('nota').textContent += ' Com esse valor, ainda não dá para cortar uma parcela inteira.';
+      if (!quitaTudo && prazo.monthsSaved === 0 && vence === 'prazo') saida('nota').textContent += ' Com esse valor, ainda não dá para cortar uma parcela inteira.';
     };
 
-    ['saldo', 'meses', 'taxa', 'valor', 'seguros'].forEach(function (id) {
+    if (!campo('inicio').value) campo('inicio').value = proximoMes();
+    ['saldo', 'meses', 'taxa', 'valor', 'seguros', 'mip', 'dfi', 'adm'].forEach(function (id) {
       var el = campo(id);
       el.addEventListener('input', atualizar);
       el.addEventListener('blur', function () {
         var n = parseBRL(el.value);
+        if (id === 'taxa') return; // a taxa fica como foi digitada (o tipo pode ter até 4 casas)
         el.value = !n ? '' : id === 'meses' ? String(Math.round(n)) : plain.format(n);
       });
     });
+    campo('taxa').addEventListener('input', lerTaxa, true);
+    lerTaxa();
+    campo('inicio').addEventListener('change', atualizar);
     $$('input[type="radio"]', amort).forEach(function (el) {
-      el.addEventListener('change', el.name === 'cenario' ? desenharParcelas : atualizar);
+      var acao = el.name === 'cenario' ? desenharParcelas
+        : el.name === 'unidade' ? trocarUnidade
+        : el.name === 'seguro-tipo' ? aplicarTipoSeguro
+        : el.name === 'modo' ? function () { aplicarModo(); atualizar(); }
+        : atualizar;
+      el.addEventListener('change', acao);
     });
     saida('parcelas-box').addEventListener('toggle', desenharParcelas);
     saida('parcelas-mais').addEventListener('click', function () { todas = !todas; desenharParcelas(); });
     aoMudarTr.push(atualizar);
+    aplicarModo();
     atualizar();
   }
 

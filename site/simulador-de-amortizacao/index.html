@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Simulador de amortização do financiamento: reduzir prazo ou parcela? | Até Quitar</title>
-  <meta name="description" content="Simule a amortização do financiamento imobiliário e compare reduzir o prazo com reduzir a parcela, em reais. SAC ou Price, com a TR do Banco Central, uma vez, todo mês ou todo ano. Grátis.">
+  <title>Simulador de financiamento e amortização: tabela de parcelas SAC e Price | Até Quitar</title>
+  <meta name="description" content="Gere a tabela com todas as parcelas do financiamento imobiliário, SAC ou Price, com TR, seguros MIP e DFI e taxa nominal ou efetiva. Simule a amortização reduzindo o prazo ou a parcela, em reais. Grátis.">
   <link rel="canonical" href="https://leandrotsampa.github.io/AteQuitar/simulador-de-amortizacao/">
   <meta name="theme-color" content="#eef1f8" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#0a0d1c" media="(prefers-color-scheme: dark)">
@@ -14,7 +14,7 @@
   <meta property="og:type" content="article">
   <meta property="og:locale" content="pt_BR">
   <meta property="og:site_name" content="Até Quitar">
-  <meta property="og:title" content="Simulador de amortização: reduzir prazo ou parcela?">
+  <meta property="og:title" content="Simulador de financiamento e amortização: todas as parcelas">
   <meta property="og:description" content="Digite o saldo devedor, a taxa e o prazo e veja quanto de juros some amortizando, reduzindo o prazo ou a parcela, lado a lado.">
   <meta property="og:url" content="https://leandrotsampa.github.io/AteQuitar/simulador-de-amortizacao/">
   <meta property="og:image" content="https://leandrotsampa.github.io/AteQuitar/og.png">
@@ -22,7 +22,7 @@
   <meta property="og:image:height" content="630">
   <meta property="og:image:alt" content="Até Quitar: acompanhe o financiamento da sua casa até a última parcela">
   <meta name="twitter:card" content="summary_large_image">
-  <meta name="twitter:title" content="Simulador de amortização: reduzir prazo ou parcela?">
+  <meta name="twitter:title" content="Simulador de financiamento e amortização: todas as parcelas">
   <meta name="twitter:description" content="Quanto de juros some ao amortizar o financiamento, reduzindo o prazo ou a parcela, em reais.">
   <meta name="twitter:image" content="https://leandrotsampa.github.io/AteQuitar/og.png">
 
@@ -38,7 +38,7 @@
     "@graph": [
       {
         "@type": "Article",
-        "headline": "Simulador de amortização do financiamento: reduzir prazo ou parcela?",
+        "headline": "Simulador de financiamento e amortização: tabela de parcelas SAC e Price",
         "description": "Como funciona a amortização do financiamento imobiliário, quando reduzir o prazo ou a parcela, SAC e Price, TR e FGTS, com um simulador em reais.",
         "inLanguage": "pt-BR",
         "datePublished": "2026-11-05",
@@ -66,6 +66,8 @@
             "acceptedAnswer": { "@type": "Answer", "text": "Sim, em financiamentos do Sistema Financeiro da Habitação para imóvel residencial, com pelo menos 3 anos de trabalho com FGTS somando todos os empregos e um intervalo mínimo de 2 anos entre um uso e outro. O pedido é feito no banco do financiamento." } },
           { "@type": "Question", "name": "Vale mais a pena amortizar ou investir?",
             "acceptedAnswer": { "@type": "Answer", "text": "Compare o custo real da dívida, que é a taxa do contrato mais a TR, com o rendimento do investimento já sem o Imposto de Renda. Se a dívida custa mais, amortizar rende mais e sem risco. Antes de amortizar, mantenha uma reserva de emergência, porque o dinheiro amortizado não volta." } },
+          { "@type": "Question", "name": "Qual a diferença entre taxa nominal e efetiva?",
+            "acceptedAnswer": { "@type": "Answer", "text": "A nominal ao ano é a taxa do mês vezes 12. A efetiva ao ano soma os juros de 12 meses com juros sobre juros, por isso é um pouco maior: 9,3764% nominal equivale a 9,79% efetiva e a 0,7814% ao mês. O simulador aceita as três formas." } },
           { "@type": "Question", "name": "O banco cobra para amortizar?",
             "acceptedAnswer": { "@type": "Answer", "text": "Não há multa para amortizar ou quitar antes. Se você paga no meio do mês, uma parte do valor cobre os juros dos dias desde o último vencimento, e o resto abate o saldo devedor." } }
         ]
@@ -95,28 +97,48 @@
 
   <main id="conteudo" class="article narrow">
     <nav class="crumbs" aria-label="Você está em"><a href="../">Até Quitar</a> › Simulador de amortização</nav>
-    <h1>Simulador de amortização: reduzir o prazo ou a parcela?</h1>
-    <p class="lead">Veja quanto de juros some quando você paga a mais no financiamento da casa, reduzindo o prazo ou a parcela, lado a lado e em reais. As contas são as mesmas do app Até Quitar: SAC ou Price, com a TR do Banco Central.</p>
+    <h1>Simulador de financiamento e amortização: todas as parcelas, SAC ou Price</h1>
+    <p class="lead">Gere a tabela com todas as parcelas do financiamento da casa e veja quanto de juros some quando você paga a mais, reduzindo o prazo ou a parcela, em reais. As contas são as mesmas do app Até Quitar, com a TR do Banco Central, os seguros e a taxa de administração.</p>
 
     <form class="calc" id="simulador" aria-labelledby="calc-titulo" novalidate onsubmit="return false">
       <h2 id="calc-titulo">Simule com o seu contrato</h2>
-      <p>Os três primeiros números estão no app ou no extrato do banco, na área de habitação.</p>
       <div id="amort">
+        <fieldset class="seg seg-modo">
+          <legend>Qual é a sua situação?</legend>
+          <label><input type="radio" name="modo" value="atual" checked><span>Já pago o financiamento</span></label>
+          <label><input type="radio" name="modo" value="novo"><span>Vou financiar</span></label>
+        </fieldset>
+        <p class="modo-help" data-r="modo-help">Use o saldo e o prazo que o app ou o extrato do banco mostram hoje, na área de habitação.</p>
+
         <div class="fields fields-3">
           <div class="field">
-            <label for="saldo">Saldo devedor hoje</label>
+            <label for="saldo" data-r="saldo-label">Saldo devedor hoje</label>
             <div class="input"><span>R$</span><input id="saldo" inputmode="decimal" autocomplete="off" value="300.000,00" aria-describedby="saldo-help"></div>
-            <small id="saldo-help">Não use o valor de quitação com desconto</small>
+            <small id="saldo-help" data-r="saldo-help">Não use o valor de quitação com desconto</small>
           </div>
           <div class="field">
-            <label for="meses">Parcelas que faltam</label>
+            <label for="meses" data-r="meses-label">Parcelas que faltam</label>
             <div class="input"><input id="meses" inputmode="numeric" autocomplete="off" value="240" aria-describedby="meses-help"><span>meses</span></div>
-            <small id="meses-help">O "prazo remanescente" no app do banco</small>
+            <small id="meses-help" data-r="meses-help">O "prazo remanescente" no app do banco</small>
           </div>
           <div class="field">
-            <label for="taxa">Taxa de juros</label>
-            <div class="input"><input id="taxa" inputmode="decimal" autocomplete="off" value="10,49" aria-describedby="taxa-help"><span>% ao ano</span></div>
-            <small id="taxa-help">A efetiva ao ano, do quadro-resumo do contrato</small>
+            <label for="inicio" data-r="inicio-label">Próxima parcela</label>
+            <div class="input"><input id="inicio" type="month" autocomplete="off" aria-describedby="inicio-help"></div>
+            <small id="inicio-help">Mês do próximo vencimento</small>
+          </div>
+        </div>
+
+        <div class="taxa-box">
+          <fieldset class="seg seg-taxa">
+            <legend>Taxa de juros</legend>
+            <label><input type="radio" name="unidade" value="efetiva" checked><span>Efetiva ao ano<small>como no contrato</small></span></label>
+            <label><input type="radio" name="unidade" value="nominal"><span>Nominal ao ano<small>como no app da Caixa</small></span></label>
+            <label><input type="radio" name="unidade" value="mes"><span>Ao mês<small>taxa mensal</small></span></label>
+          </fieldset>
+          <div class="field field-taxa">
+            <label for="taxa" class="sr-only">Taxa de juros</label>
+            <div class="input"><input id="taxa" inputmode="decimal" autocomplete="off" value="10,49" aria-describedby="taxa-help"><span data-r="taxa-sufixo">% ao ano</span></div>
+            <small id="taxa-help" data-r="taxa-help">A efetiva ao ano, do quadro-resumo do contrato</small>
           </div>
         </div>
 
@@ -135,8 +157,9 @@
 
         <div class="fields fields-amort">
           <div class="field">
-            <label for="valor">Quanto você quer amortizar</label>
-            <div class="input"><span>R$</span><input id="valor" inputmode="decimal" autocomplete="off" value="10.000,00"></div>
+            <label for="valor">Quanto você quer amortizar <span class="opt-label">opcional</span></label>
+            <div class="input"><span>R$</span><input id="valor" inputmode="decimal" autocomplete="off" value="10.000,00" aria-describedby="valor-help"></div>
+            <small id="valor-help">Vazio: só a tabela das parcelas, sem amortização</small>
           </div>
           <fieldset class="seg seg-wide">
             <legend>Com que frequência?</legend>
@@ -148,14 +171,34 @@
 
         <details class="history" data-r="extra-box">
           <summary>Seguros e taxas da parcela <span>opcional, para a conta exata</span></summary>
-          <div class="fields">
-            <div class="field">
-              <label for="seguros">Seguros e taxa de administração</label>
+          <fieldset class="seg">
+            <legend>Como a parcela mostra os seguros?</legend>
+            <label><input type="radio" name="seguro-tipo" value="separado" checked><span>MIP e DFI separados</span></label>
+            <label><input type="radio" name="seguro-tipo" value="total"><span>Só o total</span></label>
+          </fieldset>
+          <div class="fields fields-3">
+            <div class="field" data-seguro="separado">
+              <label for="mip">Seguro MIP</label>
+              <div class="input"><span>R$</span><input id="mip" inputmode="decimal" autocomplete="off" aria-describedby="mip-help"></div>
+              <small id="mip-help">Morte e invalidez: acompanha o saldo</small>
+            </div>
+            <div class="field" data-seguro="separado">
+              <label for="dfi">Seguro DFI</label>
+              <div class="input"><span>R$</span><input id="dfi" inputmode="decimal" autocomplete="off" aria-describedby="dfi-help"></div>
+              <small id="dfi-help">Danos ao imóvel: corrigido pela TR</small>
+            </div>
+            <div class="field" data-seguro="total" hidden>
+              <label for="seguros">Seguros (total)</label>
               <div class="input"><span>R$</span><input id="seguros" inputmode="decimal" autocomplete="off" aria-describedby="seguros-help"></div>
-              <small id="seguros-help">MIP + DFI + taxa de administração da última parcela</small>
+              <small id="seguros-help">A linha "Seguros" da parcela</small>
+            </div>
+            <div class="field">
+              <label for="adm">Taxa de administração</label>
+              <div class="input"><span>R$</span><input id="adm" inputmode="decimal" autocomplete="off" aria-describedby="adm-help"></div>
+              <small id="adm-help">"Taxas" ou "TA"; vazio se não houver</small>
             </div>
           </div>
-          <p class="history-note">Os seguros também entram na economia: com o prazo menor, você paga menos meses de seguro. Os valores estão no boleto ou no detalhe da parcela no app do banco.</p>
+          <p class="history-note" data-r="seguro-nota">Use os valores da última parcela paga, no boleto ou no detalhe da parcela no app do banco. Os seguros também entram na economia: com o prazo menor, você paga menos meses de seguro.</p>
         </details>
 
         <div class="forecast" aria-live="polite">
@@ -177,7 +220,7 @@
           <div class="table-wrap">
             <table class="parcelas-tab">
               <caption class="sr-only" data-r="parcelas-caption">Parcelas mês a mês</caption>
-              <thead><tr><th scope="col" class="hide-xs">Nº</th><th scope="col">Mês</th><th scope="col" class="r">Parcela (R$)</th><th scope="col" class="r hide-sm">Amortização (R$)</th><th scope="col" class="r hide-sm">Juros (R$)</th><th scope="col" class="r">Saldo depois (R$)</th></tr></thead>
+              <thead><tr><th scope="col" class="hide-xs">Nº</th><th scope="col">Mês</th><th scope="col" class="r">Parcela (R$)</th><th scope="col" class="r hide-sm">Amortização (R$)</th><th scope="col" class="r hide-sm">Juros (R$)</th><th scope="col" class="r hide-sm" data-col="taxas">Seguros e taxas (R$)</th><th scope="col" class="r">Saldo depois (R$)</th></tr></thead>
               <tbody data-r="parcelas-linhas"></tbody>
             </table>
           </div>
@@ -186,6 +229,20 @@
         <p class="calc-foot">A amortização entra junto com a próxima parcela, e os meses futuros usam a TR média dos últimos 12 meses (<span data-r="tr">0,17% ao mês</span>). O resultado é uma simulação: o banco confirma o valor no dia do pagamento.</p>
       </div>
     </form>
+
+    <h2>Como ler a tabela de parcelas</h2>
+    <p>Cada linha é uma parcela. A <strong>amortização</strong> é a parte que abate a dívida; os <strong>juros</strong> são a taxa do mês sobre o saldo; os <strong>seguros e taxas</strong> são o MIP, o DFI e a taxa de administração; e o <strong>saldo depois</strong> é o que ainda falta pagar depois daquela parcela.</p>
+    <p>Num financiamento de R$ 360 mil em 30 anos a 10,49% ao ano mais TR, a primeira parcela do <strong>SAC</strong> é de cerca de R$ 4.012: R$ 1.002 de amortização e R$ 3.010 de juros. Na <strong>Price</strong>, a primeira fica perto de R$ 3.169, mas só R$ 159 abatem a dívida. Por isso a Price começa mais leve e custa bem mais juros até o fim.</p>
+    <p>Nos contratos com TR, os meses futuros usam a TR média dos últimos 12 meses, e a parcela da Price sobe um pouco com o tempo. A tabela do banco costuma projetar sem TR, por isso os valores podem diferir alguns reais.</p>
+
+    <h2>Taxa nominal ou efetiva: qual usar?</h2>
+    <p>O banco escreve a mesma taxa de três jeitos, e qualquer um serve no simulador, desde que você escolha o tipo certo:</p>
+    <ul>
+      <li><strong>Efetiva ao ano:</strong> os juros de 12 meses com juros sobre juros. É a do quadro-resumo do contrato, por exemplo 9,79%.</li>
+      <li><strong>Nominal ao ano:</strong> a taxa do mês vezes 12. É a que o app da Caixa mostra em "Juros nominais", por exemplo 9,3764%.</li>
+      <li><strong>Ao mês:</strong> a taxa de cada parcela, por exemplo 0,7814%.</li>
+    </ul>
+    <p>As três do exemplo são a mesma taxa. Os juros de cada parcela saem da efetiva com as quatro casas do contrato, como o banco calcula. Se o contrato traz duas taxas, "balcão" e "reduzida", use a que está valendo hoje.</p>
 
     <h2>O que é amortizar o financiamento</h2>
     <p>Amortizar é pagar uma parte da dívida antes do prazo, além da parcela do mês. Esse dinheiro vai inteiro para o <strong>saldo devedor</strong>, sem juros, e todo mês os juros são calculados sobre um saldo menor. Por isso uma amortização de hoje continua economizando por muitos anos.</p>
@@ -253,6 +310,10 @@
       <details>
         <summary>Vale mais a pena amortizar ou investir?</summary>
         <p>Compare o custo real da dívida, que é a taxa do contrato mais a TR, com o rendimento do investimento já sem o Imposto de Renda. Se a dívida custa mais, amortizar rende mais e sem risco. Antes de amortizar, mantenha uma reserva de emergência, porque o dinheiro amortizado não volta.</p>
+      </details>
+      <details>
+        <summary>Qual a diferença entre taxa nominal e efetiva?</summary>
+        <p>A nominal ao ano é a taxa do mês vezes 12. A efetiva ao ano soma os juros de 12 meses com juros sobre juros, por isso é um pouco maior: 9,3764% nominal equivale a 9,79% efetiva e a 0,7814% ao mês. O simulador aceita as três formas.</p>
       </details>
       <details>
         <summary>O banco cobra para amortizar?</summary>

@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { buildSchedule, simulateExtra, type ExtraPlan } from '../../src/lib/finance';
+import { annualToMonthly, contractMonthlyRate, effectiveToNominal, monthlyToAnnual, nominalToEffective } from '../../src/lib/format';
 import type { Contract } from '../../src/types/finance';
 
 // O arquivo do site é um script de navegador: carrega como no Node, pelo module.exports
@@ -14,6 +15,11 @@ function loadSiteCalc() {
     buildSchedule: (c: unknown, o?: unknown) => { payment: number; interest: number; closingBalance: number; fees: number }[];
     simulateExtra: (c: unknown, o: unknown, p: ExtraPlan) => ReturnType<typeof simulateExtra> & { onlyInterestSaved: number };
     trFallbackAverage: number;
+    annualToMonthly: (v: number) => number;
+    monthlyToAnnual: (v: number) => number;
+    nominalToEffective: (v: number) => number;
+    effectiveToNominal: (v: number) => number;
+    contractMonthlyRate: (v: number) => number;
   };
 }
 const site = loadSiteCalc();
@@ -41,6 +47,8 @@ const contracts: [string, Contract][] = [
   ['SAC com seguros (total)', { ...base, feesRef: { yearMonth: '2026-12', insurance: 98.4, adminFee: 25 } }],
   ['SAC com MIP e DFI', { ...base, feesRef: { yearMonth: '2026-12', insurance: 98.4, mip: 38.4, dfi: 60, adminFee: 25 } }],
   ['Price com seguros', { ...base, system: 'PRICE', feesRef: { yearMonth: '2026-12', insurance: 120, adminFee: 0 } }],
+  ['SAC com a última fatura antes do início', { ...base, feesRef: { yearMonth: '2026-11', insurance: 98.4, mip: 38.4, dfi: 60, adminFee: 25 } }],
+  ['Price com o total da última fatura', { ...base, system: 'PRICE', annualRate: 9.79, feesRef: { yearMonth: '2026-11', insurance: 110, adminFee: 25 } }],
 ];
 
 const plans: ExtraPlan[] = [
@@ -50,6 +58,20 @@ const plans: ExtraPlan[] = [
   { amount: 3000, startYm: '2027-12', frequency: 'yearly', mode: 'parcela' },
   { amount: 400000, startYm: '2026-12', frequency: 'once', mode: 'prazo' },
 ];
+
+describe('conversões de taxa iguais às do cadastro do app', () => {
+  const rates = [9.79, 10.49, 12.5, 0.7814, 9.3764];
+  it.each(rates)('taxa %f', (v) => {
+    expect(site.annualToMonthly(v)).toBeCloseTo(annualToMonthly(v), 12);
+    expect(site.monthlyToAnnual(v)).toBeCloseTo(monthlyToAnnual(v), 12);
+    expect(site.nominalToEffective(v)).toBeCloseTo(nominalToEffective(v), 12);
+    expect(site.effectiveToNominal(v)).toBeCloseTo(effectiveToNominal(v), 12);
+    expect(site.contractMonthlyRate(v)).toBeCloseTo(contractMonthlyRate(v), 12);
+  });
+  it('9,3764% nominal vira 9,79% efetiva, como no contrato da Caixa', () => {
+    expect(Math.round(site.nominalToEffective(9.3764) * 100) / 100).toBe(9.79);
+  });
+});
 
 describe('cálculo do site igual ao do app', () => {
   it.each(contracts)('tabela mês a mês: %s', (_, contract) => {

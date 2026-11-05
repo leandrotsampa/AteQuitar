@@ -18,10 +18,16 @@
     return Math.floor(total / 12) + '-' + String((total % 12) + 1).padStart(2, '0');
   }
 
+  // Conversões de taxa, como no cadastro do app: o banco escreve a mesma taxa como efetiva ao ano
+  // (contrato), nominal ao ano (a do mês × 12, como no app da Caixa) ou ao mês. Guarda-se a efetiva
+  function annualToMonthly(pctYear) { return (Math.pow(1 + pctYear / 100, 1 / 12) - 1) * 100; }
+  function monthlyToAnnual(pctMonth) { return (Math.pow(1 + pctMonth / 100, 12) - 1) * 100; }
+  function nominalToEffective(pctNominalYear) { return monthlyToAnnual(pctNominalYear / 12); }
+  function effectiveToNominal(pctEffectiveYear) { return annualToMonthly(pctEffectiveYear) * 12; }
+
   // Taxa do mês a partir da efetiva anual com 4 casas, como sai no contrato (% a.m.)
   function contractMonthlyRate(annualPct) {
-    var a = Math.round(annualPct * 10000) / 10000;
-    return (Math.pow(1 + a / 100, 1 / 12) - 1) * 100;
+    return annualToMonthly(Math.round(annualPct * 10000) / 10000);
   }
 
   function monthsToPayOff(system, balance, i, reference) {
@@ -182,6 +188,10 @@
 
   return {
     addMonths: addMonths,
+    annualToMonthly: annualToMonthly,
+    monthlyToAnnual: monthlyToAnnual,
+    nominalToEffective: nominalToEffective,
+    effectiveToNominal: effectiveToNominal,
     contractMonthlyRate: contractMonthlyRate,
     buildSchedule: buildSchedule,
     simulateExtra: simulateExtra,
