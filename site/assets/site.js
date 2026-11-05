@@ -268,7 +268,42 @@
       campo('seguros').focus();
     };
 
+    // Tabela das parcelas mês a mês do cenário escolhido (recolhida; as 24 primeiras e, se pedir, todas)
+    var ultimo = null;
+    var todas = false;
+    var MES_CURTO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+    var mesCurto = function (ym) { var p = ym.split('-'); return MES_CURTO[Number(p[1]) - 1] + '/' + p[0]; };
+    var desenharParcelas = function () {
+      var box = saida('parcelas-box');
+      if (!box) return;
+      box.hidden = !ultimo;
+      if (!ultimo || !box.open) return;
+      var qual = escolha('cenario') || 'prazo';
+      var rows = qual === 'base' ? ultimo.prazo.base : ultimo[qual].simulated;
+      var nome = qual === 'base' ? 'sem amortizar' : qual === 'prazo' ? 'reduzindo o prazo' : 'reduzindo a parcela';
+      var limite = todas ? rows.length : Math.min(24, rows.length);
+      var html = '';
+      for (var k = 0; k < limite; k++) {
+        var row = rows[k];
+        html += '<tr' + (row.extra > 0 ? ' class="extra"' : '') + '><td class="hide-xs">' + row.index + '</td><td>' + mesCurto(row.yearMonth) + '</td>'
+          + '<td class="r">' + plain.format(row.payment) + (row.extra > 0 ? '<small>+ ' + plain.format(row.extra) + ' amortizados</small>' : '') + '</td>'
+          + '<td class="r hide-sm">' + plain.format(row.amortization) + '</td>'
+          + '<td class="r hide-sm">' + plain.format(row.interest) + '</td>'
+          + '<td class="r">' + plain.format(row.closingBalance) + '</td></tr>';
+      }
+      saida('parcelas-linhas').innerHTML = html;
+      saida('parcelas-caption').textContent = 'Parcelas mês a mês, ' + nome;
+      var primeira = rows[0], ultima = rows[rows.length - 1];
+      saida('parcelas-resumo').innerHTML = esc(rows.length + (rows.length === 1 ? ' parcela' : ' parcelas') + ' ' + nome + ', de ' + mesCurto(primeira.yearMonth) + ' a ' + mesCurto(ultima.yearMonth) + '. ')
+        + (ultimo.exato ? 'As parcelas incluem seguros e taxas.' : '<span class="aprox" title="Estimado: sem os seguros da parcela">≈</span> Sem os seguros, as parcelas mostram só amortização e juros.');
+      var mais = saida('parcelas-mais');
+      mais.hidden = rows.length <= 24;
+      mais.textContent = todas ? 'Mostrar só as 24 primeiras' : 'Mostrar todas as ' + rows.length + ' parcelas';
+    };
+
     var limpar = function (msg) {
+      ultimo = null;
+      desenharParcelas();
       saida('selo').className = 'selo';
       saida('selo').innerHTML = '';
       saida('veredito').textContent = msg;
@@ -367,6 +402,8 @@
           + '</dl></article>';
       };
       saida('cenarios').innerHTML = cartao('base') + cartao('prazo', prazo) + cartao('parcela', parcela);
+      ultimo = { prazo: prazo, parcela: parcela, exato: exato };
+      desenharParcelas();
       saida('nota').textContent = sistema === 'SAC'
         ? 'No SAC, reduzindo o prazo, o banco corta o máximo de meses sem que a parcela nova passe da de antes, como a Caixa faz.'
         : 'Na Price, reduzindo o prazo, a parcela continua a mesma e o número de parcelas diminui.';
@@ -381,7 +418,11 @@
         el.value = !n ? '' : id === 'meses' ? String(Math.round(n)) : plain.format(n);
       });
     });
-    $$('input[type="radio"]', amort).forEach(function (el) { el.addEventListener('change', atualizar); });
+    $$('input[type="radio"]', amort).forEach(function (el) {
+      el.addEventListener('change', el.name === 'cenario' ? desenharParcelas : atualizar);
+    });
+    saida('parcelas-box').addEventListener('toggle', desenharParcelas);
+    saida('parcelas-mais').addEventListener('click', function () { todas = !todas; desenharParcelas(); });
     aoMudarTr.push(atualizar);
     atualizar();
   }

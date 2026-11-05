@@ -164,6 +164,25 @@
           <div class="cenarios cenarios-3" data-r="cenarios"></div>
           <p class="forecast-note" data-r="nota"></p>
         </div>
+
+        <details class="history parcelas" data-r="parcelas-box">
+          <summary>Ver as parcelas mês a mês <span>de cada cenário, até a última</span></summary>
+          <fieldset class="seg">
+            <legend>Cenário</legend>
+            <label><input type="radio" name="cenario" value="prazo" checked><span>Reduzindo o prazo</span></label>
+            <label><input type="radio" name="cenario" value="parcela"><span>Reduzindo a parcela</span></label>
+            <label><input type="radio" name="cenario" value="base"><span>Sem amortizar</span></label>
+          </fieldset>
+          <p class="parcelas-resumo" data-r="parcelas-resumo"></p>
+          <div class="table-wrap">
+            <table class="parcelas-tab">
+              <caption class="sr-only" data-r="parcelas-caption">Parcelas mês a mês</caption>
+              <thead><tr><th scope="col" class="hide-xs">Nº</th><th scope="col">Mês</th><th scope="col" class="r">Parcela (R$)</th><th scope="col" class="r hide-sm">Amortização (R$)</th><th scope="col" class="r hide-sm">Juros (R$)</th><th scope="col" class="r">Saldo depois (R$)</th></tr></thead>
+              <tbody data-r="parcelas-linhas"></tbody>
+            </table>
+          </div>
+          <button type="button" class="link-btn parcelas-mais" data-r="parcelas-mais" hidden></button>
+        </details>
         <p class="calc-foot">A amortização entra junto com a próxima parcela, e os meses futuros usam a TR média dos últimos 12 meses (<span data-r="tr">0,17% ao mês</span>). O resultado é uma simulação: o banco confirma o valor no dia do pagamento.</p>
       </div>
     </form>
