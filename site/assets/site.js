@@ -256,6 +256,150 @@
   function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
   var plain = new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+  // ---------- Seletor de mês, como o do app ----------
+  // Setas para o mês vizinho e, no meio, o mês que abre a grade: ano com setas (clicar no ano
+  // abre os anos, 12 por página), 12 meses em 3 colunas, o mês atual com contorno e o atalho
+  // "Mês que vem". Teclado: setas, Home/End, PageUp/PageDown, Enter e Esc
+  var MESES_NOME = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+  var MESES_CURTO = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez'];
+  var SETA_E = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>';
+  var SETA_D = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>';
+  var SETA_B = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>';
+  function montarSeletorDeMes(root, aoMudar) {
+    var input = $('input[type="hidden"]', root);
+    var pop = $('[data-mp-pop]', root);
+    var abrirBtn = $('[data-mp-open]', root);
+    var anim = $('[data-mp-anim]', root);
+    var rotulo = root.closest('.field').querySelector('.field-label');
+    var d = new Date();
+    var hoje = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0');
+    var vista = 'meses', anoVista = 0, focado = '', anosDe = 0;
+    var nome = function (ym) { return MESES_NOME[Number(ym.slice(5, 7)) - 1] + ' de ' + ym.slice(0, 4); };
+    var ano = function (ym) { return Number(ym.slice(0, 4)); };
+    var ym = function (a, m) { return a + '-' + String(m).padStart(2, '0'); };
+
+    var mostrar = function (dir) {
+      var v = input.value;
+      $('[data-mp-month]', root).textContent = MESES_NOME[Number(v.slice(5, 7)) - 1];
+      $('[data-mp-year-label]', root).textContent = v.slice(0, 4);
+      abrirBtn.setAttribute('aria-label', rotulo.textContent + ': ' + nome(v) + '. Escolher outro mês');
+      if (dir && !reduzMovimento) {
+        anim.classList.remove('from-r', 'from-l');
+        void anim.offsetWidth; // reinicia a animação
+        anim.classList.add(dir > 0 ? 'from-r' : 'from-l');
+      }
+    };
+    var definir = function (novo, dir) {
+      if (!/^\d{4}-\d{2}$/.test(novo) || novo === input.value) return;
+      input.value = novo;
+      mostrar(dir);
+      aoMudar();
+    };
+
+    var desenhar = function () {
+      var html;
+      if (vista === 'anos') {
+        html = '<div class="mp-head"><button type="button" class="mp-nav" data-act="anos-ant" aria-label="Anos anteriores">' + SETA_E + '</button>'
+          + '<button type="button" class="mp-title" data-act="meses" aria-label="Voltar para os meses">' + anosDe + ' a ' + (anosDe + 11) + '</button>'
+          + '<button type="button" class="mp-nav" data-act="anos-prox" aria-label="Próximos anos">' + SETA_D + '</button></div>'
+          + '<div class="mp-grid" role="group" aria-label="Anos">';
+        for (var a = anosDe; a < anosDe + 12; a++) {
+          html += '<button type="button" data-ano="' + a + '" aria-pressed="' + (a === anoVista) + '"' + (a === ano(hoje) ? ' class="atual"' : '') + '>' + a + '</button>';
+        }
+        html += '</div><div class="mp-foot"><span>Escolha o ano e depois o mês</span></div>';
+      } else {
+        html = '<div class="mp-head"><button type="button" class="mp-nav" data-act="ano-ant" aria-label="Ano anterior">' + SETA_E + '</button>'
+          + '<button type="button" class="mp-title" data-act="anos" aria-label="Ano ' + anoVista + '. Escolher outro ano">' + anoVista + SETA_B + '</button>'
+          + '<button type="button" class="mp-nav" data-act="ano-prox" aria-label="Próximo ano">' + SETA_D + '</button></div>'
+          + '<div class="mp-grid" role="group" aria-label="Meses de ' + anoVista + '">';
+        for (var m = 1; m <= 12; m++) {
+          var mes = ym(anoVista, m);
+          html += '<button type="button" data-mes="' + mes + '" tabindex="' + (mes === focado ? 0 : -1) + '" aria-pressed="' + (mes === input.value) + '"'
+            + (mes === hoje ? ' class="atual"' : '') + ' aria-label="' + nome(mes) + (mes === hoje ? ', mês atual' : '') + '">' + MESES_CURTO[m - 1] + '</button>';
+        }
+        html += '</div><div class="mp-foot"><span>' + esc(rotulo.textContent) + '</span><button type="button" class="link-btn" data-act="proximo">Mês que vem</button></div>';
+      }
+      pop.innerHTML = html;
+    };
+    var focar = function () {
+      var alvo = vista === 'anos' ? $('[aria-pressed="true"]', pop) || $('.mp-grid button', pop) : $('[data-mes="' + focado + '"]', pop);
+      if (alvo) alvo.focus();
+    };
+
+    var foraDoClique = function (e) { if (!root.contains(e.target)) fechar(false); };
+    var teclaGlobal = function (e) { if (e.key === 'Escape') { e.stopPropagation(); fechar(true); } };
+    var abrir = function () {
+      vista = 'meses';
+      focado = input.value;
+      anoVista = ano(focado);
+      desenhar();
+      pop.hidden = false;
+      // Abre para cima se não couber embaixo
+      pop.classList.remove('up');
+      var r = pop.getBoundingClientRect();
+      if (r.bottom > window.innerHeight && root.getBoundingClientRect().top > r.height + 16) pop.classList.add('up');
+      abrirBtn.setAttribute('aria-expanded', 'true');
+      focar();
+      document.addEventListener('mousedown', foraDoClique);
+      document.addEventListener('keydown', teclaGlobal, true);
+    };
+    var fechar = function (devolverFoco) {
+      if (pop.hidden) return;
+      pop.hidden = true;
+      abrirBtn.setAttribute('aria-expanded', 'false');
+      document.removeEventListener('mousedown', foraDoClique);
+      document.removeEventListener('keydown', teclaGlobal, true);
+      if (devolverFoco) abrirBtn.focus();
+    };
+
+    abrirBtn.addEventListener('click', function () { if (pop.hidden) abrir(); else fechar(true); });
+    $('[data-mp-prev]', root).addEventListener('click', function () { definir(C.addMonths(input.value, -1), -1); });
+    $('[data-mp-next]', root).addEventListener('click', function () { definir(C.addMonths(input.value, 1), 1); });
+    pop.addEventListener('click', function (e) {
+      var b = e.target.closest('button');
+      if (!b) return;
+      var act = b.getAttribute('data-act');
+      if (b.hasAttribute('data-mes')) { definir(b.getAttribute('data-mes'), 0); fechar(true); return; }
+      if (b.hasAttribute('data-ano')) {
+        anoVista = Number(b.getAttribute('data-ano'));
+        focado = ym(anoVista, Number(focado.slice(5, 7)));
+        vista = 'meses';
+      } else if (act === 'ano-ant' || act === 'ano-prox') {
+        anoVista += act === 'ano-ant' ? -1 : 1;
+        focado = ym(anoVista, Number(focado.slice(5, 7)));
+      } else if (act === 'anos') {
+        anosDe = Math.floor(anoVista / 12) * 12;
+        vista = 'anos';
+      } else if (act === 'anos-ant' || act === 'anos-prox') {
+        anosDe += act === 'anos-ant' ? -12 : 12;
+      } else if (act === 'meses') {
+        vista = 'meses';
+      } else if (act === 'proximo') {
+        definir(C.addMonths(hoje, 1), 0);
+        fechar(true);
+        return;
+      }
+      desenhar();
+      var mesmo = act ? $('[data-act="' + act + '"]', pop) : null;
+      if (mesmo) mesmo.focus(); else focar();
+    });
+    pop.addEventListener('keydown', function (e) {
+      if (vista !== 'meses' || !e.target.hasAttribute('data-mes')) return;
+      var mes = Number(focado.slice(5, 7));
+      var passo = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -3, ArrowDown: 3, PageUp: -12, PageDown: 12, Home: 1 - mes, End: 12 - mes }[e.key];
+      if (passo === undefined) return;
+      e.preventDefault();
+      focado = C.addMonths(focado, passo);
+      anoVista = ano(focado);
+      desenhar();
+      focar();
+    });
+
+    if (!/^\d{4}-\d{2}$/.test(input.value)) input.value = C.addMonths(hoje, 1);
+    mostrar(0);
+    return { rotular: function () { mostrar(0); } };
+  }
+
   var amort = document.getElementById('amort');
   if (amort && C) {
     var campo = function (id) { return document.getElementById(id); };
@@ -276,13 +420,13 @@
         help: 'Use o saldo e o prazo que o app ou o extrato do banco mostram hoje, na área de habitação.',
         saldo: 'Saldo devedor hoje', saldoHelp: 'Não use o valor de quitação com desconto',
         meses: 'Parcelas que faltam', mesesHelp: 'O "prazo remanescente" no app do banco',
-        inicio: 'Próxima parcela', seguroNota: 'Use os valores da última parcela paga, no boleto ou no detalhe da parcela no app do banco. Os seguros também entram na economia: com o prazo menor, você paga menos meses de seguro.'
+        inicio: 'Próxima parcela', inicioHelp: 'Mês do próximo vencimento', seguroNota: 'Use os valores da última parcela paga, no boleto ou no detalhe da parcela no app do banco. Os seguros também entram na economia: com o prazo menor, você paga menos meses de seguro.'
       },
       novo: {
         help: 'Use os números da proposta ou da simulação do banco: o valor financiado é o preço do imóvel menos a entrada e o FGTS.',
         saldo: 'Valor financiado', saldoHelp: 'Sem a entrada e o FGTS da compra',
         meses: 'Prazo', mesesHelp: 'Em meses: 360 são 30 anos',
-        inicio: 'Primeira parcela', seguroNota: 'Use os valores da primeira parcela na simulação do banco. Os seguros também entram na economia: com o prazo menor, você paga menos meses de seguro.'
+        inicio: 'Primeira parcela', inicioHelp: 'Mês do primeiro vencimento', seguroNota: 'Use os valores da primeira parcela na simulação do banco. Os seguros também entram na economia: com o prazo menor, você paga menos meses de seguro.'
       }
     };
     var aplicarModo = function () {
@@ -293,6 +437,8 @@
       saida('meses-label').textContent = t.meses;
       saida('meses-help').textContent = t.mesesHelp;
       saida('inicio-label').textContent = t.inicio;
+      saida('inicio-help').textContent = t.inicioHelp;
+      if (seletorMes) seletorMes.rotular();
       saida('seguro-nota').textContent = t.seguroNota;
     };
 
@@ -312,10 +458,9 @@
     var taxaEfetiva = function () { return efetivaGuardada; };
     var trocarUnidade = function () {
       var efetiva = efetivaGuardada;
-      unidadeAtual = escolha('unidade') || 'efetiva';
+      unidadeAtual = campo('unidade').value || 'efetiva';
       var u = UNIDADES[unidadeAtual];
       if (efetiva) campo('taxa').value = pct(u.deEfetiva(efetiva), 4);
-      saida('taxa-sufixo').textContent = u.sufixo;
       atualizar();
     };
 
@@ -515,7 +660,7 @@
       if (!quitaTudo && prazo.monthsSaved === 0 && vence === 'prazo') saida('nota').textContent += ' Com esse valor, ainda não dá para cortar uma parcela inteira.';
     };
 
-    if (!campo('inicio').value) campo('inicio').value = proximoMes();
+    var seletorMes = montarSeletorDeMes($('[data-mp]', amort), function () { atualizar(); });
     ['saldo', 'meses', 'taxa', 'valor', 'seguros', 'mip', 'dfi', 'adm'].forEach(function (id) {
       var el = campo(id);
       el.addEventListener('input', atualizar);
@@ -527,10 +672,9 @@
     });
     campo('taxa').addEventListener('input', lerTaxa, true);
     lerTaxa();
-    campo('inicio').addEventListener('change', atualizar);
+    campo('unidade').addEventListener('change', trocarUnidade);
     $$('input[type="radio"]', amort).forEach(function (el) {
       var acao = el.name === 'cenario' ? desenharParcelas
-        : el.name === 'unidade' ? trocarUnidade
         : el.name === 'seguro-tipo' ? aplicarTipoSeguro
         : el.name === 'modo' ? function () { aplicarModo(); atualizar(); }
         : atualizar;

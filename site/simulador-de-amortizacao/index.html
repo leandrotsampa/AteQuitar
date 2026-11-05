@@ -105,76 +105,101 @@
       <div id="amort">
         <fieldset class="seg seg-modo">
           <legend>Qual é a sua situação?</legend>
-          <label><input type="radio" name="modo" value="atual" checked><span>Já pago o financiamento</span></label>
-          <label><input type="radio" name="modo" value="novo"><span>Vou financiar</span></label>
+          <div class="track">
+            <label><input type="radio" name="modo" value="atual" checked><span>Já pago o financiamento</span></label>
+            <label><input type="radio" name="modo" value="novo"><span>Vou financiar</span></label>
+          </div>
         </fieldset>
         <p class="modo-help" data-r="modo-help">Use o saldo e o prazo que o app ou o extrato do banco mostram hoje, na área de habitação.</p>
 
-        <div class="fields fields-3">
-          <div class="field">
-            <label for="saldo" data-r="saldo-label">Saldo devedor hoje</label>
-            <div class="input"><span>R$</span><input id="saldo" inputmode="decimal" autocomplete="off" value="300.000,00" aria-describedby="saldo-help"></div>
-            <small id="saldo-help" data-r="saldo-help">Não use o valor de quitação com desconto</small>
-          </div>
-          <div class="field">
-            <label for="meses" data-r="meses-label">Parcelas que faltam</label>
-            <div class="input"><input id="meses" inputmode="numeric" autocomplete="off" value="240" aria-describedby="meses-help"><span>meses</span></div>
-            <small id="meses-help" data-r="meses-help">O "prazo remanescente" no app do banco</small>
-          </div>
-          <div class="field">
-            <label for="inicio" data-r="inicio-label">Próxima parcela</label>
-            <div class="input"><input id="inicio" type="month" autocomplete="off" aria-describedby="inicio-help"></div>
-            <small id="inicio-help">Mês do próximo vencimento</small>
+        <div class="calc-group">
+          <h3 class="group-title">Seu financiamento</h3>
+          <div class="grid-3">
+            <div class="field">
+              <label for="saldo" data-r="saldo-label">Saldo devedor hoje</label>
+              <div class="input"><span>R$</span><input id="saldo" inputmode="decimal" autocomplete="off" value="300.000,00" aria-describedby="saldo-help"></div>
+              <small id="saldo-help" data-r="saldo-help">Não use o valor de quitação com desconto</small>
+            </div>
+            <div class="field">
+              <label for="meses" data-r="meses-label">Parcelas que faltam</label>
+              <div class="input"><input id="meses" inputmode="numeric" autocomplete="off" value="240" aria-describedby="meses-help"><span>meses</span></div>
+              <small id="meses-help" data-r="meses-help">O "prazo remanescente" no app do banco</small>
+            </div>
+            <div class="field">
+              <span class="field-label" id="inicio-label" data-r="inicio-label">Próxima parcela</span>
+              <div class="mp" data-mp>
+                <input type="hidden" id="inicio">
+                <div class="mp-field">
+                  <button type="button" class="mp-step" data-mp-prev aria-label="Mês anterior"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg></button>
+                  <button type="button" class="mp-open" data-mp-open aria-haspopup="dialog" aria-expanded="false" aria-describedby="inicio-help">
+                    <span class="mp-anim" data-mp-anim><b data-mp-month>Dezembro</b><small data-mp-year-label>2026</small></span>
+                  </button>
+                  <button type="button" class="mp-step" data-mp-next aria-label="Próximo mês"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg></button>
+                </div>
+                <div class="mp-pop" data-mp-pop role="dialog" aria-label="Escolher o mês" hidden></div>
+              </div>
+              <small id="inicio-help" data-r="inicio-help">Mês do próximo vencimento</small>
+            </div>
+
+            <div class="field">
+              <label for="taxa">Taxa de juros</label>
+              <div class="input input-taxa">
+                <input id="taxa" inputmode="decimal" autocomplete="off" value="10,49" aria-describedby="taxa-help">
+                <select id="unidade" aria-label="Tipo da taxa">
+                  <option value="efetiva" selected>% efetiva a.a.</option>
+                  <option value="nominal">% nominal a.a.</option>
+                  <option value="mes">% ao mês</option>
+                </select>
+              </div>
+              <small id="taxa-help" data-r="taxa-help">A efetiva ao ano, do quadro-resumo do contrato</small>
+            </div>
+            <fieldset class="seg field">
+              <legend>Sistema</legend>
+              <div class="track">
+                <label><input type="radio" name="sistema" value="SAC" checked><span>SAC</span></label>
+                <label><input type="radio" name="sistema" value="PRICE"><span>Price</span></label>
+              </div>
+              <small>No contrato: "sistema de amortização"</small>
+            </fieldset>
+            <fieldset class="seg field">
+              <legend>Corrigido pela TR?</legend>
+              <div class="track">
+                <label><input type="radio" name="tr" value="sim" checked><span>Sim</span></label>
+                <label><input type="radio" name="tr" value="nao"><span>Não</span></label>
+              </div>
+              <small>Sim na Caixa e na maioria do SFH</small>
+            </fieldset>
           </div>
         </div>
 
-        <div class="taxa-box">
-          <fieldset class="seg seg-taxa">
-            <legend>Taxa de juros</legend>
-            <label><input type="radio" name="unidade" value="efetiva" checked><span>Efetiva ao ano<small>como no contrato</small></span></label>
-            <label><input type="radio" name="unidade" value="nominal"><span>Nominal ao ano<small>como no app da Caixa</small></span></label>
-            <label><input type="radio" name="unidade" value="mes"><span>Ao mês<small>taxa mensal</small></span></label>
-          </fieldset>
-          <div class="field field-taxa">
-            <label for="taxa" class="sr-only">Taxa de juros</label>
-            <div class="input"><input id="taxa" inputmode="decimal" autocomplete="off" value="10,49" aria-describedby="taxa-help"><span data-r="taxa-sufixo">% ao ano</span></div>
-            <small id="taxa-help" data-r="taxa-help">A efetiva ao ano, do quadro-resumo do contrato</small>
+        <div class="calc-group">
+          <h3 class="group-title">Amortização extra <span>opcional</span></h3>
+          <div class="grid-3">
+            <div class="field">
+              <label for="valor">Quanto pagar a mais</label>
+              <div class="input"><span>R$</span><input id="valor" inputmode="decimal" autocomplete="off" value="10.000,00" aria-describedby="valor-help"></div>
+              <small id="valor-help">Vazio: só a tabela das parcelas</small>
+            </div>
+            <fieldset class="seg field span-2">
+              <legend>Com que frequência?</legend>
+              <div class="track">
+                <label><input type="radio" name="freq" value="once" checked><span>Uma vez</span></label>
+                <label><input type="radio" name="freq" value="monthly"><span>Todo mês</span></label>
+                <label><input type="radio" name="freq" value="yearly"><span>Todo ano</span></label>
+              </div>
+              <small>A primeira amortização entra junto com a parcela do mês escolhido</small>
+            </fieldset>
           </div>
-        </div>
-
-        <div class="choices">
-          <fieldset class="seg">
-            <legend>Sistema</legend>
-            <label><input type="radio" name="sistema" value="SAC" checked><span>SAC</span></label>
-            <label><input type="radio" name="sistema" value="PRICE"><span>Price</span></label>
-          </fieldset>
-          <fieldset class="seg">
-            <legend>Corrigido pela TR?</legend>
-            <label><input type="radio" name="tr" value="sim" checked><span>Sim</span></label>
-            <label><input type="radio" name="tr" value="nao"><span>Não</span></label>
-          </fieldset>
-        </div>
-
-        <div class="fields fields-amort">
-          <div class="field">
-            <label for="valor">Quanto você quer amortizar <span class="opt-label">opcional</span></label>
-            <div class="input"><span>R$</span><input id="valor" inputmode="decimal" autocomplete="off" value="10.000,00" aria-describedby="valor-help"></div>
-            <small id="valor-help">Vazio: só a tabela das parcelas, sem amortização</small>
-          </div>
-          <fieldset class="seg seg-wide">
-            <legend>Com que frequência?</legend>
-            <label><input type="radio" name="freq" value="once" checked><span>Uma vez</span></label>
-            <label><input type="radio" name="freq" value="monthly"><span>Todo mês</span></label>
-            <label><input type="radio" name="freq" value="yearly"><span>Todo ano</span></label>
-          </fieldset>
         </div>
 
         <details class="history" data-r="extra-box">
           <summary>Seguros e taxas da parcela <span>opcional, para a conta exata</span></summary>
           <fieldset class="seg">
             <legend>Como a parcela mostra os seguros?</legend>
-            <label><input type="radio" name="seguro-tipo" value="separado" checked><span>MIP e DFI separados</span></label>
-            <label><input type="radio" name="seguro-tipo" value="total"><span>Só o total</span></label>
+            <div class="track">
+              <label><input type="radio" name="seguro-tipo" value="separado" checked><span>MIP e DFI separados</span></label>
+              <label><input type="radio" name="seguro-tipo" value="total"><span>Só o total</span></label>
+            </div>
           </fieldset>
           <div class="fields fields-3">
             <div class="field" data-seguro="separado">
@@ -212,9 +237,11 @@
           <summary>Ver as parcelas mês a mês <span>de cada cenário, até a última</span></summary>
           <fieldset class="seg">
             <legend>Cenário</legend>
-            <label><input type="radio" name="cenario" value="prazo" checked><span>Reduzindo o prazo</span></label>
-            <label><input type="radio" name="cenario" value="parcela"><span>Reduzindo a parcela</span></label>
-            <label><input type="radio" name="cenario" value="base"><span>Sem amortizar</span></label>
+            <div class="track">
+              <label><input type="radio" name="cenario" value="prazo" checked><span>Reduzindo o prazo</span></label>
+              <label><input type="radio" name="cenario" value="parcela"><span>Reduzindo a parcela</span></label>
+              <label><input type="radio" name="cenario" value="base"><span>Sem amortizar</span></label>
+            </div>
           </fieldset>
           <p class="parcelas-resumo" data-r="parcelas-resumo"></p>
           <div class="table-wrap">
