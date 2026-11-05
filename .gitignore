@@ -4,6 +4,7 @@ dist/
 release/
 .electron-dist/
 coverage/
+_site/
 *.log
 
 # Ambiente e ferramentas locais

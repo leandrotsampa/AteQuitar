@@ -1,0 +1,420 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Até Quitar: acompanhe o financiamento da casa e veja quanto a amortização economiza</title>
+  <meta name="description" content="App gratuito para quem financia a casa: saldo devedor, data da quitação e quanto cada amortização tira de juros, reduzindo prazo ou parcela. SAC ou Price, com a TR do Banco Central. Windows, macOS e Linux.">
+  <link rel="canonical" href="https://leandrotsampa.github.io/AteQuitar/">
+  <meta name="theme-color" content="#eef1f8" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0a0d1c" media="(prefers-color-scheme: dark)">
+  <meta name="google-site-verification" content="B2dXcTaoTqJ0-TlfPqYH59pMrhSQTv1qGfjcGYavBsU">
+  <meta name="msvalidate.01" content="57EB4FD92723996ABE69F5567F5B9F85">
+  <link rel="icon" type="image/png" href="icon.png">
+  <link rel="apple-touch-icon" href="icon.png">
+
+  <meta property="og:type" content="website">
+  <meta property="og:locale" content="pt_BR">
+  <meta property="og:site_name" content="Até Quitar">
+  <meta property="og:title" content="Até Quitar: R$ 10 mil a mais hoje tiram R$ 45 mil de juros da sua casa">
+  <meta property="og:description" content="Saldo devedor, data da quitação e quanto cada amortização tira de juros, com a TR do Banco Central. Grátis, de código aberto e com os dados só no seu computador.">
+  <meta property="og:url" content="https://leandrotsampa.github.io/AteQuitar/">
+  <meta property="og:image" content="https://leandrotsampa.github.io/AteQuitar/og.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta property="og:image:alt" content="Até Quitar: acompanhe o financiamento da sua casa até a última parcela">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Até Quitar: R$ 10 mil a mais hoje tiram R$ 45 mil de juros da sua casa">
+  <meta name="twitter:description" content="App gratuito para acompanhar o financiamento da casa e simular amortizações, com a TR do Banco Central.">
+  <meta name="twitter:image" content="https://leandrotsampa.github.io/AteQuitar/og.png">
+
+  <script>try{var t=localStorage.getItem('aq-tema');if(t==='light'||t==='dark')document.documentElement.setAttribute('data-theme',t)}catch(e){}</script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700;12..96,800&family=Manrope:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="assets/site.css">
+
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Até Quitar",
+    "alternateName": "AteQuitar",
+    "description": "Acompanhamento do financiamento imobiliário até a quitação: saldo devedor, parcelas, simulação de amortização reduzindo prazo ou parcela, SAC ou Price, amortizar ou investir e taxas do Banco Central.",
+    "applicationCategory": "FinanceApplication",
+    "operatingSystem": "Windows, macOS, Linux",
+    "inLanguage": "pt-BR",
+    "url": "https://leandrotsampa.github.io/AteQuitar/",
+    "downloadUrl": "https://github.com/leandrotsampa/AteQuitar/releases/latest",
+    "image": "https://leandrotsampa.github.io/AteQuitar/og.png",
+    "screenshot": "https://leandrotsampa.github.io/AteQuitar/img/minha-casa.png",
+    "license": "https://opensource.org/licenses/MIT",
+    "isAccessibleForFree": true,
+    "offers": { "@type": "Offer", "price": "0", "priceCurrency": "BRL" },
+    "author": { "@type": "Person", "name": "Leandro Tavares de Melo", "url": "https://github.com/leandrotsampa" }
+  }
+  </script>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      { "@type": "Question", "name": "O Até Quitar é gratuito?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Sim. O app é gratuito e de código aberto, sob a licença MIT. Não tem plano pago, anúncio nem cadastro em site." } },
+      { "@type": "Question", "name": "Meus dados vão para a internet?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Não. Os dados ficam num arquivo SQLite no seu computador, e o PDF do banco é lido ali mesmo. O app só se conecta à internet para buscar as taxas públicas do Banco Central e para saber se há uma versão nova no GitHub." } },
+      { "@type": "Question", "name": "Funciona com o financiamento de qualquer banco?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Sim, com qualquer financiamento imobiliário pelo SAC ou pela Price, com ou sem correção pela TR, como os da Caixa, do Banco do Brasil e dos bancos privados. A importação do Documento Descritivo do Crédito em PDF reconhece por enquanto um modelo de documento; os outros bancos usam o cadastro guiado." } },
+      { "@type": "Question", "name": "Vale mais a pena amortizar reduzindo o prazo ou a parcela?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Reduzir o prazo quase sempre economiza mais juros, porque a dívida acaba antes. Reduzir a parcela economiza menos, mas alivia o orçamento todo mês. O app e o simulador do site mostram os dois lado a lado, em reais, com os dados do seu contrato." } },
+      { "@type": "Question", "name": "Os números batem com os do banco?",
+        "acceptedAnswer": { "@type": "Answer", "text": "O app refaz a conta do banco com as mesmas regras de TR, juros e arredondamento, conferidas parcela por parcela com o Documento Descritivo do Crédito de um contrato real. Alguns campos podem diferir em centavos, e cada check-in com a fatura ou o saldo do banco traz o app de volta ao valor exato." } },
+      { "@type": "Question", "name": "Por que o Windows ou o macOS avisam na primeira abertura?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Porque o app não tem uma assinatura de código comercial, que é paga. O código é aberto e pode ser conferido no GitHub. No Windows, clique em Mais informações e depois em Executar assim mesmo. No macOS, vá em Ajustes do Sistema, Privacidade e Segurança, e clique em Abrir Mesmo Assim." } },
+      { "@type": "Question", "name": "O app substitui o extrato do banco?",
+        "acceptedAnswer": { "@type": "Answer", "text": "Não. Ele é uma ferramenta de acompanhamento e simulação. A fatura, o saldo informado pelo banco e o Documento Descritivo do Crédito sempre têm a palavra final." } }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <a class="skip" href="#conteudo">Pular para o conteúdo</a>
+
+  <header class="nav">
+    <div class="wrap">
+      <a class="brand" href="./" aria-label="Até Quitar, página inicial">
+        <img src="icon.png" alt="" width="34" height="34">
+        Até Quitar
+      </a>
+      <nav class="nav-links" aria-label="Principal">
+        <a class="hide-sm" href="#como-funciona">Como funciona</a>
+        <a class="hide-sm" href="simulador-de-amortizacao/">Simulador de amortização</a>
+        <a class="hide-sm" href="https://github.com/leandrotsampa/AteQuitar">GitHub</a>
+        <button class="theme-btn" type="button" data-theme-toggle aria-label="Trocar entre tema claro e escuro"><svg class="moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z"/></svg><svg class="sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+        <a class="btn btn-primary btn-sm" href="#baixar" data-nav-download data-mobile-href="simulador-de-amortizacao/" data-mobile-label="Simular">Baixar grátis</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="conteudo">
+    <div class="hero wrap">
+      <div class="hero-copy">
+      <h1><span class="nowrap">R$ 10 mil</span> a mais hoje tiram <span class="money nowrap">R$ 45 mil</span> de juros da sua casa</h1>
+      <p class="lead">O Até Quitar refaz a conta do banco com o seu financiamento e mostra quanto cada amortização apaga de juros, com a TR do Banco Central sempre em dia.</p>
+      <div class="cta-row" data-cta-row>
+        <a class="btn btn-primary" href="#baixar" data-cta-download>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0l-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>
+          <span data-cta-download-label>Baixar grátis</span>
+        </a>
+        <a class="btn btn-ghost" href="simulador-de-amortizacao/" data-cta-calc>Simular com o meu contrato</a>
+      </div>
+      <ul class="platforms" aria-label="Sistemas compatíveis">
+        <li><span class="os-ico os-windows" aria-hidden="true"></span>Windows</li><li><span class="os-ico os-apple" aria-hidden="true"></span>macOS</li><li><span class="os-ico os-linux" aria-hidden="true"></span>Linux</li><li class="muted" data-version>Código aberto</li>
+      </ul>
+      </div>
+
+      <form class="stage" id="sim" aria-labelledby="sim-title" onsubmit="return false">
+        <div class="sky">
+          <p class="bubble" aria-live="polite"><b>Cada janela acesa é um ano a menos de parcelas.</b> <span data-r="janelas">Agora: 1 acesa.</span></p>
+          <svg class="house" viewBox="0 0 400 360" aria-hidden="true">
+            <defs>
+              <clipPath id="casa-dentro"><path d="M92 196 L200 96 L308 196 L308 348 L92 348 Z"/></clipPath>
+              <linearGradient id="agua" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7f86f8"/><stop offset="1" stop-color="#4d48e4"/></linearGradient>
+            </defs>
+            <g class="day">
+              <circle cx="334" cy="62" r="40" fill="#ffca4d" opacity=".25"/>
+              <circle cx="334" cy="62" r="27" fill="#ffca4d"/>
+              <path d="M38 76 a14 14 0 0 1 26 -8 a18 18 0 0 1 32 6 a12 12 0 0 1 2 24 h-58 a11 11 0 0 1 -2 -22z" fill="#fff" opacity=".8"/>
+            </g>
+            <g class="night">
+              <path d="M342 36 a30 30 0 1 0 22 50 a24 24 0 1 1 -22 -50z" fill="#fff0c6"/>
+              <circle cx="60" cy="50" r="2.4" fill="#fff"/><circle cx="120" cy="24" r="1.8" fill="#fff"/><circle cx="270" cy="30" r="2" fill="#fff"/><circle cx="30" cy="140" r="1.6" fill="#fff"/><circle cx="372" cy="150" r="2" fill="#fff"/>
+            </g>
+            <rect class="h-chimney" x="252" y="112" width="24" height="56" rx="3"/>
+            <path class="h-wall" d="M92 196 L200 96 L308 196 L308 348 L92 348 Z"/>
+            <g clip-path="url(#casa-dentro)">
+              <g class="water" data-water style="transform: translateY(260px)">
+                <g class="wave slow"><path d="M0 4 Q50 -10 100 4 T200 4 T300 4 T400 4 T500 4 T600 4 T700 4 T800 4 L800 320 L0 320 Z" fill="url(#agua)"/></g>
+                <g class="wave"><path d="M0 10 Q50 0 100 10 T200 10 T300 10 T400 10 T500 10 T600 10 T700 10 T800 10 L800 320 L0 320 Z" fill="url(#agua)"/></g>
+              </g>
+            </g>
+            <circle class="h-attic" cx="200" cy="158" r="15"/>
+            <g>
+              <rect class="h-win" data-win="5" x="114" y="200" width="46" height="34" rx="6"/>
+              <rect class="h-win" data-win="6" x="177" y="200" width="46" height="34" rx="6"/>
+              <rect class="h-win" data-win="7" x="240" y="200" width="46" height="34" rx="6"/>
+              <rect class="h-win" data-win="2" x="114" y="248" width="46" height="34" rx="6"/>
+              <rect class="h-win" data-win="3" x="177" y="248" width="46" height="34" rx="6"/>
+              <rect class="h-win" data-win="4" x="240" y="248" width="46" height="34" rx="6"/>
+              <rect class="h-win" data-win="0" x="114" y="296" width="46" height="34" rx="6"/>
+              <rect class="h-win" data-win="1" x="240" y="296" width="46" height="34" rx="6"/>
+              <path class="h-cross" d="M137 200v34M114 217h46M200 200v34M177 217h46M263 200v34M240 217h46M137 248v34M114 265h46M200 248v34M177 265h46M263 248v34M240 265h46M137 296v34M114 313h46M263 296v34M240 313h46"/>
+            </g>
+            <rect class="h-door" x="182" y="290" width="36" height="58" rx="10"/>
+            <path class="h-line" d="M92 196 L92 348 L308 348 L308 196" stroke-width="12" stroke-linejoin="round"/>
+            <path class="h-line" d="M68 216 L200 94 L332 216" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+
+        <div class="panel">
+          <h2 id="sim-title">Quanto a amortização vale para você?</h2>
+          <p class="panel-sub">Exemplo: 20 anos restantes, 10,49% ao ano + TR, SAC. <button type="button" class="link-btn" data-sim-reset hidden>Voltar ao exemplo</button></p>
+          <div class="field-r">
+            <div class="field-top"><label for="sim-saldo">Saldo devedor</label><output class="num" for="sim-saldo" data-out="saldo">R$ 300.000</output></div>
+            <input class="range" type="range" id="sim-saldo" data-in="saldo" min="50000" max="1000000" step="5000" value="300000">
+          </div>
+          <div class="field-r">
+            <div class="field-top"><label for="sim-extra">Amortizar agora</label><output class="num" for="sim-extra" data-out="extra">R$ 10.000</output></div>
+            <input class="range" type="range" id="sim-extra" data-in="extra" min="1000" max="100000" step="1000" value="10000">
+          </div>
+          <div class="big" aria-live="polite">
+            <small>Reduzindo o prazo, você deixa de pagar</small>
+            <b data-r="juros">R$ 45.819,14</b>
+            <span>de juros e seguros, e quita <b data-r="meses">1 ano e 10 meses</b> antes, em <b data-r="fim">—</b>.</span>
+          </div>
+          <dl class="vs">
+            <div class="vs-row best"><dt>Reduzindo o prazo <span class="tag">economiza mais</span></dt><dd><b data-r="prazo-juros">R$ 45.819</b><span data-r="prazo-sub">22 parcelas a menos</span></dd></div>
+            <div class="vs-row"><dt>Reduzindo a parcela</dt><dd><b data-r="parcela-juros">R$ 11.489</b><span data-r="parcela-sub">parcela R$ 126 menor</span></dd></div>
+          </dl>
+          <p class="assume">TR média de nov/2025 a out/2026 no Banco Central (0,17% ao mês), com as mesmas contas do app. <a href="simulador-de-amortizacao/">Simular com o seu contrato</a></p>
+        </div>
+      </form>
+    </div>
+
+    <section id="como-funciona" class="wrap" aria-labelledby="como-titulo">
+      <div class="section-head reveal">
+        <h2 id="como-titulo">Quanto já é seu, quanto falta e quando acaba</h2>
+        <p>Você cadastra o contrato uma vez, com ajuda em cada campo dizendo onde achar a informação. A casa vai se enchendo conforme a dívida cai, e uma luz acende a cada 10% quitados.</p>
+      </div>
+      <figure class="crop crop-wide reveal">
+        <picture>
+          <source srcset="img/recorte-casa-escuro.png" media="(prefers-color-scheme: dark)">
+          <img src="img/recorte-casa.png" width="1108" height="428" alt="Tela Minha casa: a ilustração da casa 51% preenchida, R$ 221.828,76 ainda a pagar em 200 parcelas até junho de 2043, a barra de progresso em 38% e quitação em 16 anos e 8 meses">
+        </picture>
+      </figure>
+
+      <div class="feature reveal">
+        <div class="feature-copy">
+          <h3>Quanto cada amortização apaga de juros</h3>
+          <p>Digite quanto quer pagar a mais e veja na hora os juros que deixam de existir, a nova data de quitação e a parcela seguinte.</p>
+          <ul>
+            <li>Uma vez, todo mês ou todo ano</li>
+            <li>Reduzir prazo e reduzir parcela lado a lado, com a que economiza mais destacada</li>
+            <li>Quanto cada R$ 1 amortizado evita de custo</li>
+          </ul>
+        </div>
+        <figure class="crop">
+          <picture>
+            <source srcset="img/recorte-amortizar-escuro.png" media="(prefers-color-scheme: dark)">
+            <img src="img/recorte-amortizar.png" width="1108" height="554" loading="lazy" alt="Tela Amortizar: amortizando R$ 5.000 uma vez reduzindo o prazo, você deixa de pagar R$ 9.672,16 em juros e seguros; o financiamento termina em fevereiro de 2043, 4 meses antes">
+          </picture>
+        </figure>
+      </div>
+
+      <div class="feature tall flip reveal">
+        <div class="feature-copy">
+          <h3>Um check-in por mês, em menos de um minuto</h3>
+          <p>Confirme a parcela paga, registre a amortização extra e, se quiser, o saldo que o app do banco mostra. Com o saldo real, a projeção passa a partir dele.</p>
+          <ul>
+            <li>Amortização com dinheiro próprio, FGTS ou 13º</li>
+            <li>A fatura linha a linha, como no app do banco</li>
+            <li>Comemoração a cada 10% da dívida quitada</li>
+          </ul>
+        </div>
+        <figure class="crop">
+          <img src="img/recorte-check-in.png" width="600" height="574" loading="lazy" alt="Check-in do mês, etapa Extra: Pagou algo a mais este mês? Sim, amortizei; escolha entre reduzir o prazo ou a parcela e a origem do dinheiro: próprio, FGTS ou 13º salário">
+        </figure>
+      </div>
+
+      <div class="feature tall reveal">
+        <div class="feature-copy">
+          <h3>Amortizar ou investir? A resposta em reais</h3>
+          <p>O custo real da sua dívida, com os juros do contrato e a TR, contra poupança, CDB, LCI e LCA, Tesouro Selic e Tesouro IPCA+, já sem o Imposto de Renda.</p>
+          <ul>
+            <li>Ranking no prazo que você escolher, com a sua dívida no meio</li>
+            <li>Ganho real acima da inflação</li>
+            <li>O que os números não mostram: reserva de emergência e liquidez</li>
+          </ul>
+        </div>
+        <figure class="crop">
+          <img src="img/recorte-investir.png" width="606" height="676" loading="lazy" alt="Amortizar rende mais: a dívida custa 12,70% ao ano e o investimento renderia 12,36% já sem IR; em 10 anos, R$ 10.000 amortizados valeriam R$ 33.061 contra R$ 32.057 investidos no CDB">
+        </figure>
+      </div>
+
+      <div class="feature flip reveal">
+        <div class="feature-copy">
+          <h3>A sua taxa é justa?</h3>
+          <p>A taxa do contrato num termômetro contra as médias de financiamento imobiliário que o Banco Central publica todo mês, e quanto isso representa em reais até o fim.</p>
+          <ul>
+            <li>Médias SFH, de mercado e geral</li>
+            <li>Passo a passo da portabilidade para outro banco</li>
+          </ul>
+        </div>
+        <figure class="crop">
+          <img src="img/recorte-taxa.png" width="1116" height="520" loading="lazy" alt="Minha taxa é justa?: 10,49% ao ano + TR, ótima taxa, 0,79% abaixo da média geral; comparado com a média, economiza R$ 13.351 em juros até o fim">
+        </figure>
+      </div>
+
+      <div class="extras">
+        <div class="extra reveal"><h3>SAC ou Price</h3><p>Os dois sistemas com os dados do seu contrato e quando a Price passa a custar mais.</p></div>
+        <div class="extra reveal"><h3>Parcelas mês a mês</h3><p>Amortização, juros, TR, seguros e saldo de cada parcela, até a última.</p></div>
+        <div class="extra reveal"><h3>Documento do banco em PDF</h3><p>Importa o Documento Descritivo do Crédito e confere o saldo antes de gravar.</p></div>
+        <div class="extra reveal"><h3>Taxas do mercado</h3><p>Selic, CDI, TR, IPCA e poupança do Banco Central, e o que cada uma muda no seu bolso.</p></div>
+        <div class="extra reveal"><h3>Para onde vai a parcela</h3><p>Quanto abate a dívida, quanto é juros e quanto é seguro e taxa.</p></div>
+        <div class="extra reveal"><h3>Aprender sem economês</h3><p>TR, CET, MIP e DFI, FGTS, portabilidade e Imposto de Renda em linguagem simples.</p></div>
+      </div>
+    </section>
+
+    <section class="wrap" aria-labelledby="conferido">
+      <div class="proof reveal">
+        <div>
+          <h2 id="conferido">Conferido parcela por parcela com o documento do banco</h2>
+          <p>As regras de TR, juros e arredondamento foram conferidas com o Documento Descritivo do Crédito de um contrato real e com simulações de amortização no banco.</p>
+          <p><a href="https://github.com/leandrotsampa/AteQuitar#-como-o-cálculo-funciona">Como o cálculo funciona, com os testes no GitHub</a>.</p>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th scope="col">Conferência</th><th scope="col">Resultado</th></tr></thead>
+            <tbody>
+              <tr><td>Amortização do SAC</td><td class="ok">igual à fatura</td></tr>
+              <tr><td>Juros do mês</td><td class="ok">igual ou 1 centavo</td></tr>
+              <tr><td>Seguro MIP</td><td class="ok">igual ou 1 centavo</td></tr>
+              <tr><td>Prazo depois de amortizar</td><td class="ok">igual à simulação do banco</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <section class="wrap" aria-labelledby="comecar">
+      <div class="section-head reveal">
+        <h2 id="comecar">Comece em um minuto</h2>
+        <p>Sem cadastro em site, sem login e sem mensalidade.</p>
+      </div>
+      <div class="start">
+        <div class="reveal">
+          <ol class="steps">
+            <li><b>Baixe e abra o app.</b> Instalador ou portátil para Windows, .dmg para macOS e AppImage para Linux.</li>
+            <li><b>Explore o exemplo ou cadastre o seu.</b> São 5 passos com prévia ao vivo, ou importe o Documento Descritivo do Crédito e pule o cadastro.</li>
+            <li><b>Faça o check-in uma vez por mês.</b> As taxas do Banco Central se atualizam sozinhas.</li>
+          </ol>
+          <p class="private"><b>Seus dados ficam no seu computador.</b> Num arquivo que você copia para fazer backup. A internet só serve para buscar as taxas do Banco Central e avisar quando sai uma versão nova.</p>
+        </div>
+        <figure class="crop reveal">
+          <img src="img/demo.webp" width="1120" height="700" loading="lazy" decoding="async" alt="Demonstração: a casa enchendo, o check-in do mês com comemoração, o simulador de amortização, amortizar ou investir e o tema escuro">
+        </figure>
+      </div>
+    </section>
+
+    <section id="baixar" class="wrap" aria-labelledby="baixar-titulo">
+      <div class="section-head reveal">
+        <h2 id="baixar-titulo">Baixe grátis para o seu computador</h2>
+        <p>O app avisa sozinho quando sai uma versão nova. <span data-version-long></span></p>
+      </div>
+      <div class="download">
+        <div class="dl reveal" data-os="windows">
+          <div class="dl-head"><h3><span class="os-ico os-windows" aria-hidden="true"></span>Windows</h3><span class="badge" hidden>seu sistema</span></div>
+          <div class="dl-options">
+            <a class="dl-opt" data-asset="win-setup" data-dl-name="o instalador para Windows" href="https://github.com/leandrotsampa/AteQuitar/releases/latest">
+              <b>Instalador</b><span>Recomendado. Abre rápido e instala só para o seu usuário, sem pedir administrador.</span><small data-size></small>
+            </a>
+            <a class="dl-opt" data-asset="win-portable" data-dl-name="a versão portátil para Windows" href="https://github.com/leandrotsampa/AteQuitar/releases/latest">
+              <b>Portátil</b><span>Não instala nada: roda de uma pasta ou pendrive, com os dados ao lado. Demora mais para abrir.</span><small data-size></small>
+            </a>
+          </div>
+          <p class="dl-status" data-dl-status role="status"></p>
+          <p class="dl-help"><b>Na primeira abertura</b>, se aparecer "O Windows protegeu o computador", clique em <em>Mais informações</em> e depois em <em>Executar assim mesmo</em>.</p>
+        </div>
+        <div class="dl reveal" data-os="mac">
+          <div class="dl-head"><h3><span class="os-ico os-apple" aria-hidden="true"></span>macOS</h3><span class="badge" hidden>seu sistema</span></div>
+          <div class="dl-options">
+            <a class="dl-opt" data-asset="mac-arm" data-dl-name="a versão para Mac com chip Apple" href="https://github.com/leandrotsampa/AteQuitar/releases/latest">
+              <b>Chip Apple</b><span>M1, M2, M3 e mais novos.</span><small data-size></small>
+            </a>
+            <a class="dl-opt" data-asset="mac-intel" data-dl-name="a versão para Mac com Intel" href="https://github.com/leandrotsampa/AteQuitar/releases/latest">
+              <b>Intel</b><span>Macs com processador Intel. Na dúvida, veja em menu Apple → Sobre Este Mac.</span><small data-size></small>
+            </a>
+          </div>
+          <p class="dl-status" data-dl-status role="status"></p>
+          <div class="dl-help"><p><b>Na primeira abertura</b>, vá em <em>Ajustes do Sistema → Privacidade e Segurança</em> e clique em <em>Abrir Mesmo Assim</em>.</p><details class="dl-more"><summary>E se aparecer "está danificado"?</summary><p>É o mesmo aviso de app sem assinatura paga. Abra o Terminal, cole <code>xattr -cr "/Applications/Até Quitar.app"</code> e tecle Enter.</p></details></div>
+        </div>
+        <div class="dl reveal" data-os="linux">
+          <div class="dl-head"><h3><span class="os-ico os-linux" aria-hidden="true"></span>Linux</h3><span class="badge" hidden>seu sistema</span></div>
+          <div class="dl-options">
+            <a class="dl-opt" data-asset="linux" data-dl-name="o AppImage para Linux" href="https://github.com/leandrotsampa/AteQuitar/releases/latest">
+              <b>AppImage</b><span>Para x64: um arquivo só, sem instalar nada, com os dados ao lado.</span><small data-size></small>
+            </a>
+          </div>
+          <p class="dl-status" data-dl-status role="status"></p>
+          <div class="dl-help"><p><b>Antes de abrir</b>, dê permissão de execução: botão direito → <em>Propriedades → Permitir executar</em>.</p><details class="dl-more"><summary>Prefere o terminal?</summary><p><code>chmod +x AteQuitar-*.AppImage</code></p></details></div>
+        </div>
+      </div>
+      <p class="trust">Os avisos aparecem porque o app não tem uma assinatura de código comercial, que é paga. O código é aberto e pode ser conferido no <a href="https://github.com/leandrotsampa/AteQuitar">GitHub</a>.</p>
+    </section>
+
+    <section id="perguntas" class="narrow" aria-labelledby="faq-titulo">
+      <h2 id="faq-titulo" class="reveal">Perguntas frequentes</h2>
+      <div class="faq">
+        <details>
+          <summary>O Até Quitar é gratuito?</summary>
+          <p>Sim. O app é gratuito e de código aberto, sob a licença MIT. Não tem plano pago, anúncio nem cadastro em site.</p>
+        </details>
+        <details>
+          <summary>Meus dados vão para a internet?</summary>
+          <p>Não. Os dados ficam num arquivo SQLite no seu computador, e o PDF do banco é lido ali mesmo. O app só se conecta à internet para buscar as taxas públicas do Banco Central e para saber se há uma versão nova no GitHub.</p>
+        </details>
+        <details>
+          <summary>Funciona com o financiamento de qualquer banco?</summary>
+          <p>Sim, com qualquer financiamento imobiliário pelo SAC ou pela Price, com ou sem correção pela TR, como os da Caixa, do Banco do Brasil e dos bancos privados. A importação do Documento Descritivo do Crédito em PDF reconhece por enquanto um modelo de documento; os outros bancos usam o cadastro guiado.</p>
+        </details>
+        <details>
+          <summary>Vale mais a pena amortizar reduzindo o prazo ou a parcela?</summary>
+          <p>Reduzir o prazo quase sempre economiza mais juros, porque a dívida acaba antes. Reduzir a parcela economiza menos, mas alivia o orçamento todo mês. O app e o <a href="simulador-de-amortizacao/">simulador de amortização</a> mostram os dois lado a lado, em reais, com os dados do seu contrato.</p>
+        </details>
+        <details>
+          <summary>Os números batem com os do banco?</summary>
+          <p>O app refaz a conta do banco com as mesmas regras de TR, juros e arredondamento, conferidas parcela por parcela com o Documento Descritivo do Crédito de um contrato real. Alguns campos podem diferir em centavos, e cada check-in com a fatura ou o saldo do banco traz o app de volta ao valor exato.</p>
+        </details>
+        <details>
+          <summary>Por que o Windows ou o macOS avisam na primeira abertura?</summary>
+          <p>Porque o app não tem uma assinatura de código comercial, que é paga. O código é aberto e pode ser conferido no GitHub. No Windows, clique em <em>Mais informações → Executar assim mesmo</em>. No macOS, vá em <em>Ajustes do Sistema → Privacidade e Segurança</em> e clique em <em>Abrir Mesmo Assim</em>.</p>
+        </details>
+        <details>
+          <summary>O app substitui o extrato do banco?</summary>
+          <p>Não. Ele é uma ferramenta de acompanhamento e simulação. A fatura, o saldo informado pelo banco e o Documento Descritivo do Crédito sempre têm a palavra final.</p>
+        </details>
+      </div>
+    </section>
+
+    <section class="wrap" aria-labelledby="final-titulo">
+      <div class="end-cta reveal">
+        <h2 id="final-titulo">Veja a sua casa ficando sua, parcela por parcela</h2>
+        <p>Comece pelo financiamento de exemplo e, quando quiser, troque pelo seu contrato. Leva um minuto e não custa nada.</p>
+        <div class="cta-row" data-cta-row>
+          <a class="btn btn-primary" href="#baixar" data-cta-download><span data-cta-download-label>Baixar grátis</span></a>
+          <a class="btn btn-ghost" href="simulador-de-amortizacao/" data-cta-calc>Simular online</a>
+        </div>
+        <ul class="platforms center" aria-label="Sistemas compatíveis">
+          <li><span class="os-ico os-windows" aria-hidden="true"></span>Windows</li><li><span class="os-ico os-apple" aria-hidden="true"></span>macOS</li><li><span class="os-ico os-linux" aria-hidden="true"></span>Linux</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <nav aria-label="Rodapé">
+        <a href="simulador-de-amortizacao/">Simulador de amortização</a>
+        <a href="https://github.com/leandrotsampa/AteQuitar">Código no GitHub</a>
+        <a href="https://github.com/leandrotsampa/AteQuitar/releases">Versões</a>
+        <a href="https://github.com/leandrotsampa/AteQuitar/issues">Sugestões e problemas</a>
+      </nav>
+      <p>O Até Quitar é uma ferramenta de acompanhamento e simulação e não substitui o extrato oficial do banco nem a orientação de um profissional de finanças.</p>
+      <p>Feito por <a href="https://github.com/leandrotsampa">@leandrotsampa</a> · © 2026 · <a href="https://github.com/leandrotsampa/AteQuitar/blob/main/LICENSE">Licença MIT</a></p>
+    </div>
+  </footer>
+
+  <script src="assets/calc.js" defer></script>
+  <script src="assets/site.js" defer></script>
+</body>
+</html>

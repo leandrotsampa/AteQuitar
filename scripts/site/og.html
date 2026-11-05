@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<style>
+  @font-face { font-family: 'Bricolage'; src: url('../../node_modules/@fontsource-variable/bricolage-grotesque/files/bricolage-grotesque-latin-wght-normal.woff2') format('woff2'); font-weight: 200 800; }
+  @font-face { font-family: 'Manrope'; src: url('../../node_modules/@fontsource-variable/manrope/files/manrope-latin-wght-normal.woff2') format('woff2'); font-weight: 200 800; }
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body {
+    font-family: 'Manrope', sans-serif; color: #fff;
+    background:
+      radial-gradient(520px 320px at 92% 6%, rgb(255 181 36 / 0.38), transparent 62%),
+      radial-gradient(760px 520px at 0% 0%, rgb(97 100 241 / 0.6), transparent 65%),
+      linear-gradient(180deg, #302e80 0%, #1d1b4b 100%);
+    padding: 60px 0 0 72px; display: grid; grid-template-columns: 1fr 440px; gap: 24px; align-items: start;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; font-family: 'Bricolage'; font-weight: 700; font-size: 32px; }
+  .brand img { width: 56px; height: 56px; border-radius: 14px; box-shadow: 0 6px 20px rgb(0 0 0 / 0.3); }
+  h1 { font-family: 'Bricolage'; font-weight: 800; font-size: 70px; line-height: 1.02; letter-spacing: -0.03em; margin-top: 44px; }
+  h1 .sol { color: #ffca4d; }
+  p { margin-top: 24px; font-size: 25px; line-height: 1.4; color: #e0e5ff; max-width: 620px; }
+  .chips { display: flex; gap: 10px; margin-top: 30px; }
+  .chips span { font-size: 19px; font-weight: 700; padding: 8px 18px; border-radius: 999px; background: rgb(255 255 255 / 0.08); border: 1px solid rgb(255 255 255 / 0.25); color: #e0e5ff; }
+  .chips span.free { background: #ffb524; color: #1d1b4b; border-color: #ffb524; }
+  svg { width: 440px; height: auto; margin-top: 150px; }
+</style>
+</head>
+<body>
+  <div>
+    <div class="brand"><img src="../../build/icon.png" alt="">Até Quitar</div>
+    <h1>R$&nbsp;10&nbsp;mil a mais hoje tiram <span class="sol">R$&nbsp;45&nbsp;mil</span> de juros da sua casa</h1>
+    <p>Saldo, quitação e quanto cada amortização economiza, com a TR do Banco Central.</p>
+    <div class="chips"><span class="free">Grátis</span><span>Windows</span><span>macOS</span><span>Linux</span></div>
+  </div>
+  <svg viewBox="0 0 400 360" aria-hidden="true">
+    <defs>
+      <clipPath id="c"><path d="M92 196 L200 96 L308 196 L308 348 L92 348 Z"/></clipPath>
+      <linearGradient id="a" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7f86f8"/><stop offset="1" stop-color="#4d48e4"/></linearGradient>
+    </defs>
+    <path d="M330 26 a30 30 0 1 0 22 50 a24 24 0 1 1 -22 -50z" fill="#fff0c6"/>
+    <circle cx="70" cy="60" r="2.4" fill="#fff"/><circle cx="150" cy="30" r="1.8" fill="#fff"/><circle cx="40" cy="150" r="1.6" fill="#fff"/>
+    <rect x="252" y="112" width="24" height="56" rx="3" fill="#a4affc" opacity=".35"/>
+    <path d="M92 196 L200 96 L308 196 L308 348 L92 348 Z" fill="#1d1b4b"/>
+    <g clip-path="url(#c)"><path d="M0 214 Q50 200 100 214 T200 214 T300 214 T400 214 L400 360 L0 360 Z" fill="url(#a)"/></g>
+    <circle cx="200" cy="158" r="15" fill="#0e1122" stroke="#a4affc" stroke-width="5"/>
+    <g stroke="#a4affc" stroke-width="5">
+      <rect x="114" y="200" width="46" height="34" rx="6" fill="#ffca4d"/><rect x="177" y="200" width="46" height="34" rx="6" fill="#0e1122"/><rect x="240" y="200" width="46" height="34" rx="6" fill="#ffca4d"/>
+      <rect x="114" y="248" width="46" height="34" rx="6" fill="#ffca4d"/><rect x="177" y="248" width="46" height="34" rx="6" fill="#ffca4d"/><rect x="240" y="248" width="46" height="34" rx="6" fill="#ffca4d"/>
+      <rect x="114" y="296" width="46" height="34" rx="6" fill="#ffca4d"/><rect x="240" y="296" width="46" height="34" rx="6" fill="#ffca4d"/>
+    </g>
+    <path stroke="#a4affc" stroke-width="4" d="M137 200v34M114 217h46M200 200v34M177 217h46M263 200v34M240 217h46M137 248v34M114 265h46M200 248v34M177 265h46M263 248v34M240 265h46M137 296v34M114 313h46M263 296v34M240 313h46"/>
+    <rect x="182" y="290" width="36" height="58" rx="10" fill="#ffb524" stroke="#a4affc" stroke-width="5"/>
+    <path d="M92 196 L92 348 L308 348 L308 196" fill="none" stroke="#a4affc" stroke-width="12" stroke-linejoin="round"/>
+    <path d="M68 216 L200 94 L332 216" fill="none" stroke="#a4affc" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>
+</body>
+</html>
